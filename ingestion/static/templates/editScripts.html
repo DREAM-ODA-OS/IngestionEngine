@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}
+<P ALIGN=CENTER STYLE="background: #47b8b8"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=6 STYLE="font-size: 22pt">Login</FONT></FONT></P>
+{% endblock %}
+
+
+{% block content %}
+<form method="post" action="">{% csrf_token %}
+   <table>
+        {{ form.as_table }}
+    </table>
+    <input type="submit" value="submit"/>
+</form>
+
+
+{% endblock %}

@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load dajaxice_templatetags %}
+
+{% block head %}
+
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+{% dajaxice_js_import 'nocsrf' %}
+
+<script>
+    // !!! do not import another jquery to support jquery-ui !!!
+    jscenarios = []; // global array of scenarios
+    first_time = 1; // global parameter
+
+    $(document).ready(function() {
+        if (first_time==1) {
+            Dajaxice.ingestion.synchronize_scenarios(update_scenario);
+        }
+        window.setInterval(function(){Dajaxice.ingestion.synchronize_scenarios(update_scenario);},5000); // every 5000 milliseconds
+    });
+
+
+    function goToLocation(s)
+    {
+        var main_page = new String("http://127.0.0.1:8000/")
+        var page = main_page.concat(s);
+        window.location.replace(page)
+    }
+
+
+    function create_scenario(data) {
+        //     0         1          2        3            4          5
+        //scenario_id,status_id,status_is_available,status_status,status_done
+        // create scenario as javascript object
+        var scenario = new Object();
+        scenario.id = data[0];
+        if (data[1]>0) { // 1 means automatic, 2 means manual
+            scenario.auto_ingest = 1;
+        }else {
+            scenario.auto_ingest = 0;
+        }
+
+        scenario.st_id = data[2];
+        scenario.st_isav = data[3];
+        scenario.st_st = data[4];
+        scenario.st_done = data[5];
+        return scenario;
+    }
+
+    function add_scenario(scenario) {
+        jscenarios.push(scenario);
+    }
+
+    function remove_scenario(scenario) {
+        var i = jscenarios.indexOf(scenario)
+        splice (i,i);
+    }
+
+    function update_scenario(data) { // called by dajaxice every N-milliseconds
+        var ajax_data = data.jscenario_status;
+        for (var i=0; i<ajax_data.length; i++) {
+            var obj = create_scenario(ajax_data[i]);
+            if (first_time==1){
+                jscenarios.push(obj);
+            }else {
+                jscenarios[i] = obj;
+            }
+        }
+        if (first_time==1){
+            first_time = 0;
+        }
+        // update widgets (buttons,progress bars, ...)
+        update_webpage();
+
+        //
+        for (var i=0; i<jscenarios.length; i++) {
+            if (jscenarios[i].st_st=="DELETED") {
+                Dajaxice.ingestion.delete_scenario_django(function(data){alert(data.message);},{'scenario_id':jscenarios[i].id});
+            }
+        }
+    }
+
+    function update_webpage() {
+        // update widgets of Web page
+        for (var i=0; i<jscenarios.length; i++) {
+            // hide div_scenario of deleted scenario
+            if (jscenarios[i].st_st=="DELETED") {
+                current_id = "#div_scenario_" + jscenarios[i].id;
+                $(current_id).hide()
+            }
+
+            // update tr_status
+            current_id = "div_status_" + jscenarios[i].id;
+            var element = document.getElementById(current_id);
+            element.innerHTML = "Status: " + jscenarios[i].st_st;
+
+            // update progress bar
+            current_id = "#div_progress_bar_" + jscenarios[i].id;
+            done = jscenarios[i].st_done;
+            $(current_id).progressbar({ value: done });
+
+            // update ability/disability of buttons
+            buttons = ["ingest_scenario_button","manage_data_button","load_register_button","edit_scenario_button","delete_scenario_button"]
+            for (var j=0; j<buttons.length; j++) {
+                //current_id = "#" + buttons[j] + "_" + jscenarios[i].id;
+                current_id = buttons[j] + "_" + jscenarios[i].id;
+                var aaa = jscenarios[i].st_isav;
+                if (jscenarios[i].st_isav==0) { // disability
+                    document.getElementById(current_id).disabled = true;
+                }else { // ability
+                    document.getElementById(current_id).disabled = false;
+                }
+
+                if (buttons[j]=="ingest_button") {
+                    if (jscenarios[i].auto_ingest==1) {
+                        document.getElementById(current_id).disabled = true;
+                    }
+                }
+            }
+            // can be extended
+        }
+    }
+
+    function synchronize_scenarios() {
+       Dajaxice.ingestion.synchronize_scenarios(update_scenario);
+    }
+
+
+    $(document).ready(function(){
+		$(".DeleteButton").live('click',function(){
+            var id_button = $(this).attr("id"); //delete_scenario_button_1
+            var id_scenario = id_button.split("_")[3];
+            // update status of scenario
+            synchronize_scenarios();
+            for (var i=0; jscenarios.length; i++) {
+                if (id_scenario==jscenarios[i].id && jscenarios[i].st_isav!=0) {
+                    if(confirm('Delete scenario - ' + id_scenario + '?')) {
+
+                        // send ajax request to Work-Flow-Manager to delete scenario
+                        Dajaxice.ingestion.delete_scenario_wfm(function(data){},{'scenario_id':id_scenario});
+                    }
+                }
+            }
+        });
+	});
+
+
+    $(document).ready(function(){
+		$(".IngestButton").live('click',function(){
+            var id_button = $(this).attr("id"); //ingest_scenario_button_1
+            var id_scenario = id_button.split("_")[3];
+            // update status of scenario
+            synchronize_scenarios();
+            for (var i=0; jscenarios.length; i++) {
+                if (id_scenario==jscenarios[i].id && jscenarios[i].st_isav!=0) {
+                    if(confirm('Ingest scenario - ' + id_scenario + '?')) {
+                        // send ajax request to Work-Flow-Manager to ingest scenario
+                        Dajaxice.ingestion.ingest_scenario_wfm(function(data){},{'scenario_id':id_scenario});
+                    }
+                }
+            }
+        });
+	});
+
+
+</script>
+	
+
+<style>
+	.button
+	{
+		width: 3cm; 
+		height: 0.74cm; 
+		font-family: 'Arial', sans-serif; 
+		font-size: 12pt;
+	}
+</style>
+
+{% endblock %}
+
+
+{% block title %}
+<P ALIGN=CENTER STYLE="background: #47b8b8"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=6 STYLE="font-size: 22pt">Scenario
+Overview</FONT></FONT></P>
+{% endblock %}
+
+
+{% block content %}
+
+<INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST1" onClick="Dajaxice.ingestion.synchronize_scenarios(update_scenario)">
+<INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST2" onClick="update_webpage()">
+
+
+{% for scenario in scenarios %}
+<div id="div_scenario_{{scenario.id}}">
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0 STYLE="page-break-before: always; page-break-inside: avoid">
+	<COL WIDTH=48*>
+	<COL WIDTH=208*>
+	<TR>
+		<TD COLSPAN=2 WIDTH=100% HEIGHT=34 STYLE="; border: none; padding: 0cm"></TD>
+	</TR>
+
+    <TR BGCOLOR="#ffcc99">
+		<TD WIDTH=19% HEIGHT=44 STYLE="border: none; padding: 0cm">
+				<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><IMG SRC="gtk_edit24.png" NAME="graphics2" ALIGN=LEFT WIDTH=24 HEIGHT=24 BORDER=0><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt">{{scenario.scenario_name}}</FONT></FONT></P>
+		</TD>
+		<TD WIDTH=81% STYLE="; border: none; padding: 0cm">
+				<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt"><I>{{scenario.scenario_description}}</I></FONT></FONT></P>
+		</TD>
+	</TR>
+
+    <TR>
+		<TD WIDTH=19% STYLE="; border: none; padding: 0cm">
+			<P ALIGN=CENTER STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold">Next
+				scheduled upload:</FONT><BR><FONT FACE="UniversS 57 Condensed">2013.07.12
+				01:00</FONT></P>
+		</TD>
+		<TD WIDTH=81% VALIGN=BOTTOM STYLE="; border: none; padding: 0cm">
+			<DIV ALIGN=CENTER>
+				<p>
+                    <INPUT TYPE="BUTTON" class="IngestButton" id="ingest_scenario_button_{{scenario.id}}" name="IngestButton" VALUE="Ingest">
+                    <INPUT TYPE="BUTTON" class="button" id="manage_data_button_{{scenario.id}}" name="ManageDataButton" VALUE="Manage Data">
+                    <INPUT TYPE="BUTTON" class="button" id="load_register_button_{{scenario.id}}" name="LoadRegisterButton" VALUE="From Disk...">
+                    <INPUT TYPE="BUTTON" class="button" id="edit_scenario_button_{{scenario.id}}" name="EditScenarioButton" VALUE="Edit ..." onClick="goToLocation('scenario/edit/{{scenario.id}}')">
+                    <INPUT TYPE="BUTTON" class="DeleteButton" id="delete_scenario_button_{{scenario.id}}" VALUE="Delete">
+				</p>
+			</DIV>
+		</TD>
+    </TR>
+    {% if scenario.repeat_interval > 0 %}
+    <TR>
+        <TD>Next automatic ingestion is set up at {{scenario.starting_date|date:"Y-m-d H:i:s"}}</TD>
+        <TD></TD>
+
+    </TR>
+    {% endif %}
+
+    <TR>
+
+        <TD>
+            <div id="div_status_{{scenario.id}}">
+            Status:
+            </div>
+        </TD>
+
+
+        <TD>
+            <div id="div_progress_bar_{{scenario.id}}" ALIGN=CENTER>
+
+            </div>
+        </TD>
+    </TR>
+
+</table>
+</div>
+{% endfor %}
+
+
+
+<INPUT TYPE=BUTTON class="button" name="AddScenarioButton" VALUE="Add Scenario" onclick="goToLocation('scenario/add/')">
+
+
+{% endblock %}

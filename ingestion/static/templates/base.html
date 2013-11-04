@@ -1,0 +1,80 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+{% load staticfiles %}
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_URL}}/css/style.css" />
+    {% block head %}{% endblock %}
+
+    <style>
+
+      #dreamTitle {
+      font-family:Arial,Helvetica,sans-serif;
+      font-style:italic;
+      font-weight:bold;
+      font-size:36pt;
+      background:transparent;
+      border:none;
+      padding:0cm
+      }
+
+      #ingAdm {
+      font-family:Arial,Helvetica,sans-serif;
+      font-weight:normal;
+      font-size:24pt;
+      text-align:center;
+      background:transparent;
+      border:none;
+      padding:0cm
+      }
+
+    </style>
+
+</head>
+
+<body>
+<TABLE WIDTH=100% CELLPADDING=4 CELLSPACING=0
+       STYLE="page-break-before: always; page-break-inside: avoid">
+  <COL WIDTH=62*>
+  <COL WIDTH=118*>
+  <COL WIDTH=76*>
+  <TR BGCOLOR="#99ccff">
+    <TD WIDTH=24% STYLE="border: none; padding: 0cm">
+      <P id="dreamTitle">DREAM</P>
+    </TD>
+    <TD WIDTH=46% STYLE="; border: none; padding: 0cm">
+      <P id="ingAdm"> Ingestion<br>Administration</P>
+    </TD>
+    <TD WIDTH=30% STYLE="; border: none; padding: 0cm">
+      <P><IMG SRC={% static "images/ESA_logo_dark_blue_bare.png" %} NAME="graphics1" ALIGN=RIGHT HEIGHT=73 BORDER=0><BR>
+      </P>
+    </TD>
+  </TR>
+</TABLE>
+
+<p> This is a temporary placeholder page, not for production use.
+Most of the functions here are not fully implemented at this time.
+</p>
+
+<table>
+	<tr><td><a href="/"> HOME </a></td></tr>
+	<!-- tr><td><a href="scenario/overview/"> SCENARIO OVERVIEW </a></td></tr -->
+	
+	<tr><td>==========</tr></td>
+	{% if user.is_authenticated %}
+	<tr><td> <p><I>Logged in as: </I> {{user.username}} <p> </td></tr>
+	<!-- tr><td><a href="account/logout/"> LOGOUT </a></td></tr -->
+	<tr><td><a href="account/configuration/"> CONFIGURATION </a></td></tr>
+	{% else %}
+	<tr><td><a href="account/login/"> LOGIN </a></td></tr>
+	{% endif %}
+	
+</table>
+
+
+{% block title %} {% endblock %}
+
+{% block content %} {% endblock %}
+
+
+</body>
+</html>

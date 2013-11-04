@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}
+<P ALIGN=CENTER STYLE="background: #47b8b8"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=6 STYLE="font-size: 22pt">Login</FONT></FONT></P>
+{% endblock %}
+
+{% block content %}
+
+{% if form.errors %}
+<p> Your username and password didn't match. Please try again.</p>
+{% endif %}
+
+<form method='post' action='.'>{% csrf_token %}
+	<p><label for='id_username'>Username</label>
+	{{ form.username }}</p>
+	
+	<p><label for='id_password'>Password</label>
+	{{ form.password }}</p>
+	
+	<input type="hidden" name="next" value="/" />
+	<input type="submit" value="login" />
+</form>
+
+
+{% endblock %}

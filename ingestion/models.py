@@ -1,0 +1,92 @@
+############################################################
+#  Project: DREAM
+#  Module:  Task 5 ODA Ingestion Engine 
+#  Author:  Vojtech Stefka  (CVC)
+#  Creation Date:  Aug 2013
+#
+#    (c) 2013 Siemens Convergence Creators s.r.o., Prague
+#    Licensed under the 'DREAM ODA Ingestion Engine Open License'
+#     (see the file 'LICENSE' in the top-level directory)
+#
+#  Django models.
+#
+############################################################
+
+from django.db import models
+from django.contrib.auth.models import User
+
+import os
+
+
+#**************************************************
+#                  Scenario                       *
+#**************************************************
+class Scenario(models.Model):
+    id  = models.AutoField(primary_key=True)
+    scenario_name = models.CharField(max_length=50)
+    scenario_description = models.CharField(max_length=200)
+    aoi = models.IntegerField()
+    repeat_interval = models.IntegerField()
+    from_date = models.DateTimeField()
+    to_date = models.DateTimeField()
+    starting_date = models.DateTimeField()
+    cloud_cover = models.FloatField()
+    view_angle = models.FloatField()
+    sensor_type = models.CharField(max_length=20)
+    dsrc = models.CharField(max_length=200)
+    dsrc_login = models.CharField(max_length=20)
+    dsrc_password = models.CharField(max_length=50)
+    preprocessing = models.IntegerField()
+    default_priority = models.IntegerField()
+    user = models.ForeignKey(User)
+    
+#**************************************************
+#                   Script                        *
+#**************************************************   
+class Script(models.Model): # should be ScenarioScript to make it comprehensible
+    id = models.AutoField(primary_key=True)
+    script_name = models.CharField(max_length=50)
+    script_path = models.CharField(max_length=50) # local address on the django server
+    scenario = models.ForeignKey(Scenario)
+    
+
+
+class ProductInfo(models.Model):
+    id = models.AutoField(primary_key=True)
+    info_status = models.CharField(max_length=50)
+    info_error = models.CharField(max_length=200)
+    info_date = models.DateTimeField()
+
+
+
+#**************************************************
+#                 User Script                     *
+#**************************************************
+def update_script_filename(instance,filename):
+    path = "scripts/" # save destination related to .../<ie_project>/media/
+    file_name = "%s_%s" % (str(instance.user.id),instance.script_name)
+    print "File name: %s" % file_name
+    return os.path.join(path,file_name)
+
+class UserScript(models.Model):
+    id = models.AutoField(primary_key=True)
+    script_name = models.CharField(max_length=50)
+    script_file = models.FileField(upload_to=update_script_filename)
+    user = models.ForeignKey(User)
+
+
+#**************************************************
+#              Scenario Status                    *
+#**************************************************
+class ScenarioStatus(models.Model):
+    id = models.AutoField(primary_key=True)
+    is_available = models.IntegerField() # 1 - available, 0 - not available
+    status = models.CharField(max_length=20) # e.g.: downloading, deleting, ...
+    done = models.FloatField() # e.g.: 33.3%
+    scenario = models.OneToOneField(Scenario)
+
+
+
+    
+
+    

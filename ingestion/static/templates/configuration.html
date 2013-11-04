@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load dajaxice_templatetags %}
+
+
+{% block head %}
+
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+    {% dajaxice_js_import 'nocsrf' %}
+
+	<script>
+
+        $(document).ready(function() {
+            $("#button_submit_2").hide();
+            $("#button_submit_1").hide();
+        });
+
+        status = "show"
+
+        function create_userscript_submit_form(file_type,script_name,script_path) {
+            return '<table><tr><th><label for="id_script_name">Script name:</label></th><td><input id="id_script_name" type="text" name="script_name" value="'+ script_name + '" maxlength="50" disabled/></td><th><label for="id_script_file">Script file:</label></th><td><input type="' + file_type + '" name="script_file" id="id_script_file" value="' + script_path + '"/></td></tr></table>';
+        }
+
+        $(document).ready(function(){
+            $(".ConfigButton").live('click',function(){
+				var button_state = $(this).attr("info-state");
+				var id_button = $(this).attr("id");
+
+				if (button_state=="disable" && status=="show"){
+					$(this).attr("info-state","enable");
+					$(this).attr("value","Save");
+                    status = "edit"
+
+					if (id_button=="button_user_config1"){
+                        $("#div_user_config1").html(create_userscript_submit_form("file","{{product_script.script_name}}","{{product_script.script_path}}"));
+                        $("#button_submit_1").show();
+                        $("#button_user_config1").hide();
+					}else if (id_button=="button_user_config2"){
+                        $("#div_user_config2").html(create_userscript_submit_form("file","{{product_script.script_name}}","{{product_script.script_path}}"));
+                        $("#button_submit_2").show();
+                        $("#button_user_config2").hide();
+                    }
+				}
+            });
+		});
+
+       function show_logging(data){
+           messages = data.message;
+           var html = '<table>'
+           for (var i=0; i<messages.length; i++) {
+               html = html + '<tr><td>' + messages[i] + '</td></tr>';
+           }
+           document.getElementById('div_logging').innerHTML = html;
+       }
+
+        first_time = 1
+
+        $(document).ready(function() {
+            if (first_time==1) {
+                Dajaxice.ingestion.read_logging(show_logging,{'message_type':'INFO'});
+                first_time = 0;
+            }
+            window.setInterval(function(){Dajaxice.ingestion.read_logging(show_logging,{'message_type':'INFO'});},5000); // every 5000 milliseconds
+        });
+
+
+
+	</script>
+
+
+{% endblock %}
+
+
+
+{% block title %}
+<P ALIGN=CENTER STYLE="background: #47b8b8"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=6 STYLE="font-size: 22pt">CONFIGURATION</FONT></FONT></P>
+{% endblock %}
+
+{% block content %}
+
+<form method="post" action="account/configuration/" enctype="multipart/form-data">{% csrf_token %}
+<h1>Add Product Script</h1>
+
+
+<div id="div_user_config1">
+
+    {% if product_script %}
+
+    <a href="{{ MEDIA_URL}}{{product_script.script_file}}">Add Product Script</a>
+
+    {% else %}
+
+     <table>
+         <tr>
+             <th><label for="id_script_name1">Script name:</label></th>
+             <td><input id="id_script_name1" type="text" name="script_name" value="{{product_script.script_name}}" maxlength="50" disabled/></td>
+             <th><label for="id_script_file1">Script file:</label></th><td><input type="text" name="script_file" id="id_script_file1" value="{{product_script.script_path}}" disabled/></td>
+         </tr>
+     </table>
+
+    {% endif %}
+
+</div>
+<input type="button" class="ConfigButton" id="button_user_config1"  value="Edit" info-state="disable">
+<input type="submit" id="button_submit_1" name="button_submit_1" value="Save"/>
+
+<h1>Scenario Delete Script</h1>
+
+<div id="div_user_config2">
+
+    {% if delete_script %}
+
+    <a href="{{ MEDIA_URL}}{{delete_script.script_file}}">Delete Scenario Script</a>
+
+    {% else %}
+
+
+    <table>
+         <tr>
+             <th><label for="id_script_name2">Script name:</label></th>
+             <td><input id="id_script_name2" type="text" name="script_name" value="{{delete_script.script_name}}" maxlength="50" disabled/></td>
+             <th><label for="id_script_file2">Script file:</label></th><td><input type="text" name="script_file" id="id_script_file2" value="{{delete_script.script_path}}" disabled/></td>
+         </tr>
+     </table>
+
+    {% endif %}
+
+</div>
+<input type="button" class="ConfigButton" id="button_user_config2"  value="Edit" info-state="disable">
+<input type="submit" id="button_submit_2" name="button_submit_2" value="Save"/>
+
+
+</form>
+
+
+
+
+<h1> Logging </h1>
+<div id="div_logging"></div>
+
+
+{% endblock %}

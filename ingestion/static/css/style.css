@@ -1,0 +1,384 @@
+.olControlAttribution {
+  bottom: 3px;
+  left: 10px;
+  line-height: 9px;
+  font-size: 9px;
+  color: #ccc;
+}
+
+img.olTileImage {
+  max-width: none;
+}
+
+.navbar-inner {
+  text-align: center;
+  min-height: none;
+}
+
+#navbar-lower .nav {
+  font-size: 16px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* for fullscreen map */
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  //bottom: 0px;
+  overflow: hidden;
+}
+
+#div-map {
+  width: 100%;
+  bottom: 0px;
+  top: 0px;
+  height: 100%;
+}
+
+#div-downloads {
+  display: none;
+}
+
+div.olControlMousePosition {
+  bottom: 65px !important;
+  right: 8px !important;
+  font-size: 100% !important;
+}
+ 
+
+.logo {
+  height: 40px;
+  padding: 0px !important;
+}
+
+.sidepane {
+  position: absolute;
+  left: 10px;
+  top: 20%;
+  max-height: 65%;
+  max-width: 50%;
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 1px 10px rgba(0, 0, 0, .1);
+}
+
+#accordion-help .accordion-body {
+  max-height: 250px;
+}
+
+#accordion-help .accordion-body.in {
+  overflow-y: auto;
+}
+
+/* squeeze some space from the layers view */
+
+#div-layers .nav-tabs,#div-layers .accordion {
+  margin-bottom: 0px;
+}
+
+
+
+/* Product layer move up/down */
+.icon-move-layer-up {
+  background-position: -288px -120px;
+}
+
+.icon-move-layer-down {
+  background-position: -313px -119px;
+}
+
+label:first-child .icon-move-layer-up {
+  background-position: 14px 14px;
+}
+
+label:last-child .icon-move-layer-down {
+  background-position: 14px 14px;
+}
+
+.icon-adjust-opacity {
+  background-position: -48px -72px;
+}
+
+/***********************************/
+
+#div-region-error {
+  position: absolute;
+  right: 10px;
+  top: 20%;
+  max-height: 70%;
+  z-index: 1000;
+}
+
+.input-label-small {
+  width: 3em !important;
+}
+
+#div-welcome-message {
+  position: absolute;
+  left: 50px;
+  top: 50%;
+  z-index: 90000;
+}
+
+.dark {
+  background-color: rgba(0,15,26,0.65);
+  padding: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+  margin-bottom: 3px
+}
+
+.dark > h1, .dark > h2, .dark > h3, .dark > h4, .dark > p, .dark > p > a {
+  margin: 0px;
+  padding: 5px;
+  color: white;
+  font-weight: normal;
+}
+
+.dark > p {
+  font-size: 17.5px;
+}
+
+.dark > p > a[href] {
+  color: cyan;
+}
+
+h1.huge {
+  font-size: 45px;
+}
+
+
+/* for date slider */
+
+#slider-date {
+  left: 5%;
+  margin: 0px;
+  position: absolute;
+  width: 90%;
+  bottom: 10px;
+  z-index: 1000;
+  height: 50px;
+  padding: 0px;
+}
+
+.btn-timeslider {
+  position: absolute;
+  vertical-align: top;
+  height: 100%;
+  margin: 0px;
+  top: 0px;
+  width: 5%;
+}
+
+.svg-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: absolute;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: black;
+  shape-rendering: crispEdges;
+}
+
+.axis text {
+  font-family: sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.grid path,
+.grid line {
+  fill: none;
+  stroke: rgba(100,100,100,0.25);
+  shape-rendering: crispEdges;
+}
+
+.brush .extent {
+  opacity: .6;
+}
+
+/* scrollable item list */
+.item-list {
+  max-height: 100 px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right:30px
+}
+
+.transparent {
+  opacity: 0.9;
+}
+
+label {
+  white-space: nowrap;
+}
+
+.modal-backdrop,.modal-backdrop.fade.in{
+  opacity: 0.5;
+  filter: alpha(opacity=50);
+}
+
+.modal .popover, .item-list .popover {
+  position: fixed;
+}
+
+.modal .popover {
+  width: 450px;
+}
+
+.modal-footer > .input-medium, .modal-footer > .input-small {
+  margin-bottom: 0px;
+}
+
+#modal-about {
+	width: 750px;
+}
+
+.modal-body-about {
+	max-height: none;
+}
+
+/* missing accordion classes from jasnys css */
+.accordion {
+  margin-bottom: 20px;
+}
+.accordion-group {
+  margin-bottom: 2px;
+  border: 1px solid #e5e5e5;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+}
+.accordion-heading {
+  border-bottom: 0;
+}
+.accordion-heading .accordion-toggle {
+  display: block;
+  padding: 8px 15px;
+}
+.accordion-toggle {
+  cursor: pointer;
+}
+.accordion-inner {
+  padding: 9px 15px;
+  border-top: 1px solid #e5e5e5;
+}
+
+#modal-start-download {
+  width: 750px;
+}
+
+.color-label {
+  width: 1em;
+  height:1em;
+  display:inline-block;
+  margin-left: 2px;
+  margin-right: 2px;
+  border: 1px solid black;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+}
+
+#div-toolbox {
+    z-index: 10000;
+    position: absolute;
+    top: 150px;
+    right: 30px;
+    width:60px;
+    height:300px;
+    padding: 0px;
+}
+
+#div-heightselection{
+    z-index: 10000;
+    position: absolute;
+    top: 460px;
+    right: 30px;
+    width:40px;
+    height:160px;
+    margin: 0px;
+    padding: 10px;
+}
+
+#slider-bar{
+  position: relative;
+  display: block;
+  width: 8px;
+  height: 100%;
+  left: 15px;
+
+}
+
+#div-heightselection .popover-content{
+  padding: 2px;
+  text-align: right;
+  font-size: 0.7em;
+}
+
+/*Cubism Styles*/
+
+.horizon {
+  border-bottom: solid 1px #000;
+  overflow: hidden;
+  position: relative;
+}
+
+.horizon {
+  border-top: solid 1px #000;
+  border-bottom: solid 1px #000;
+}
+
+.horizon + .horizon {
+  border-top: none;
+}
+
+.horizon canvas {
+  display: block;
+}
+
+.horizon .title,
+.horizon .value {
+  bottom: 0;
+  line-height: 30px;
+  margin: 0 6px;
+  position: absolute;
+  text-shadow: 0 1px 0 rgba(255,255,255,.5);
+  white-space: nowrap;
+}
+
+.horizon .title {
+  left: 0;
+  display: none;
+}
+
+.horizon .value {
+  right: 0;
+}
+
+.line {
+  background: #000;
+  opacity: .2;
+  z-index: 2;
+}
+
+.color-line {
+  background: #000;
+  fill: none;
+  z-index: 2;
+  stroke-width: 2;
+}
+
+/*Added because padding was displacing
+the data line of the cubism visualization*/
+#modal-visualization .modal-body {
+  padding: 0px;
+  margin: 15px;
+}
+
