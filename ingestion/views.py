@@ -30,6 +30,8 @@ import datetime
 from django.utils.timezone import utc
 from django.contrib.auth import authenticate, login
 
+from settings import IE_DEBUG
+
 import work_flow_manager
 
 
@@ -37,10 +39,10 @@ def main_page(request):
     logger = logging.getLogger('dream.file_logger')
     if settings.IE_AUTO_LOGIN and \
             (not request.user.is_authenticated()) and request.path == '/':
-        logger.info(" ** req="+`request.path`,extra={'user':"drtest"})
-        new_user = authenticate(username=r'drtest', password=r'1234')
+#        new_user = authenticate(username=r'drtest', password=r'1234')
+        new_user = authenticate(username=r'dreamer', password=r'1234')
         if None == new_user:
-            logger.warn('Cannot log in user drtest',extra={'user':"drtest"})
+            logger.warn('Cannot log in user drtest',extra={'user':"NONE"})
         else:
             new_user.backend=settings.AUTHENTICATION_BACKENDS[0]
             login(request, new_user)
@@ -60,7 +62,10 @@ def overviewScenario(request):
     scenario_status = []
     for s in scenarios:
         scenario_status.append(s.scenariostatus)
-    variables = RequestContext(request,{'scenarios':scenarios,'scenario_status':scenario_status})
+    variables = RequestContext(
+        request,
+        {'scenarios':scenarios,
+         'scenario_status':scenario_status})
 
     return render_to_response('overviewScenario.html',variables)
 
@@ -72,7 +77,8 @@ def delete_scripts(scripts):
             script = models.Script.objects.get(script_path=s.script_path)
             script.delete()
         except Exception as e:
-            print e
+            logger = logging.getLogger('dream.file_logger')
+            logger.error("Deletion error: " + `e`, extra={'user':"drtest"})
 
 def handle_uploaded_scripts(request,scenario):
     if len(request.FILES)==0:
@@ -83,7 +89,8 @@ def handle_uploaded_scripts(request,scenario):
     i = 0
     for filename in request.FILES: # files is dictionary
         f = request.FILES[filename] 
-        file_path = "%s/scripts/%s_%s_%d" % (settings.MEDIA_ROOT,str(request.user.id),str(scenario.id),i)
+        file_path = "%s/scripts/%s_%s_%d" % \
+            (settings.MEDIA_ROOT, str(request.user.id), str(scenario.id), i)
         try:
             destination = open(file_path,'w')
             if f.multiple_chunks:
@@ -92,7 +99,8 @@ def handle_uploaded_scripts(request,scenario):
             else:
                 destination.write(f.read())
         except Exception as e:
-            print "Exception %s" % e
+            logger = logging.getLogger('dream.file_logger')
+            logger.error("Upload error: " + `e`, extra={'user':"drtest"})
             #break
         finally:
             destination.close()
@@ -105,10 +113,12 @@ def handle_uploaded_scripts(request,scenario):
 
 def addScenario(request):
     # add scenario and related scripts 
+    logger = logging.getLogger('dream.file_logger')
     if request.method == 'POST':
         form = forms.ScenarioForm(request.POST)
         if form.is_valid():
-            print "Scenario form is valid"
+            if IE_DEBUG > 2:
+                logger.debug( "Scenario form is valid",extra={'user':"drtest"})
             scenario = form.save(commit=False)
             scenario.user = request.user
             scenario.save()
@@ -123,22 +133,28 @@ def addScenario(request):
             scenario_status.save()
 
             # use logging
-            logger = logging.getLogger('dream.file_logger')
-            logger.info('Operation: add scenario: id=%d name=%s' % (scenario.id,scenario.scenario_name) ,extra={'user':request.user})
+            logger.info('Operation: add scenario: id=%d name=%s' % \
+                            (scenario.id,scenario.scenario_name),
+                        extra={'user':request.user})
 
 
             return HttpResponseRedirect('http://127.0.0.1:8000/scenario/overview/')
         else:
-            print "Scenario form is not valid"
+            if IE_DEBUG > 0:
+                logger.debug( "Scenario form is not valid",extra={'user':"drtest"})
             return render_to_response('editScenario.html',{'form':form})
     else:
         form = forms.ScenarioForm()
-    variables = RequestContext(request,{'form':form,'scripts':[],"sequence":""})
+    variables = RequestContext(request,
+                               {'form':form,
+                                'scripts':[],
+                                'sequence':""})
     return render_to_response('editScenario.html',variables)
 
 def editScenario(request,scenario_id):
     # edit scenario and its relationship to user and scripts 
     # first, scenario and relationship are deleted and then added as in 
+    logger = logging.getLogger('dream.file_logger')
     scenario = models.Scenario.objects.get(id=int(scenario_id))
     if request.method == 'POST':
         form = forms.ScenarioForm(request.POST)
@@ -148,16 +164,16 @@ def editScenario(request,scenario_id):
             scenario.id = int(scenario_id)
             scenario.user = request.user
             scenario.save()
+            logger.info('Operation: edit scenario: id=%d name=%s' \
+                            % (scenario.id,scenario.scenario_name),
+                        extra={'user':request.user})
 
-            # use logging
-            logger = logging.getLogger('dream.file_logger')
-            logger.info('Operation: edit scenario: id=%d name=%s' % (scenario.id,scenario.scenario_name) ,extra={'user':request.user})
-
-            print "Scenario: %s %s" % (str(scenario.id),scenario.scenario_name)
+            if IE_DEBUG > 1:
+                print "Scenario: %s %s" % (str(scenario.id),scenario.scenario_name)
             handle_uploaded_scripts(request,scenario)
-            return HttpResponseRedirect('http://127.0.0.1:8000/scenario/overview/')  
+            return HttpResponseRedirect('http://127.0.0.1:8000/scenario/overview/')
         else:
-            print "Scenario form is not valid"
+            logger.warn("Scenario form is not valid",extra={'user':request.user})
     else:
         form = forms.ScenarioForm()
         # initialize values of form
@@ -165,7 +181,8 @@ def editScenario(request,scenario_id):
             form.fields[field].initial = getattr(scenario,field)   
     # load scripts
     scripts = scenario.script_set.all()
-    variables = RequestContext(request,{'form':form,'scripts':scripts,"sequence":""})
+    variables = RequestContext(
+        request,{'form':form,'scripts':scripts,"sequence":""})
     return render_to_response('editScenario.html',variables)
 
 def deleteScenario(request,scenario_id):
@@ -215,7 +232,9 @@ def configuration_page(request):
                 for old_script in models.UserScript.objects.filter(user_id__exact=2):
                     if old_script.script_name=="addProduct-script":
                         old_script.delete()
-                        os.remove("%s/%s" % (settings.MEDIA_ROOT,old_script.script_file)) # exception should be implemented
+                        # TODO exception should be implemented
+                        os.remove("%s/%s" % \
+                                      (settings.MEDIA_ROOT,old_script.script_file)) 
 
             elif "button_submit_2" in request.POST: # name of button in template
                 print "Delete Form  is valid"
@@ -224,7 +243,9 @@ def configuration_page(request):
                 for old_script in models.UserScript.objects.filter(user_id__exact=2):
                     if old_script.script_name=="deleteScenario-script":
                         old_script.delete()
-                        os.remove("%s/%s" % (settings.MEDIA_ROOT,old_script.script_file)) # exception should be implemented
+                        # TODO exception should be implemented
+                        os.remove("%s/%s" % \
+                                      (settings.MEDIA_ROOT,old_script.script_file)) 
 
             m.save() # save UserScript to /<project>/media/{(user.id)_(script_name)}
             return HttpResponseRedirect('http://127.0.0.1:8000/account/configuration/')
@@ -240,7 +261,11 @@ def configuration_page(request):
     for pro_item in models.UserScript.objects.filter(script_name__exact="addProduct-script",user_id=user.id):
         pro_script = pro_item
 
-    variables = RequestContext(request,{"product_script":pro_script,"delete_script":del_script,'user':user})
+    variables = RequestContext(
+        request,
+        {"product_script":pro_script,
+         "delete_script":del_script,
+         "user":user})
     return render_to_response('configuration.html',variables)
 
 
@@ -252,7 +277,10 @@ def getListScenarios(request):
         try:
             scenarios = models.Scenario.objects.all()
             for s in scenarios:
-                response_data.append({'id':'%s' % s.id,'name': '%s' % s.scenario_name,'decription':'%s' % s.scenario_description})
+                response_data.append(
+                    {'id':'%s' % s.id,
+                     'name': '%s' % s.scenario_name,
+                     'decription':'%s' % s.scenario_description})
         except Exception as e:
             response_data['status'] = 1
             response_data['errorString'] = "%s" % e

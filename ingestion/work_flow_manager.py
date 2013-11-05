@@ -200,8 +200,7 @@ class WorkFlowManager:
         self._workers = []
         self._workers.append(Worker(self))
         self._workers.append(Worker(self))
-# TODO XXX TMP FOR DEVELOPMENT FIX THIS XXX
-#        self._workers.append(AISWorker(self))
+        self._workers.append(AISWorker(self))
         self._lock_db = threading.Lock()
         self._logger = logging.getLogger('dream.file_logger')
 
@@ -220,7 +219,8 @@ class WorkFlowManager:
             self._logger.debug( "Worker-%d uses db." % worker_id,
                                 extra={'user':"drtest"})
         try: # set scenario status
-            scenario_status = models.ScenarioStatus.objects.get(scenario_id=scenario_id)
+            scenario_status = models.ScenarioStatus.objects.get(
+                scenario_id=scenario_id)
             scenario_status.is_available = is_available
             scenario_status.status = status
             scenario_status.done = done
@@ -228,10 +228,10 @@ class WorkFlowManager:
         except Exception as e:
             print e
         finally:
+            self._lock_db.release()
             if IE_DEBUG > 3:
                 self._logger.debug( "Worker-%d stops using db." % worker_id,
                                     extra={'user':"drtest"})
-            self._lock_db.release()
 
 
     def delete_scenario(self):

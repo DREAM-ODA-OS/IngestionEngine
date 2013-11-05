@@ -4,8 +4,8 @@
 
 {% block head %}
 
-<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
-<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+<!-- link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script -->
 
 {% dajaxice_js_import 'nocsrf' %}
 
@@ -21,12 +21,17 @@
         window.setInterval(function(){Dajaxice.ingestion.synchronize_scenarios(update_scenario);},5000); // every 5000 milliseconds
     });
 
-
     function goToLocation(s)
     {
         var main_page = new String("http://127.0.0.1:8000/")
         var page = main_page.concat(s);
         window.location.replace(page)
+    }
+
+    function runIngestion(s)
+    {
+    // TBD
+        alert("Run Ingestion Not Implememented.\n (dgb id="+s+")");
     }
 
 
@@ -102,7 +107,13 @@
             $(current_id).progressbar({ value: done });
 
             // update ability/disability of buttons
-            buttons = ["ingest_scenario_button","manage_data_button","load_register_button","edit_scenario_button","delete_scenario_button"]
+            buttons = [
+               "ingest_scenario_button",
+		"manage_data_button",
+                "load_register_button",
+                "edit_scenario_button",
+                "delete_scenario_button"
+		 ]
             for (var j=0; j<buttons.length; j++) {
                 //current_id = "#" + buttons[j] + "_" + jscenarios[i].id;
                 current_id = buttons[j] + "_" + jscenarios[i].id;
@@ -126,6 +137,7 @@
     function synchronize_scenarios() {
        Dajaxice.ingestion.synchronize_scenarios(update_scenario);
     }
+
 
 
     $(document).ready(function(){
@@ -189,13 +201,16 @@ Overview</FONT></FONT></P>
 
 {% block content %}
 
-<INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST1" onClick="Dajaxice.ingestion.synchronize_scenarios(update_scenario)">
-<INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST2" onClick="update_webpage()">
+<INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST1"
+       onClick="Dajaxice.ingestion.synchronize_scenarios(update_scenario)">
+<INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST2"
+       onClick="update_webpage()">
 
 
 {% for scenario in scenarios %}
 <div id="div_scenario_{{scenario.id}}">
-<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0 STYLE="page-break-before: always; page-break-inside: avoid">
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0
+       STYLE="page-break-before: always; page-break-inside: avoid">
 	<COL WIDTH=48*>
 	<COL WIDTH=208*>
 	<TR>
@@ -214,17 +229,29 @@ Overview</FONT></FONT></P>
     <TR>
 		<TD WIDTH=19% STYLE="; border: none; padding: 0cm">
 			<P ALIGN=CENTER STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold">Next
-				scheduled upload:</FONT><BR><FONT FACE="UniversS 57 Condensed">2013.07.12
-				01:00</FONT></P>
+				scheduled upload:</FONT><BR><FONT FACE="UniversS 57 Condensed">TBD</FONT></P>
 		</TD>
 		<TD WIDTH=81% VALIGN=BOTTOM STYLE="; border: none; padding: 0cm">
 			<DIV ALIGN=CENTER>
 				<p>
-                    <INPUT TYPE="BUTTON" class="IngestButton" id="ingest_scenario_button_{{scenario.id}}" name="IngestButton" VALUE="Ingest">
-                    <INPUT TYPE="BUTTON" class="button" id="manage_data_button_{{scenario.id}}" name="ManageDataButton" VALUE="Manage Data">
-                    <INPUT TYPE="BUTTON" class="button" id="load_register_button_{{scenario.id}}" name="LoadRegisterButton" VALUE="From Disk...">
-                    <INPUT TYPE="BUTTON" class="button" id="edit_scenario_button_{{scenario.id}}" name="EditScenarioButton" VALUE="Edit ..." onClick="goToLocation('scenario/edit/{{scenario.id}}')">
-                    <INPUT TYPE="BUTTON" class="DeleteButton" id="delete_scenario_button_{{scenario.id}}" VALUE="Delete">
+                    <INPUT TYPE="BUTTON" class="IngestButton"
+			   id="ingest_scenario_button_{{scenario.id}}"
+			   name="IngestButton" VALUE="Ingest"
+			   onClick="runIngestion({{scenario.id}})"/>
+
+                    <INPUT TYPE="BUTTON" class="button"
+			   id="manage_data_button_{{scenario.id}}"
+			   name="ManageDataButton" VALUE="Manage Data"/>
+                    <INPUT TYPE="BUTTON" class="button"
+			   id="load_register_button_{{scenario.id}}"
+			   name="LoadRegisterButton" VALUE="From Disk..."/>
+                    <INPUT TYPE="BUTTON" class="button"
+			   id="edit_scenario_button_{{scenario.id}}"
+			   name="EditScenarioButton" VALUE="Edit ..."
+			   onClick="goToLocation('scenario/edit/{{scenario.id}}')"/>
+                    <INPUT TYPE="BUTTON" class="DeleteButton"
+			   id="delete_scenario_button_{{scenario.id}}"
+			   VALUE="Delete"/>
 				</p>
 			</DIV>
 		</TD>
