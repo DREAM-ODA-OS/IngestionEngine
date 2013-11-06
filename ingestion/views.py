@@ -30,7 +30,7 @@ import datetime
 from django.utils.timezone import utc
 from django.contrib.auth import authenticate, login
 
-from settings import IE_DEBUG
+from settings import IE_DEBUG, IE_HOME_PAGE
 
 import work_flow_manager
 
@@ -38,7 +38,8 @@ import work_flow_manager
 def main_page(request):
     logger = logging.getLogger('dream.file_logger')
     if settings.IE_AUTO_LOGIN and \
-            (not request.user.is_authenticated()) and request.path == '/':
+            (not request.user.is_authenticated()) and \
+            request.path == '/'+IE_HOME_PAGE:
 #        new_user = authenticate(username=r'drtest', password=r'1234')
         new_user = authenticate(username=r'dreamer', password=r'1234')
         if None == new_user:
@@ -47,7 +48,10 @@ def main_page(request):
             new_user.backend=settings.AUTHENTICATION_BACKENDS[0]
             login(request, new_user)
             logger.info('Auto-logged-in.',extra={'user':"drtest"})
-    return render_to_response('base.html',{'user':request.user})
+    return render_to_response(
+        'base.html',
+        {'user':request.user,
+         'home_page':IE_HOME_PAGE})
 
 def logout_page(request):
     settings.IE_AUTO_LOGIN = False
@@ -65,7 +69,8 @@ def overviewScenario(request):
     variables = RequestContext(
         request,
         {'scenarios':scenarios,
-         'scenario_status':scenario_status})
+         'scenario_status':scenario_status,
+         'home_page':IE_HOME_PAGE})
 
     return render_to_response('overviewScenario.html',variables)
 
@@ -100,8 +105,7 @@ def handle_uploaded_scripts(request,scenario):
                 destination.write(f.read())
         except Exception as e:
             logger = logging.getLogger('dream.file_logger')
-            logger.error("Upload error: " + `e`, extra={'user':"drtest"})
-            #break
+            logger.error("Upload error: " + `e`, extra={'user':request.user})
         finally:
             destination.close()
         script = models.Script()
@@ -118,7 +122,7 @@ def addScenario(request):
         form = forms.ScenarioForm(request.POST)
         if form.is_valid():
             if IE_DEBUG > 2:
-                logger.debug( "Scenario form is valid",extra={'user':"drtest"})
+                logger.debug( "Scenario form is valid")
             scenario = form.save(commit=False)
             scenario.user = request.user
             scenario.save()
@@ -142,13 +146,17 @@ def addScenario(request):
         else:
             if IE_DEBUG > 0:
                 logger.debug( "Scenario form is not valid",extra={'user':"drtest"})
-            return render_to_response('editScenario.html',{'form':form})
+            return render_to_response(
+                'editScenario.html',
+                {'form':form,
+                 'home_page':IE_HOME_PAGE})
     else:
         form = forms.ScenarioForm()
     variables = RequestContext(request,
                                {'form':form,
                                 'scripts':[],
-                                'sequence':""})
+                                'sequence':"",
+                                'home_page':IE_HOME_PAGE})
     return render_to_response('editScenario.html',variables)
 
 def editScenario(request,scenario_id):
@@ -182,7 +190,11 @@ def editScenario(request,scenario_id):
     # load scripts
     scripts = scenario.script_set.all()
     variables = RequestContext(
-        request,{'form':form,'scripts':scripts,"sequence":""})
+        request,
+        {'form':form,
+         'scripts':scripts,
+         'sequence':"",
+         'home_page':IE_HOME_PAGE})
     return render_to_response('editScenario.html',variables)
 
 def deleteScenario(request,scenario_id):
@@ -265,7 +277,8 @@ def configuration_page(request):
         request,
         {"product_script":pro_script,
          "delete_script":del_script,
-         "user":user})
+         "user":user,
+         'home_page':IE_HOME_PAGE})
     return render_to_response('configuration.html',variables)
 
 
@@ -278,7 +291,7 @@ def getListScenarios(request):
             scenarios = models.Scenario.objects.all()
             for s in scenarios:
                 response_data.append(
-                    {'id':'%s' % s.id,
+                    {'id':'%s' % s.ncn_id,
                      'name': '%s' % s.scenario_name,
                      'decription':'%s' % s.scenario_description})
         except Exception as e:
@@ -292,15 +305,18 @@ def getListScenarios(request):
 
 
 @csrf_exempt
-def getScenario(request,scenario_id):
+def getScenario(request,ncn_id):
     # must be GET method
     response_data = {}
     if request.method == 'GET':
         try:
-            scenario = models.Scenario.objects.get(id=scenario_id)
+            scenario = models.Scenario.objects.get(ncn_id=ncn_id)
             for s in scenario.__dict__:
-                if not s.startswith("_"):
-                    response_data[s] = "%s" % str(getattr(scenario,s))
+                if s.startswith("_") or \
+                        s == "user_id" or \
+                        s == "id":
+                    continue
+                response_data[s] = "%s" % str(getattr(scenario,s))
         except Exception as e:
             response_data['status'] = 1
             response_data['errorString'] = "%s" % e

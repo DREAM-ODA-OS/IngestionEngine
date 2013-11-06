@@ -213,7 +213,13 @@ class WorkFlowManager:
                                  extra={'user':"drtest"})
 
 
-    def set_scenario_status(self,worker_id,scenario_id,is_available,status,done):
+    def set_scenario_status(
+        self,
+        worker_id,
+        scenario_id,
+        is_available,
+        status,
+        done):
         self._lock_db.acquire()
         if IE_DEBUG > 3:
             self._logger.debug( "Worker-%d uses db." % worker_id,

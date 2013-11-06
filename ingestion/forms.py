@@ -14,7 +14,7 @@ import models
 import django.forms as forms
 import datetime
 from django.utils.timezone import utc
-
+from settings import SC_NCN_ID_BASE
 
 #class UserForm(forms.ModelForm):
 #    class Meta:
@@ -89,7 +89,8 @@ class ScenarioForm(forms.ModelForm):
         t1 = cleaned_data.get("from_date")
         t2 = cleaned_data.get("to_date")
         if t2<t1:
-            raise forms.ValidationError("Starting date - %s is bigger then final date - %s." % (t1,t2))
+            raise forms.ValidationError(
+               "Starting date - %s is bigger then final date - %s." % (t1,t2))
         return cleaned_data
 
    
@@ -110,7 +111,7 @@ class ScenarioForm(forms.ModelForm):
                           )
         
         #self.fields['aoi'].widget = forms.CheckboxSelectMultiple(choices=MEDIA_CHOICES)
-        self.fields['scenario_description'].widget = forms.Textarea(attrs={'cols':20,'rows':10})
+        self.fields['scenario_description'].widget = forms.Textarea(attrs={'cols':60,'rows':10})
         self.fields['aoi'].widget = forms.RadioSelect(choices=AOI_CHOICES)
         self.fields['sensor_type'].widget = forms.RadioSelect(choices=SENSOR_CHOICES)
         #self.fields['dsrc'].widget = forms.FileInput()
@@ -139,6 +140,7 @@ class ScenarioForm(forms.ModelForm):
         # initial values
         d2 = datetime.datetime.utcnow().replace(tzinfo=utc)
         d1 = d2 - datetime.timedelta(days=365)
+        self.fields['ncn_id'].initial = models.make_ncname(SC_NCN_ID_BASE)
         self.fields['from_date'].initial = d1
         self.fields['to_date'].initial = d2
         self.fields['starting_date'].initial = d2

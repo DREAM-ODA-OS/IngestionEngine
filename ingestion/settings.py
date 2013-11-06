@@ -19,7 +19,14 @@ TEMPLATE_DEBUG = False
 IE_AUTO_LOGIN  = True
 IE_DEBUG       = 1
 
+#Ingestion Engine Constants
 IE_PROJECT = 'ingestion'
+IE_HOME_PAGE = 'ingestion'
+
+SC_NCN_ID_BASE     = 'scid'
+NCN_ID_LEN         = 96
+SC_NAME_LEN        = 64
+SC_DESCRIPTION_LEN = 1024
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),

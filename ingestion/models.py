@@ -17,14 +17,20 @@ from django.contrib.auth.models import User
 
 import os
 
+from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN
 
 #**************************************************
 #                  Scenario                       *
 #**************************************************
+def make_ncname(root):
+    n = Scenario.objects.count()
+    return root+`n`
+
 class Scenario(models.Model):
     id  = models.AutoField(primary_key=True)
+    ncn_id  = models.CharField(max_length=NCN_ID_LEN)
     scenario_name = models.CharField(max_length=50)
-    scenario_description = models.CharField(max_length=200)
+    scenario_description = models.CharField(max_length=SC_DESCRIPTION_LEN)
     aoi = models.IntegerField()
     repeat_interval = models.IntegerField()
     from_date = models.DateTimeField()
@@ -32,10 +38,10 @@ class Scenario(models.Model):
     starting_date = models.DateTimeField()
     cloud_cover = models.FloatField()
     view_angle = models.FloatField()
-    sensor_type = models.CharField(max_length=20)
-    dsrc = models.CharField(max_length=200)
-    dsrc_login = models.CharField(max_length=20)
-    dsrc_password = models.CharField(max_length=50)
+    sensor_type = models.CharField(max_length=96)
+    dsrc = models.CharField(max_length=1024)
+    dsrc_login = models.CharField(max_length=64)
+    dsrc_password = models.CharField(max_length=64)
     preprocessing = models.IntegerField()
     default_priority = models.IntegerField()
     user = models.ForeignKey(User)
@@ -85,8 +91,3 @@ class ScenarioStatus(models.Model):
     done = models.FloatField() # e.g.: 33.3%
     scenario = models.OneToOneField(Scenario)
 
-
-
-    
-
-    

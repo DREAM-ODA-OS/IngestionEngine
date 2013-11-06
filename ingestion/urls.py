@@ -23,6 +23,8 @@ admin.autodiscover()
 from dajaxice.core import dajaxice_autodiscover, dajaxice_config
 dajaxice_autodiscover()
 
+from settings import IE_HOME_PAGE
+
 
 urlpatterns = patterns('',
 
@@ -45,7 +47,7 @@ urlpatterns = patterns('',
     url(r'^ingest/ManageScenario/listScenarios',views.getListScenarios),
 
     # getScenario
-    url(r'^ingest/ManageScenario/getScenario/id=(?P<scenario_id>[1-9]{1,3})',views.getScenario),
+    url(r'^ingest/ManageScenario/getScenario/id=(?P<ncn_id>.*)$',views.getScenario),
 
     # logout.html
     url(r'^account/logout/',views.logout_page),
@@ -72,7 +74,8 @@ urlpatterns = patterns('',
     url(r'^scenario/edit/(?P<scenario_id>[1-9]{1,3})',views.editScenario),
     
     # Main page
-    url(r'',views.main_page),
+    url(r'^'+IE_HOME_PAGE,    views.main_page),
+    url(r'^'+IE_HOME_PAGE+'/',views.main_page),
     
     # editScenarioForms.html
     #url(r'^editScenarioForms/',views.editScenarioForms),

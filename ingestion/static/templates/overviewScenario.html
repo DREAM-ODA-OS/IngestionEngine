@@ -18,7 +18,11 @@
         if (first_time==1) {
             Dajaxice.ingestion.synchronize_scenarios(update_scenario);
         }
-        window.setInterval(function(){Dajaxice.ingestion.synchronize_scenarios(update_scenario);},5000); // every 5000 milliseconds
+        window.setInterval(
+            function(){
+                Dajaxice.ingestion.synchronize_scenarios(update_scenario);
+            },
+            5000); // every 5000 milliseconds
     });
 
     function goToLocation(s)
