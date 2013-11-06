@@ -105,12 +105,12 @@ class Worker(threading.Thread):
             # do ingesting scenario
             scripts = parameters["scripts"]
             percentage = 0.0
-            for script in scripts: # scripts absolute path
-                self._logger.info("Running script: %s" % script, extra={'user':"drtest"} )
-                os.system(script)
-                percentage += (100.0/float(len(scripts)))
-                self._wfm.set_scenario_status(
-                    self._id,parameters["scenario_id"],0,"INGESTING",percentage)
+            # for script in scripts: # scripts absolute path
+            #     self._logger.info("Running script: %s" % script, extra={'user':"drtest"} )
+            #     os.system(script)
+            #     percentage += (100.0/float(len(scripts)))
+            #     self._wfm.set_scenario_status(
+            #         self._id,parameters["scenario_id"],0,"INGESTING",percentage)
 
             self._wfm.set_scenario_status(
                 self._id,parameters["scenario_id"],1,"FREE",0)
