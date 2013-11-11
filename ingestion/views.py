@@ -34,20 +34,23 @@ from settings import IE_DEBUG, IE_HOME_PAGE
 
 import work_flow_manager
 
+IE_DEFAULT_USER = r'dreamer'
+IE_DEFAULT_PASS = r'1234'
 
 def main_page(request):
     logger = logging.getLogger('dream.file_logger')
     if settings.IE_AUTO_LOGIN and \
             (not request.user.is_authenticated()) and \
             request.path == '/'+IE_HOME_PAGE:
-#        new_user = authenticate(username=r'drtest', password=r'1234')
-        new_user = authenticate(username=r'dreamer', password=r'1234')
+        new_user = authenticate(
+            username=IE_DEFAULT_USER,
+            password=IE_DEFAULT_PASS)
         if None == new_user:
-            logger.warn('Cannot log in user drtest',extra={'user':"NONE"})
+            logger.warn('Cannot log in user '+IE_DEFAULT_USER)
         else:
             new_user.backend=settings.AUTHENTICATION_BACKENDS[0]
             login(request, new_user)
-            logger.info('Auto-logged-in.',extra={'user':"drtest"})
+            logger.info('Auto-logged-in ' + IE_DEFAULT_USER+".")
     return render_to_response(
         'base.html',
         {'user':request.user,
@@ -132,11 +135,10 @@ def addScenario(request):
             scenario_status = models.ScenarioStatus()
             scenario_status.scenario = scenario
             scenario_status.is_available = 1
-            scenario_status.status = "FREE"
+            scenario_status.status = "IDLE"
             scenario_status.done = 0
             scenario_status.save()
 
-            # use logging
             logger.info('Operation: add scenario: id=%d name=%s' % \
                             (scenario.id,scenario.scenario_name),
                         extra={'user':request.user})
@@ -149,7 +151,8 @@ def addScenario(request):
             return render_to_response(
                 'editScenario.html',
                 {'form':form,
-                 'home_page':IE_HOME_PAGE})
+                 'home_page':IE_HOME_PAGE,
+                 'status':"Error on form."})
     else:
         form = forms.ScenarioForm()
     variables = RequestContext(request,
@@ -313,10 +316,25 @@ def getScenario(request,ncn_id):
             scenario = models.Scenario.objects.get(ncn_id=ncn_id)
             for s in scenario.__dict__:
                 if s.startswith("_") or \
+                        s == "aoi_type" or \
+                        s == "aoi_file" or \
                         s == "user_id" or \
-                        s == "id":
+                        s == "id" or \
+                        s == "default_script" or \
+                        s == "preprocessing" or \
+                        s.startswith("bb"):
                     continue
                 response_data[s] = "%s" % str(getattr(scenario,s))
+            if scenario.aoi_type == models.AOI_BBOX_CHOICE:
+                response_data['aoi_bbox'] = {
+                    'lc' : (scenario.bb_lc_long, scenario.bb_lc_lat),
+                    'uc' : (scenario.bb_uc_long, scenario.bb_uc_lat)
+                    }
+            else:
+                responce_data = {}
+                response_data['status'] = 1
+                response_data['errorString'] = \
+                    "Unsupported BBOX type for scenario id=" + ncn_id
         except Exception as e:
             response_data['status'] = 1
             response_data['errorString'] = "%s" % e

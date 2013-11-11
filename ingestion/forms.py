@@ -2,6 +2,7 @@
 #  Project: DREAM
 #  Module:  Task 5 ODA Ingestion Engine 
 #  Author:  Vojtech Stefka  (CVC)
+#  Contributor: Milan Novacek (CVC)
 #
 #    (c) 2013 Siemens Convergence Creators s.r.o., Prague
 #    Licensed under the 'DREAM ODA Ingestion Engine Open License'
@@ -16,21 +17,11 @@ import datetime
 from django.utils.timezone import utc
 from settings import SC_NCN_ID_BASE
 
-#class UserForm(forms.ModelForm):
-#    class Meta:
-#        model = models.Users
-#        fields = ['user_name']
-
-#class LoginForm(forms.Form):
-#    username = forms.CharField(label='Username',max_length=30)
-#    password = forms.CharField(label="Password",widget=forms.PasswordInput())
-
-
 class ScriptForm(forms.Form):
    name = forms.CharField(max_length=20)
    file = forms.FileField()
-        
-    
+
+
 class UserScriptForm(forms.ModelForm):
     class Meta:
         model = models.UserScript
@@ -45,41 +36,42 @@ class ScriptsForm(forms.ModelForm):
 
 class ScenarioForm(forms.ModelForm):
     class Meta:
-        CHOICES = (('1', 'First',), ('2', 'Second',))
         model = models.Scenario
-        #fields = '__all__'
-        #fields = ['id_scenario','scenario_name','aoi','from_date','to_date','cloud_cover','view_angle','sensor_type','dsrc','dsrc_login','dsrc_password','preprocessing','default_priority']  
-        
-        exclude = ['id','user']
-        #widgets = {
-        #    'scenario_description': forms.Textarea(attrs={'cols': 20, 'rows': 10}),
-        #    'dsrc_password': forms.PasswordInput(render_value=True),
-        #    }
+        exclude = ['id','user','aoi_file']
 
     def clean_cloud_cover(self):
         data = self.cleaned_data['cloud_cover']
         if not data>=0 and data<100:
-            raise forms.ValidationError("Max Cloud Cover must be in the interval from 0 to 100.")
+            raise forms.ValidationError(
+               "Max Cloud Cover must be in the interval from 0 to 100.")
         return data
 
     def clean_view_angle(self):
         data = self.cleaned_data['view_angle']
         if not data>=0 and data<90:
-            raise forms.ValidationError("Max View Angle must be in the interval from 0 to 90.")
+            raise forms.ValidationError(
+               "Max View Angle must be in the interval from 0 to 90.")
         return data
+
+    def clean_starting_date(self):
+       data = self.cleaned_data['starting_date']
+       if data == None:
+          data = datetime.datetime.utcnow()
+       return data
 
     def clean_from_date(self):
         data = self.cleaned_data['from_date']
         t1 = datetime.datetime(1990,1,1,0,0,0).replace(tzinfo=utc)
-        t2 = datetime.datetime.utcnow().replace(tzinfo=utc)
+        t2 = datetime.datetime.utcnow()
         if not data>=t1 and data<=t2:
-            raise forms.ValidationError("Date (From Date) doesn't lie in the interval.")
+            raise forms.ValidationError(
+               "Date (From Date) doesn't lie in the interval.")
         return data
 
     def clean_to_date(self):
         data = self.cleaned_data['to_date']
         t1 = datetime.datetime(1990,1,1,0,0,0).replace(tzinfo=utc)
-        t2 = datetime.datetime.utcnow().replace(tzinfo=utc)
+        t2 = datetime.datetime.utcnow()
         if not data>=t1 and data<=t2:
             raise forms.ValidationError("Date (To Date) doesn't lie in the interval.")
         return data
@@ -102,6 +94,7 @@ class ScenarioForm(forms.ModelForm):
                        ('1', 'Global'),
                        ('2', 'From Map'),
                        ('3', 'From Shapefile'),
+                       ('4', 'Enter coordinates')
                        )
         SENSOR_CHOICES = (
                           ('1','Sentinel 2'),
@@ -110,48 +103,66 @@ class ScenarioForm(forms.ModelForm):
                           ('4','Pleiades'),
                           )
         
-        #self.fields['aoi'].widget = forms.CheckboxSelectMultiple(choices=MEDIA_CHOICES)
-        self.fields['scenario_description'].widget = forms.Textarea(attrs={'cols':60,'rows':10})
-        self.fields['aoi'].widget = forms.RadioSelect(choices=AOI_CHOICES)
+        self.fields['scenario_description'].widget = \
+            forms.Textarea(attrs={'cols':60,'rows':10})
+#        self.fields['aoi'].widget = forms.RadioSelect(choices=AOI_CHOICES)
         self.fields['sensor_type'].widget = forms.RadioSelect(choices=SENSOR_CHOICES)
-        #self.fields['dsrc'].widget = forms.FileInput()
-        self.fields['dsrc_password'].widget = forms.PasswordInput()
-        #self.fields['preprocessing'].widget = forms.CheckboxInput()
+        
+        self.fields['dsrc'            ].widget = \
+            forms.TextInput(attrs={'size':60})
+        self.fields['dsrc_password'   ].widget = forms.PasswordInput()
+        self.fields['preprocessing'   ].widget = forms.CheckboxInput()
+        self.fields['default_script'  ].widget = forms.CheckboxInput()
         
         
         # label of widgets
         #self.fields['id'].label = "ID Scenario"
-        self.fields['scenario_name'].label = 'Scenario Name'
+        self.fields['scenario_name'   ].label = 'Scenario Name'
         self.fields['scenario_description'].label = 'Scenario Description'
-        self.fields['aoi'].label = 'AOI'
-        self.fields['from_date'].label = 'From'
-        self.fields['to_date'].label = 'To'
-        self.fields['cloud_cover'].label = 'Max Cloud Cover'
-        self.fields['view_angle'].label = 'Max View Angle'
-        self.fields['sensor_type'].label = 'Sensor Type'
-        self.fields['dsrc'].label = 'Data Source'
-        self.fields['dsrc_login'].label = 'Data Src login'
-        self.fields['dsrc_password'].label = 'Data Src password'
-        self.fields['preprocessing'].label = 'PreProcessing' 
+#        self.fields['aoi'             ].label = 'AOI'
+        self.fields['from_date'       ].label = 'From'
+        self.fields['to_date'         ].label = 'To'
+        self.fields['cloud_cover'     ].label = 'Max Cloud Cover'
+        self.fields['view_angle'      ].label = 'Max View Angle'
+        self.fields['sensor_type'     ].label = 'Sensor Type'
+        self.fields['dsrc'            ].label = 'Data Source'
+        self.fields['dsrc_login'      ].label = 'Data Src login'
+        self.fields['dsrc_password'   ].label = 'Data Src password'
+        self.fields['preprocessing'   ].label = 'PreProcessing' 
         self.fields['default_priority'].label = 'Default priority'
-        self.fields['starting_date'].label = 'Starting Date'
-        self.fields['repeat_interval'].label = 'Repeat Interval'
+        self.fields['starting_date'   ].label = 'Repeat Starting Date'
+        self.fields['repeat_interval' ].label = 'Repeat Interval(seconds)'
 
         # initial values
         d2 = datetime.datetime.utcnow().replace(tzinfo=utc)
         d1 = d2 - datetime.timedelta(days=365)
-        self.fields['ncn_id'].initial = models.make_ncname(SC_NCN_ID_BASE)
-        self.fields['from_date'].initial = d1
-        self.fields['to_date'].initial = d2
-        self.fields['starting_date'].initial = d2
-        self.fields['cloud_cover'].initial = 50
-        self.fields['view_angle'].initial = 50
+        self.fields['ncn_id'          ].initial = \
+            models.make_ncname(SC_NCN_ID_BASE)
+        self.fields['from_date'       ].initial = d1
+        self.fields['to_date'         ].initial = d2
+        self.fields['starting_date'   ].initial = d2
+        self.fields['cloud_cover'     ].initial = 50
+        self.fields['view_angle'      ].initial = 50
         self.fields['default_priority'].initial = 100
-        self.fields['repeat_interval'].initial = 0
-        self.fields['preprocessing'].initial = 1
+        self.fields['repeat_interval' ].initial = 0
+        self.fields['preprocessing'   ].initial = 1
+        self.fields['default_script'  ].initial = 1
 
         # not required fields
-        #self.fields['id'].required = False
+        self.fields['scenario_description'].required = False
+        self.fields['from_date'           ].required = False
+        self.fields['starting_date'       ].required = False
+        self.fields['to_date'             ].required = False
+        self.fields['cloud_cover'         ].required = False
+        self.fields['view_angle'          ].required = False
+        self.fields['sensor_type'         ].required = False
+        self.fields['dsrc'                ].required = False
+        self.fields['dsrc_login'          ].required = False
+        self.fields['dsrc_password'       ].required = False
+        self.fields['preprocessing'       ].required = False
+        self.fields['default_script'      ].required = False
+        self.fields['default_priority'    ].required = False
+        self.fields['repeat_interval'     ].required = False
 
 '''
     https://docs.djangoproject.com/en/dev/topics/forms/

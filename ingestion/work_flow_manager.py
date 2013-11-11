@@ -23,6 +23,7 @@ import os
 import datetime
 from django.utils.timezone import utc
 from settings import IE_DEBUG
+from ingestion_logic import ingestion_logic
 
 worker_id = 0
 
@@ -33,7 +34,7 @@ class WorkerTask:
     def __init__(self,parameters):
         # parameters are:
         #  {
-        #     "task_type":"",  # DELETING-SCENARIO, INGESTING-SCENARIO
+        #     "task_type":"",  # DELETING-SCENARIO, INGEST_SCENARIO
         #     "scripts":[]
         #   }
         self._parameters = parameters
@@ -98,22 +99,44 @@ class Worker(threading.Thread):
             self._wfm.set_scenario_status(
                 self._id,parameters["scenario_id"],0,"DELETED",100) 
 
-        elif task_type=="INGESTING-SCENARIO":
+        elif task_type=="INGEST_SCENARIO":
+            if IE_DEBUG > 0:
+                self._logger.info(
+                    "wfm: executing INGEST_SCENARIO, id=" +\
+                        `parameters["scenario_id"]`)
             self._wfm.set_scenario_status(
                 self._id,parameters["scenario_id"],0,"INGESTING",0)
 
-            # do ingesting scenario
+            # run ingestion logic to get products through download manager
+            # TODO DEVELOP TEMP ONLY - DELETE THIS:
+            scenario_data =  {
+                'view_angle':   5.0, 
+                'cloud_cover':  0.25,
+                'from_date':    '2009-01-01T12:00:00Z',
+                'to_date':      '2022-03-15T16:00:00Z',
+                'sensor_type':  'MERIS_FR',
+                'dsrc_password': '',
+                'dsrc_login':    '',
+                #        'dsrc': 'http://data.eox.at/instance00/ows',
+                'dsrc': 'http://127.0.0.1:1222/cgi-bin/pff',
+                #        'dsrc': 'http://127.0.0.1:1222/cgi-bin/err_test',
+                'aoi_bb': [(5.5145,42.8504,), (5.524,42.86242)]
+                }
+            # END TODO
+            ingestion_logic(scenario_data)
+
+            # run ingestion scripts
             scripts = parameters["scripts"]
             percentage = 0.0
-            # for script in scripts: # scripts absolute path
-            #     self._logger.info("Running script: %s" % script, extra={'user':"drtest"} )
-            #     os.system(script)
-            #     percentage += (100.0/float(len(scripts)))
-            #     self._wfm.set_scenario_status(
-            #         self._id,parameters["scenario_id"],0,"INGESTING",percentage)
+            for script in scripts: # scripts absolute path
+                self._logger.info("Running script: %s" % script)
+                os.system(script)  # TODO use subprocess.Popen
+                percentage += (100.0/float(len(scripts)))
+                self._wfm.set_scenario_status(
+                    self._id,parameters["scenario_id"],0,"INGESTING",percentage)
 
             self._wfm.set_scenario_status(
-                self._id,parameters["scenario_id"],1,"FREE",0)
+                self._id,parameters["scenario_id"],1,"IDLE",0)
 
         elif task_type=="ADD-PRODUCT":
             # parameters: addProduct_id,dataRef,addProductScript
@@ -125,8 +148,9 @@ class Worker(threading.Thread):
                 command = "%s %s" % (
                     parameters["addProductScript"],
                     parameters["dataRef"])
-                self._logger.info( "Running - %s" % command, extra={'user':"drtest"} )
-                os.system(command) # running addProduct script
+                self._logger.info( "Running - %s" % command )
+                
+                os.system(command) # TODO use subprocess.Popen
                 addProduct.info_status = "done"
             except Exception as e:
                 addProduct.info_error = "Error %s" % e
@@ -177,14 +201,14 @@ class AISWorker(threading.Thread):
                                 (scenario.id,scenario.starting_date),
                             extra={'user':"drtest"})
                     # put task to queue to process
-                    ingested_scripts = []
+                    ingest_scripts = []
                     scripts = scenario.script_set.all()
                     for s in scripts:
-                        ingested_scripts.append("%s" % s.script_path)
+                        ingest_scripts.append("%s" % s.script_path)
                     current_task =  WorkerTask(
                         {"scenario_id":scenario.id,
-                         "task_type":"INGESTING-SCENARIO",
-                         "scripts":ingested_scripts})
+                         "task_type":"INGEST_SCENARIO",
+                         "scripts":ingest_scripts})
                     scenario.save() # save updated starting_date
                     self._wfm.put_task_to_queue(current_task)
             time.sleep(60) # repeat checking every 1 minute
@@ -224,7 +248,8 @@ class WorkFlowManager:
         if IE_DEBUG > 3:
             self._logger.debug( "Worker-%d uses db." % worker_id,
                                 extra={'user':"drtest"})
-        try: # set scenario status
+        try:
+            # set scenario status
             scenario_status = models.ScenarioStatus.objects.get(
                 scenario_id=scenario_id)
             scenario_status.is_available = is_available
@@ -232,7 +257,7 @@ class WorkFlowManager:
             scenario_status.done = done
             scenario_status.save()
         except Exception as e:
-            print e
+            self._logger.error(`e`)
         finally:
             self._lock_db.release()
             if IE_DEBUG > 3:

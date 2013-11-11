@@ -17,7 +17,7 @@ import logging
 DEBUG = True
 TEMPLATE_DEBUG = False
 IE_AUTO_LOGIN  = True
-IE_DEBUG       = 1
+IE_DEBUG       = 3
 
 #Ingestion Engine Constants
 IE_PROJECT = 'ingestion'
@@ -27,6 +27,9 @@ SC_NCN_ID_BASE     = 'scid'
 NCN_ID_LEN         = 96
 SC_NAME_LEN        = 64
 SC_DESCRIPTION_LEN = 1024
+
+# located in IE_SCRIPTS_DIR, defined further on down
+IE_DEFAULT_ADD_SCRIPT = 'default_add.sh'
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
@@ -89,6 +92,8 @@ MEDIA_ROOT = os.path.join(PROJECT_DIR, 'media')
 # trailing slash.
 # Examples: "http://example.com/media/", "http://media.example.com/"
 MEDIA_URL = '/media/'
+
+IE_SCRIPTS_DIR = os.path.join(MEDIA_ROOT, 'scripts')
 
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
@@ -179,7 +184,7 @@ INSTALLED_APPS = (
     #'django.contrib.admindocs',
     'dajaxice',
     'dajax',
-    IE_PROJECT,
+    IE_PROJECT
 )
 
 # The logging configuration. 

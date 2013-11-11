@@ -4,8 +4,7 @@
 
 {% block head %}
 
-<!-- link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
-<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script -->
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
 
 {% dajaxice_js_import 'nocsrf' %}
 
@@ -13,16 +12,19 @@
     // !!! do not import another jquery to support jquery-ui !!!
     jscenarios = []; // global array of scenarios
     first_time = 1; // global parameter
+foo = 0;
 
     $(document).ready(function() {
         if (first_time==1) {
             Dajaxice.ingestion.synchronize_scenarios(update_scenario);
         }
-        window.setInterval(
+/*
+            window.setInterval(
             function(){
                 Dajaxice.ingestion.synchronize_scenarios(update_scenario);
             },
             5000); // every 5000 milliseconds
+*/
     });
 
     function goToLocation(s)
@@ -30,12 +32,6 @@
         var main_page = new String("http://127.0.0.1:8000/")
         var page = main_page.concat(s);
         window.location.replace(page)
-    }
-
-    function runIngestion(s)
-    {
-    // TBD
-        alert("Run Ingestion Not Implememented.\n (dgb id="+s+")");
     }
 
 
@@ -68,6 +64,12 @@
     }
 
     function update_scenario(data) { // called by dajaxice every N-milliseconds
+	if (data === null)
+	{
+	    alert("update_scenario: data is null");
+	    return;
+	}
+
         var ajax_data = data.jscenario_status;
         for (var i=0; i<ajax_data.length; i++) {
             var obj = create_scenario(ajax_data[i]);
@@ -145,12 +147,12 @@
 
 
     $(document).ready(function(){
-		$(".DeleteButton").live('click',function(){
+	    $(".DeleteButton").live('click',function(){
             var id_button = $(this).attr("id"); //delete_scenario_button_1
             var id_scenario = id_button.split("_")[3];
             // update status of scenario
             synchronize_scenarios();
-            for (var i=0; jscenarios.length; i++) {
+            for (var i=0; i<jscenarios.length; i++) {
                 if (id_scenario==jscenarios[i].id && jscenarios[i].st_isav!=0) {
                     if(confirm('Delete scenario - ' + id_scenario + '?')) {
 
@@ -169,11 +171,19 @@
             var id_scenario = id_button.split("_")[3];
             // update status of scenario
             synchronize_scenarios();
-            for (var i=0; jscenarios.length; i++) {
+            for (var i=0; i<jscenarios.length; i++) {
                 if (id_scenario==jscenarios[i].id && jscenarios[i].st_isav!=0) {
                     if(confirm('Ingest scenario - ' + id_scenario + '?')) {
                         // send ajax request to Work-Flow-Manager to ingest scenario
-                        Dajaxice.ingestion.ingest_scenario_wfm(function(data){},{'scenario_id':id_scenario});
+                        Dajaxice.ingestion.ingest_scenario_wfm(
+			    function(data){
+				if(data.status !== undefined) {
+				    if (data.status != 0) {
+					alert(data.message)
+				    }
+				}
+				foo=data;},
+			    {"scenario_id":id_scenario});
                     }
                 }
             }
@@ -196,40 +206,31 @@
 
 {% endblock %}
 
-
 {% block title %}
-<P ALIGN=CENTER STYLE="background: #47b8b8"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=6 STYLE="font-size: 22pt">Scenario
-Overview</FONT></FONT></P>
+<P class="ieTitle3">Scenario Overview</P>
 {% endblock %}
-
-
 {% block content %}
 
-<INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST1"
+<!-- for debugging -->
+<!-- INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST1"
        onClick="Dajaxice.ingestion.synchronize_scenarios(update_scenario)">
 <INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST2"
-       onClick="update_webpage()">
+       onClick="update_webpage()" -->
 
 
 {% for scenario in scenarios %}
 <div id="div_scenario_{{scenario.id}}">
-<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0
-       STYLE="page-break-before: always; page-break-inside: avoid">
-	<COL WIDTH=48*>
-	<COL WIDTH=208*>
-	<TR>
-		<TD COLSPAN=2 WIDTH=100% HEIGHT=34 STYLE="; border: none; padding: 0cm"></TD>
-	</TR>
-
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0 >
+    <COL WIDTH=48*>
+    <COL WIDTH=208*>
     <TR BGCOLOR="#ffcc99">
-		<TD WIDTH=19% HEIGHT=44 STYLE="border: none; padding: 0cm">
-				<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><IMG SRC="gtk_edit24.png" NAME="graphics2" ALIGN=LEFT WIDTH=24 HEIGHT=24 BORDER=0><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt">{{scenario.scenario_name}}</FONT></FONT></P>
-		</TD>
-		<TD WIDTH=81% STYLE="; border: none; padding: 0cm">
-				<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt"><I>{{scenario.scenario_description}}</I></FONT></FONT></P>
-		</TD>
-	</TR>
-
+      <TD WIDTH=19% HEIGHT=44 STYLE="border: none; padding: 0cm">
+	<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><IMG SRC="gtk_edit24.png" NAME="graphics2" ALIGN=LEFT WIDTH=24 HEIGHT=24 BORDER=0><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt">{{scenario.scenario_name}}</FONT></FONT></P>
+      </TD>
+      <TD WIDTH=81% STYLE="; border: none; padding: 0cm">
+	<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt"><I>{{scenario.scenario_description}}</I></FONT></FONT></P>
+      </TD>
+    </TR>
     <TR>
 		<TD WIDTH=19% STYLE="; border: none; padding: 0cm">
 			<P ALIGN=CENTER STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold">Next
@@ -240,8 +241,7 @@ Overview</FONT></FONT></P>
 				<p>
                     <INPUT TYPE="BUTTON" class="IngestButton"
 			   id="ingest_scenario_button_{{scenario.id}}"
-			   name="IngestButton" VALUE="Ingest"
-			   onClick="runIngestion({{scenario.id}})"/>
+			   name="IngestButton" VALUE="Ingest"/>
 
                     <INPUT TYPE="BUTTON" class="button"
 			   id="manage_data_button_{{scenario.id}}"
@@ -290,7 +290,10 @@ Overview</FONT></FONT></P>
 
 
 
-<INPUT TYPE=BUTTON class="button" name="AddScenarioButton" VALUE="Add Scenario" onclick="goToLocation('scenario/add/')">
+<INPUT TYPE=BUTTON class="button"
+    name="AddScenarioButton"
+    VALUE="Add Scenario"
+    onclick="goToLocation('scenario/add/')">
 
 
 {% endblock %}

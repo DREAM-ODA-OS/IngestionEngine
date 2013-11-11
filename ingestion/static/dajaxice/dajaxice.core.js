@@ -17,27 +17,50 @@ var Dajaxice = {
     ingestion: {
     
     delete_scenario_wfm: function(callback_function, argv, custom_settings){
-        Dajaxice.call('ingestion.delete_scenario_wfm', 'POST', callback_function, argv, custom_settings);
+        Dajaxice.call(
+		      'ingestion.delete_scenario_wfm',
+		      'POST',
+		      callback_function,
+		      argv,
+		      custom_settings);
     },
 
     read_logging: function(callback_function, argv, custom_settings){
-        Dajaxice.call('ingestion.read_logging', 'POST', callback_function, argv, custom_settings);
+        Dajaxice.call(
+		      'ingestion.read_logging',
+		      'POST',
+		      callback_function, argv, custom_settings);
     },
 
     synchronize_scenarios: function(callback_function, argv, custom_settings){
-	Dajaxice.call('ingestion.synchronize_scenarios', 'GET', callback_function, argv, custom_settings);
+	Dajaxice.call(
+		      'ingestion.synchronize_scenarios',
+		      'GET',
+		      callback_function, argv,  custom_settings);
     },
 
     delete_scenario_django: function(callback_function, argv, custom_settings){
-        Dajaxice.call('ingestion.delete_scenario_django', 'POST', callback_function, argv, custom_settings);
+        Dajaxice.call(
+		      'ingestion.delete_scenario_django',
+		      'POST',
+		      callback_function, argv, custom_settings);
     },
 
     ingest_scenario_wfm: function(callback_function, argv, custom_settings){
-        Dajaxice.call('ingestion.ingest_scenario_wfm', 'POST', callback_function, argv, custom_settings);
+        Dajaxice.call(
+		      'ingestion.ingest_scenario_wfm',
+		      'POST',
+		      callback_function, argv, custom_settings);
+	},
+    
+    run_ingestion_wfm: function(callback_function, argv, custom_settings){
+        Dajaxice.call(
+		      'ingestion.run_ingestion_wfm',
+		      'POST',
+		      callback_function, argv, custom_settings);
     }
     
     }
-    
 ,
 
     get_cookie: function(name)

@@ -9,7 +9,7 @@ border:none;
 padding:0cm
 }
 
-#ingAdm {
+p.ieTitle2 {
 font-family:Arial,Helvetica,sans-serif;
 font-weight:normal;
 font-size:24pt;
@@ -19,3 +19,19 @@ border:none;
 padding:0cm
 }
 
+p.ieTitle3 {
+font-family:Arial,Helvetica,sans-serif;
+font-weight:normal;
+font-size:18pt;
+text-align:center;
+background:#47b8b8;
+border:none;
+padding:0cm
+}
+
+.ieBareTblCell {
+border: none; 
+text-align:center;
+vertical-align:middle
+padding: 0cm
+}

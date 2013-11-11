@@ -18,13 +18,18 @@ from dajaxice.utils import deserialize_form
 from dajaxice.decorators import dajaxice_register
 
 import models
-import settings
 import forms
 import views
 import work_flow_manager
 import logging
 import os
 
+from settings import \
+    MEDIA_ROOT, LOGGING_DIR, IE_SCRIPTS_DIR, IE_DEFAULT_ADD_SCRIPT
+
+#TODO XXX tmp for debugging, remove
+import time
+#end remove XXX
 
 @dajaxice_register(method='POST')
 def delete_scenario_wfm(request,scenario_id):
@@ -46,7 +51,7 @@ def delete_scenario_wfm(request,scenario_id):
         current_task = work_flow_manager.WorkerTask(
             {"scenario_id":scenario_id,
              "task_type":"DELETING-SCENARIO",
-             "scripts":["%s/%s" % (settings.MEDIA_ROOT,del_script.script_file)]})
+             "scripts":["%s/%s" % (MEDIA_ROOT,del_script.script_file)]})
         wfm.put_task_to_queue(current_task)
     else:
        # use logging
@@ -60,8 +65,8 @@ def delete_scenario_wfm(request,scenario_id):
 
 @dajaxice_register(method='GET')
 def synchronize_scenarios(request):
-    logger = logging.getLogger('dream.file_logger')
     print "Synchronize scenario"
+    logger = logging.getLogger('dream.file_logger')
     user = request.user
     scenarios = user.scenario_set.all()
     results = []
@@ -101,8 +106,8 @@ def delete_scenario_django(request,scenario_id):
 def read_logging(request,message_type):
     user = request.user
     messages = []
-    for file_name in os.listdir(settings.LOGGING_DIR):
-        file_path = os.path.join(settings.LOGGING_DIR,file_name)
+    for file_name in os.listdir(LOGGING_DIR):
+        file_path = os.path.join(LOGGING_DIR,file_name)
         f = open(file_path,'r')
         for line in f:
             if line.split(" ")[4]==user.username:
@@ -114,73 +119,49 @@ def read_logging(request,message_type):
 @dajaxice_register(method='POST')
 def ingest_scenario_wfm(request,scenario_id):
     # ingest scenario - run all scripts related to the scenario
-    # it runs deleting scripts
     logger = logging.getLogger('dream.file_logger')
     scenario = models.Scenario.objects.get(id=int(scenario_id))
     scripts = scenario.script_set.all()
-    ingested_scripts = []
-    for s in scripts:
-        ingested_scripts.append("%s" % s.script_path)
-    # send request/task to work-flow-manager to run delete script
-    wfm = work_flow_manager.WorkFlowManager.Instance()
-    user = request.user
 
-    if len(ingested_scripts)>0:
+    ret = {}
+
+    if scenario.default_script != 0 or len(scripts) > 0:
+
+        # get list of scripts
+        ingest_scripts = []
+        if scenario.default_script != 0:
+            ingest_scripts.append( os.path.join(
+                IE_SCRIPTS_DIR, IE_DEFAULT_ADD_SCRIPT) )
+        for s in scripts:
+            ingest_scripts.append("%s" % s.script_path)
+
+        # send request/task to work-flow-manager to run script
         current_task = work_flow_manager.WorkerTask(
             {"scenario_id":scenario_id,
-             "task_type":"INGESTING-SCENARIO",
-             "scripts":ingested_scripts})
+             "task_type":"INGEST_SCENARIO",
+             "scripts":ingest_scripts})
+
+        wfm = work_flow_manager.WorkFlowManager.Instance()
         wfm.put_task_to_queue(current_task)
         logger.info(
             'Operation: ingest scenario: id=%d name=%s' \
                 % (scenario.id,scenario.scenario_name),
             extra={'user':request.user})
+        ret = {'status':0,
+               "message":"Ingestion Submitted to processing queue."}
     else:
-        logger.warning(
-            'Scenario: id=%d name=%s does not have scripts to ingest.' \
-                % (scenario.id,scenario.scenario_name),
-            extra={'user':request.user})
-    return simplejson.dump({})
+        msg = 'Scenario: id=%d name=%s does not have scripts to ingest.' \
+                % (scenario.id,scenario.scenario_name)
+        logger.warning(msg)
+        ret = {'status':1, 'message':"Error"+msg}
+
+    return simplejson.dumps(ret)
 
 
+@dajaxice_register(method='POST')
+def run_ingestion_wfm(request,scenario_id):
+    print "run_ingestion_wfm"
+    logger = logging.getLogger('dream.file_logger')
+    logger.info("run_ingestion_wfm, id="+`scenario_id`)
+    return simplejson.dumps({})
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-    

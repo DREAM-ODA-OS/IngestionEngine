@@ -5,7 +5,9 @@
 
 	<script>
 	var script_objects = -1;
-	
+
+var input_status = "{{status}}";
+if (status !== "") { alert(""+status) }
 	
 	function load_scripts() 
 	{
@@ -68,11 +70,16 @@
 
 	function create_line(obj) 
 	{
-		new_id = obj.id	
-		s_name = obj.arguments[0];
-		s_file = obj.arguments[1];
-		line_values = '<td><input id="script_name_' + new_id.toString() + '" type="text "value="' + s_name + '" name="script_name"></td>' + '<td><input id="script_file_' + new_id.toString() + '" type="file" name="script_file_' + new_id.toString() + '" value=""></td>';                                                                                                       
-		line_buttons = '<td><input id="remove_button_' + new_id.toString() + '" class="RemoveButton" type="BUTTON" value="Remove" name="RemoveButton"></td><td><input id="up_button_' + new_id.toString() + '" class="UpButton" type="BUTTON" value="Up" name="UpButton"></td><td><input id="down_button_' + new_id.toString() + '" class="DownButton" type="BUTTON" value="Down" name="DownButton"></td>'
+	    new_id = obj.id;
+	    s_name = obj.arguments[0];
+	    s_file = obj.arguments[1];
+	    line_values =
+		'<td><input id="script_name_' + new_id.toString() +'" '+
+		'  type="text"'+
+		'  value="' + s_name +'" '
+		'  name="script_name"></td>' +
+		'<td><input id="script_file_' + new_id.toString() + '" type="file" name="script_file_' + new_id.toString() + '" value=""></td>';
+            line_buttons = '<td><input id="remove_button_' + new_id.toString() + '" class="RemoveButton" type="BUTTON" value="Remove" name="RemoveButton"></td><td><input id="up_button_' + new_id.toString() + '" class="UpButton" type="BUTTON" value="Up" name="UpButton"></td><td><input id="down_button_' + new_id.toString() + '" class="DownButton" type="BUTTON" value="Down" name="DownButton"></td>'
 		return line_values + line_buttons;
 	}
 
@@ -215,15 +222,9 @@
 		font-family: 'Arial', sans-serif; 
 		font-size: 12pt;
 	}
-</style>
+        </style>
 
 {% endblock %}
-
-
-
-
-
-	
 
 
 {% block title %}
@@ -234,8 +235,6 @@ Editor</FONT></FONT></P>
 
 {% block content %}
 
-	
-
 
 <form method="post" action="" enctype="multipart/form-data">{% csrf_token %}
     <table>
@@ -245,7 +244,6 @@ Editor</FONT></FONT></P>
 	<p> </p>
  
     <table id="table_scripts" data-ids={{sequence}}>
-	
 		
 	{% for script in scripts %}
 	<tr id="tr_{{script.id_script}}">
@@ -257,11 +255,9 @@ Editor</FONT></FONT></P>
     
     <input type=BUTTON class="AddButton" id="AddButton" nane="AddScript" value="Add Script">
     
-    
-    <p></p>
-    
- 
-    <input type="submit" class="SubmitButton" value="submit"/>
+     <p></p>
+  
+    <input type="submit" class="SubmitButton" value="save"/>
 </form>        
 
 

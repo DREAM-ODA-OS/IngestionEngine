@@ -1,8 +1,13 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 {% load staticfiles %}
+
 <html>
 <head>
     <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js">
+      </script>
+    <script src="{% static 'js/functions.js' %}"></script>
+    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
     {% block head %}{% endblock %}
 </head>
 
@@ -13,17 +18,20 @@
   <COL WIDTH=118*>
   <COL WIDTH=76*>
   <TR BGCOLOR="#99ccff">
-    <TD WIDTH=24% STYLE="border: none; padding: 0cm">
-      <P id="dreamTitle">DREAM</P>
-    </TD>
-    <TD WIDTH=46% STYLE="; border: none; padding: 0cm">
-      <P id="ingAdm"> Ingestion<br>Administration</P>
-    </TD>
-    <TD WIDTH=30% STYLE="; border: none; padding: 0cm">
-      <P><IMG SRC={% static "images/ESA_logo_dark_blue_bare.png" %} NAME="logo" ALIGN=RIGHT HEIGHT=73 BORDER=0><BR>
-      </P>
-    </TD>
+    <TD WIDTH=24%><P id="dreamTitle">DREAM</P></TD>
+    <TD WIDTH=46%><P class="ieTitle2">Ingestion<br>Administration</P></TD>
+    <TD><P><IMG SRC={% static "images/ESA_logo_dark_blue_bare.png" %} NAME="logo" ALIGN=RIGHT HEIGHT=73 BORDER=0></P></TD>
   </TR>
+  <TR BGCOLOR="#90a0ff">
+    {% if user.is_authenticated %}
+    <td class="ieBareTblCell"> <p><I>Logged in as: </I> {{user.username}} </p> </td>
+    <td class="ieBareTblCell" COLSPAN=2> </td>
+    <!-- td class="ieBareTblCell" ALIGN=RIGHT ><a href="account/logout/"> LOGOUT </a></td -->
+    {% else %}
+    <td colspan=3><a href="account/login/"> LOGIN </a></td>
+    {% endif %}
+  </TR>
+  
 </TABLE>
 
 <p> This is a temporary placeholder page, not for production use.
@@ -31,25 +39,15 @@ Most of the functions here are not fully implemented at this time.
 </p>
 
 <table>
-	<tr><td><a href="/{{home_page}}"> HOME </a></td></tr>
-
-	<tr><td>==========</tr></td>
-	{% if user.is_authenticated %}
-	<tr><td> <p><I>Logged in as: </I> {{user.username}} <p> </td></tr>
-	<!-- tr><td><a href="account/logout/"> LOGOUT </a></td></tr -->
-	<tr><td><a href="/scenario/overview/"> SCENARIO OVERVIEW </a></td></tr>
-	<tr><td><a href="/account/configuration/"> CONFIGURATION </a></td></tr>
-	{% else %}
-	<tr><td><a href="account/login/"> LOGIN </a></td></tr>
-	{% endif %}
-	
+    <tr><td><a href="/{{home_page}}"> HOME </a></td></tr>
+    {% if user.is_authenticated %}
+    <tr><td><a href="/scenario/overview/"> SCENARIO OVERVIEW </a></td></tr>
+    <!-- tr><td><a href="/account/configuration/"> CONFIGURATION </a></td></tr -->
+    {% endif %}
 </table>
 
-
 {% block title %} {% endblock %}
-
 {% block content %} {% endblock %}
-
 
 </body>
 </html>
