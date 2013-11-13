@@ -31,6 +31,7 @@ from django.utils.timezone import utc
 from django.contrib.auth import authenticate, login
 
 from settings import IE_DEBUG, IE_HOME_PAGE
+from utils import scenario_dict
 
 import work_flow_manager
 
@@ -209,11 +210,17 @@ def deleteScenario(request,scenario_id):
     # send request/task to work-flow-manager to run delete script
     wfm = work_flow_manager.WorkFlowManager.Instance()
     user = request.user
-    del_script = models.UserScript.objects.filter(script_name__startswith="deleteScenario-",user_id__exact=user.id)[0]
-    current_task = work_flow_manager.WorkerTask({"scenario_id":scenario_id,"task_type":"DELETING-SCENARIO","scripts":["%s/%s" % (settings.MEDIA_ROOT,del_script.script_file)]})
+    del_script = models.UserScript.objects.filter(
+        script_name__startswith="deleteScenario-",user_id__exact=user.id)[0]
+    current_task = work_flow_manager.WorkerTask(
+        {"scenario_id":scenario_id,
+         "task_type":"DELETE_SCENARIO",
+         "scripts":["%s/%s" % (settings.MEDIA_ROOT,del_script.script_file)]
+         })
     wfm.put_task_to_queue(current_task)
 
-    # problem: wfm deleting is running meanwhile django deletes scenario and scripts ... django should wait to delete them ...
+    # TODO problem: wfm dele is running meanwhile django deletes scenario and
+    #   scripts ... django should wait to delete them ...
 
 
     # delete scenario, scripts and scenario-status from db (scenario-status is bounded to scenario)
@@ -314,27 +321,7 @@ def getScenario(request,ncn_id):
     if request.method == 'GET':
         try:
             scenario = models.Scenario.objects.get(ncn_id=ncn_id)
-            for s in scenario.__dict__:
-                if s.startswith("_") or \
-                        s == "aoi_type" or \
-                        s == "aoi_file" or \
-                        s == "user_id" or \
-                        s == "id" or \
-                        s == "default_script" or \
-                        s == "preprocessing" or \
-                        s.startswith("bb"):
-                    continue
-                response_data[s] = "%s" % str(getattr(scenario,s))
-            if scenario.aoi_type == models.AOI_BBOX_CHOICE:
-                response_data['aoi_bbox'] = {
-                    'lc' : (scenario.bb_lc_long, scenario.bb_lc_lat),
-                    'uc' : (scenario.bb_uc_long, scenario.bb_uc_lat)
-                    }
-            else:
-                responce_data = {}
-                response_data['status'] = 1
-                response_data['errorString'] = \
-                    "Unsupported BBOX type for scenario id=" + ncn_id
+            response_data = scenario_dict(scenario)
         except Exception as e:
             response_data['status'] = 1
             response_data['errorString'] = "%s" % e

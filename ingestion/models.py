@@ -18,7 +18,18 @@ from django.contrib.auth.models import User
 
 import os
 
-from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN
+from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN, \
+    IE_DOWNLOAD_DIR
+
+if not os.access(IE_DOWNLOAD_DIR, os.R_OK|os.W_OK):
+    import logging
+    logger = logging.getLogger('dream.file_logger')
+    logger.info("Cannot write/read "+IE_DOWNLOAD_DIR+", attempting to create.")
+    try:
+        os.mkdir(IE_DOWNLOAD_DIR,0740)
+        logger.info("Created "+IE_DOWNLOAD_DIR)
+    except OSError as e:
+        logger.error("Failed to create "+IE_DOWNLOAD_DIR+": "+`e`)
 
 #**************************************************
 #                  Scenario                       *

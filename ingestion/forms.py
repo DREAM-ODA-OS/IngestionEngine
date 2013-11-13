@@ -90,12 +90,6 @@ class ScenarioForm(forms.ModelForm):
         super(ScenarioForm, self).__init__(*args, **kwargs)
         
         # widgets
-        AOI_CHOICES = (
-                       ('1', 'Global'),
-                       ('2', 'From Map'),
-                       ('3', 'From Shapefile'),
-                       ('4', 'Enter coordinates')
-                       )
         SENSOR_CHOICES = (
                           ('1','Sentinel 2'),
                           ('2','SPOT 5'),
@@ -104,8 +98,7 @@ class ScenarioForm(forms.ModelForm):
                           )
         
         self.fields['scenario_description'].widget = \
-            forms.Textarea(attrs={'cols':60,'rows':10})
-#        self.fields['aoi'].widget = forms.RadioSelect(choices=AOI_CHOICES)
+            forms.Textarea(attrs={'cols':70,'rows':6})
         self.fields['sensor_type'].widget = forms.RadioSelect(choices=SENSOR_CHOICES)
         
         self.fields['dsrc'            ].widget = \

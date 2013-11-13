@@ -17,7 +17,7 @@ import logging
 DEBUG = True
 TEMPLATE_DEBUG = False
 IE_AUTO_LOGIN  = True
-IE_DEBUG       = 3
+IE_DEBUG       = 2
 
 #Ingestion Engine Constants
 IE_PROJECT = 'ingestion'
@@ -95,15 +95,15 @@ MEDIA_URL = '/media/'
 
 IE_SCRIPTS_DIR = os.path.join(MEDIA_ROOT, 'scripts')
 
+# Where product files are downloaded to, or subdirs for product download
+#  are placed.
+IE_DOWNLOAD_DIR = os.path.join(MEDIA_ROOT, 'products')
+
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/var/www/example.com/static/"
 STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
-
-if IE_DEBUG > 2:
-    print "Static root: %s" % STATIC_ROOT
-    print "Media root: %s" % MEDIA_ROOT
 
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"

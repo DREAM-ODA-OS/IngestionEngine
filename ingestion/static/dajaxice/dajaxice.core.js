@@ -53,9 +53,9 @@ var Dajaxice = {
 		      callback_function, argv, custom_settings);
 	},
     
-    run_ingestion_wfm: function(callback_function, argv, custom_settings){
+   stop_ingestion_wfm: function(callback_function, argv, custom_settings){
         Dajaxice.call(
-		      'ingestion.run_ingestion_wfm',
+		      'ingestion.stop_ingestion_wfm',
 		      'POST',
 		      callback_function, argv, custom_settings);
     }

@@ -27,6 +27,21 @@ foo = 0;
 */
     });
 
+    function stop_ingestion(s)
+    {
+        // alert("stopping scn:"+s);
+	Dajaxice.ingestion.stop_ingestion_wfm(
+	function(data){
+	    if(data.status !== undefined) {
+		if (data.status != 0) {
+		    alert(data.message)
+			}
+	    }
+	    foo=data;},
+	{"scenario_id":s});
+	Dajaxice.ingestion.synchronize_scenarios(update_scenario);
+    }
+
     function goToLocation(s)
     {
         var main_page = new String("http://127.0.0.1:8000/")
@@ -88,7 +103,9 @@ foo = 0;
         //
         for (var i=0; i<jscenarios.length; i++) {
             if (jscenarios[i].st_st=="DELETED") {
-                Dajaxice.ingestion.delete_scenario_django(function(data){alert(data.message);},{'scenario_id':jscenarios[i].id});
+                Dajaxice.ingestion.delete_scenario_django(function(data)
+							  {alert(data.message);},
+							  {'scenario_id':jscenarios[i].id});
             }
         }
     }
@@ -114,19 +131,19 @@ foo = 0;
 
             // update ability/disability of buttons
             buttons = [
-               "ingest_scenario_button",
-		"manage_data_button",
-                "load_register_button",
-                "edit_scenario_button",
-                "delete_scenario_button"
-		 ]
+		       "ingest_scenario_button",
+		       "manage_data_button",
+		       "load_register_button",
+		       "edit_scenario_button",
+		       "delete_scenario_button"
+		       ];
             for (var j=0; j<buttons.length; j++) {
                 //current_id = "#" + buttons[j] + "_" + jscenarios[i].id;
                 current_id = buttons[j] + "_" + jscenarios[i].id;
                 var aaa = jscenarios[i].st_isav;
-                if (jscenarios[i].st_isav==0) { // disability
+                if (jscenarios[i].st_isav==0) { // disable
                     document.getElementById(current_id).disabled = true;
-                }else { // ability
+                }else { // enable
                     document.getElementById(current_id).disabled = false;
                 }
 
@@ -220,66 +237,89 @@ foo = 0;
 
 {% for scenario in scenarios %}
 <div id="div_scenario_{{scenario.id}}">
-<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0 >
-    <COL WIDTH=48*>
-    <COL WIDTH=208*>
-    <TR BGCOLOR="#ffcc99">
-      <TD WIDTH=19% HEIGHT=44 STYLE="border: none; padding: 0cm">
-	<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><IMG SRC="gtk_edit24.png" NAME="graphics2" ALIGN=LEFT WIDTH=24 HEIGHT=24 BORDER=0><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt">{{scenario.scenario_name}}</FONT></FONT></P>
-      </TD>
-      <TD WIDTH=81% STYLE="; border: none; padding: 0cm">
-	<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt"><I>{{scenario.scenario_description}}</I></FONT></FONT></P>
-      </TD>
+<!-- TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0 >
+    <TR>
+        <TD WIDTH=20% >1</TD>
+        <TD>2</TD>
+        <TD>3</TD>
     </TR>
     <TR>
-		<TD WIDTH=19% STYLE="; border: none; padding: 0cm">
-			<P ALIGN=CENTER STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold">Next
-				scheduled upload:</FONT><BR><FONT FACE="UniversS 57 Condensed">TBD</FONT></P>
-		</TD>
-		<TD WIDTH=81% VALIGN=BOTTOM STYLE="; border: none; padding: 0cm">
-			<DIV ALIGN=CENTER>
-				<p>
-                    <INPUT TYPE="BUTTON" class="IngestButton"
-			   id="ingest_scenario_button_{{scenario.id}}"
-			   name="IngestButton" VALUE="Ingest"/>
+      <TD>
+        <div id="div_status_{{scenario.id}}"> Status: </div>
+      </TD>
+      <TD WIDTH=72px >2<INPUT TYPE="BUTTON" class="StopButton"
+		id="stop_button_{{scenario.id}}"
+		VALUE="stop" OnClick="stop_ingestion({{scenario.id}})"
+                />
+      </TD>
+      <TD><div id="div_progress_bar_{{scenario.id}}" ALIGN=CENTER/></TD>
+    </TR>
+</TABLE -->
 
-                    <INPUT TYPE="BUTTON" class="button"
-			   id="manage_data_button_{{scenario.id}}"
-			   name="ManageDataButton" VALUE="Manage Data"/>
-                    <INPUT TYPE="BUTTON" class="button"
-			   id="load_register_button_{{scenario.id}}"
-			   name="LoadRegisterButton" VALUE="From Disk..."/>
-                    <INPUT TYPE="BUTTON" class="button"
-			   id="edit_scenario_button_{{scenario.id}}"
-			   name="EditScenarioButton" VALUE="Edit ..."
-			   onClick="goToLocation('scenario/edit/{{scenario.id}}')"/>
-                    <INPUT TYPE="BUTTON" class="DeleteButton"
-			   id="delete_scenario_button_{{scenario.id}}"
-			   VALUE="Delete"/>
-				</p>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0 >
+    <!--COL WIDTH=48*>
+    <COL WIDTH=208* -->
+    <TR BGCOLOR="#ffcc99">
+      <TD WIDTH=19% HEIGHT=44 STYLE="border: none; padding: 0cm">
+	<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><IMG SRC="/static/images/gtk_edit24.png" NAME="edit_icon" ALIGN=LEFT WIDTH=24 HEIGHT=24 BORDER=0><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt">{{scenario.scenario_name}}</FONT></FONT></P>
+      </TD>
+      <TD colspan=2 WIDTH=81% STYLE="; border: none; padding: 0cm">
+	<P ALIGN=LEFT STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=4 STYLE="font-size: 16pt"><I>{{scenario.scenario_description}}</I></FONT></FONT></P>
+      </TD>
+        <TD></TD>
+
+    </TR>
+    <TR>
+	<TD WIDTH=19% STYLE="; border: none; padding: 0cm">
+	  <P ALIGN=CENTER STYLE="border: none; padding: 0cm"><FONT FACE="UniversS 67 CondensedBold">Next scheduled upload:</FONT>
+    <BR><FONT FACE="UniversS 57 Condensed">TBD</FONT></P>
+	</TD>
+        <TD WIDTH=44px ></TD>
+	<TD VALIGN=BOTTOM STYLE="; border: none; padding: 0cm">
+		<DIV ALIGN=left>
+			<p>
+            <INPUT TYPE="BUTTON" class="IngestButton"
+		   id="ingest_scenario_button_{{scenario.id}}"
+		   name="IngestButton" VALUE="Ingest"/>
+
+            <INPUT TYPE="BUTTON" class="button"
+		   id="manage_data_button_{{scenario.id}}"
+		   name="ManageDataButton" VALUE="Manage Data"/>
+            <INPUT TYPE="BUTTON" class="button"
+		   id="load_register_button_{{scenario.id}}"
+		   name="LoadRegisterButton" VALUE="From Disk..."/>
+            <INPUT TYPE="BUTTON" class="button"
+		   id="edit_scenario_button_{{scenario.id}}"
+		   name="EditScenarioButton" VALUE="Edit ..."
+		   onClick="goToLocation('scenario/edit/{{scenario.id}}')"/>
+            <INPUT TYPE="BUTTON" class="DeleteButton"
+		   id="delete_scenario_button_{{scenario.id}}"
+		   VALUE="Delete"/>
+			</p>
 			</DIV>
 		</TD>
+
     </TR>
     {% if scenario.repeat_interval > 0 %}
     <TR>
         <TD>Next automatic ingestion is set up at {{scenario.starting_date|date:"Y-m-d H:i:s"}}</TD>
         <TD></TD>
-
     </TR>
     {% endif %}
 
     <TR>
-
         <TD>
             <div id="div_status_{{scenario.id}}">
             Status:
             </div>
         </TD>
-
-
+        <TD align=left>
+            <INPUT TYPE="BUTTON" class="StopButton"
+		id="stop_button_{{scenario.id}}"
+		OnClick="stop_ingestion({{scenario.id}})" />
+        </TD>
         <TD>
-            <div id="div_progress_bar_{{scenario.id}}" ALIGN=CENTER>
-
+           <div id="div_progress_bar_{{scenario.id}}" ALIGN=CENTER>
             </div>
         </TD>
     </TR>

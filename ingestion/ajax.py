@@ -50,7 +50,7 @@ def delete_scenario_wfm(request,scenario_id):
         del_script = del_scripts[0]
         current_task = work_flow_manager.WorkerTask(
             {"scenario_id":scenario_id,
-             "task_type":"DELETING-SCENARIO",
+             "task_type":"DELETE_SCENARIO",
              "scripts":["%s/%s" % (MEDIA_ROOT,del_script.script_file)]})
         wfm.put_task_to_queue(current_task)
     else:
@@ -159,9 +159,11 @@ def ingest_scenario_wfm(request,scenario_id):
 
 
 @dajaxice_register(method='POST')
-def run_ingestion_wfm(request,scenario_id):
-    print "run_ingestion_wfm"
+def stop_ingestion_wfm(request,scenario_id):
+    # TODO actually stop an ongoing ingestion if any
     logger = logging.getLogger('dream.file_logger')
-    logger.info("run_ingestion_wfm, id="+`scenario_id`)
+    logger.info("stop_ingestion_wfm, id="+`scenario_id`)
+    wfm = work_flow_manager.WorkFlowManager.Instance()
+    wfm.set_scenario_status(0, scenario_id, 1, "IDLE", 0)
     return simplejson.dumps({})
 

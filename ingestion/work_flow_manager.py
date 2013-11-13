@@ -17,13 +17,16 @@ import threading
 import logging
 import time
 import Queue
+import os
+import shutil
+import datetime
+
 import models
 import views
-import os
-import datetime
 from django.utils.timezone import utc
 from settings import IE_DEBUG
 from ingestion_logic import ingestion_logic
+from utils import scenario_dict, UnsupportedBboxError
 
 worker_id = 0
 
@@ -34,7 +37,7 @@ class WorkerTask:
     def __init__(self,parameters):
         # parameters are:
         #  {
-        #     "task_type":"",  # DELETING-SCENARIO, INGEST_SCENARIO
+        #     "task_type":"",  # DELETE_SCENARIO, INGEST_SCENARIO
         #     "scripts":[]
         #   }
         self._parameters = parameters
@@ -69,7 +72,7 @@ class Worker(threading.Thread):
         task_type = parameters['task_type']
         if IE_DEBUG > 1:
             self._logger.debug( "do_task: "+task_type, extra={'user':"drtest"} )
-        if task_type=="DELETING-SCENARIO":
+        if task_type=="DELETE_SCENARIO":
             self._wfm.set_scenario_status(
                 self._id,parameters["scenario_id"],0,"DELETING",0)
 
@@ -104,39 +107,36 @@ class Worker(threading.Thread):
                 self._logger.info(
                     "wfm: executing INGEST_SCENARIO, id=" +\
                         `parameters["scenario_id"]`)
+            #self._wfm.set_scenario_status(
+            #    self._id,parameters["scenario_id"],0,"INGESTING",0)
+
+            percent = 0.0
+            sc_id = parameters["scenario_id"]
             self._wfm.set_scenario_status(
-                self._id,parameters["scenario_id"],0,"INGESTING",0)
+                self._id, sc_id, 0, "GENERATING URLS", percent)
+            try:
+                scenario_data = models.Scenario.objects.get(id=sc_id)
+                dl_dir = ingestion_logic(scenario_dict(scenario_data))
 
-            # run ingestion logic to get products through download manager
-            # TODO DEVELOP TEMP ONLY - DELETE THIS:
-            scenario_data =  {
-                'view_angle':   5.0, 
-                'cloud_cover':  0.25,
-                'from_date':    '2009-01-01T12:00:00Z',
-                'to_date':      '2022-03-15T16:00:00Z',
-                'sensor_type':  'MERIS_FR',
-                'dsrc_password': '',
-                'dsrc_login':    '',
-                #        'dsrc': 'http://data.eox.at/instance00/ows',
-                'dsrc': 'http://127.0.0.1:1222/cgi-bin/pff',
-                #        'dsrc': 'http://127.0.0.1:1222/cgi-bin/err_test',
-                'aoi_bb': [(5.5145,42.8504,), (5.524,42.86242)]
-                }
-            # END TODO
-            ingestion_logic(scenario_data)
+                # run ingestion scripts
+                scripts = parameters["scripts"]
+                for script in scripts: # scripts absolute path
+                    self._logger.info("Running script: %s" % script)
+                    os.system(script)  # TODO use subprocess.Popen
+                    percent += (100.0/float(len(scripts)))
+                    self._wfm.set_scenario_status(
+                        self._id, sc_id, 0, "INGESTING", percent)
+                self._logger.info(" ****** TODO: ****** NOT Removing "+dl_dir)
+                # TODO remove tmp download dir after ingestion is complete
+                print "          Tmp dowload dir should be removed in production"
+                #shutil.rmtree(dl_dir)
 
-            # run ingestion scripts
-            scripts = parameters["scripts"]
-            percentage = 0.0
-            for script in scripts: # scripts absolute path
-                self._logger.info("Running script: %s" % script)
-                os.system(script)  # TODO use subprocess.Popen
-                percentage += (100.0/float(len(scripts)))
-                self._wfm.set_scenario_status(
-                    self._id,parameters["scenario_id"],0,"INGESTING",percentage)
+            except Exception as e:
+                self._logger.error("Error while ingesting: " + `e`)
+                self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
 
-            self._wfm.set_scenario_status(
-                self._id,parameters["scenario_id"],1,"IDLE",0)
+            self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
+            self._logger.info("Ingestion completed.")
 
         elif task_type=="ADD-PRODUCT":
             # parameters: addProduct_id,dataRef,addProductScript
@@ -178,16 +178,15 @@ class AISWorker(threading.Thread):
     def run(self): # manages auto-ingestion of scenario
         while True:
             # read all scenarios
-            if IE_DEBUG > 1: self._logger.debug(
+            if IE_DEBUG > 3: self._logger.debug(
                 "AISWorker-%d of Work-Flow Manager is running." % self._id, \
                 extra={'user':"drtest"})
             scenarios = models.Scenario.objects.all()
             for scenario in scenarios:
-                if IE_DEBUG > 2: self._logger.debug (
+                if IE_DEBUG > 3: self._logger.debug (
                     "Scenario: %d starting_date: %s  repeat_interval: %d" \
                         % (scenario.id,scenario.starting_date,
-                           scenario.repeat_interval),
-                    extra={'user':"drtest"} )
+                           scenario.repeat_interval))
                 t_now = datetime.datetime.utcnow().replace(tzinfo=utc)
                 if scenario.starting_date <= t_now and scenario.repeat_interval!=0:
                     t_delta = datetime.timedelta(seconds=scenario.repeat_interval)
@@ -233,8 +232,7 @@ class WorkFlowManager:
         if isinstance(current_task,WorkerTask):
             self._queue.put(current_task)
         else:
-             self._logger.error ("Current_task is not task.",
-                                 extra={'user':"drtest"})
+             self._logger.error ("Current_task is not task.")
 
 
     def set_scenario_status(
@@ -246,8 +244,7 @@ class WorkFlowManager:
         done):
         self._lock_db.acquire()
         if IE_DEBUG > 3:
-            self._logger.debug( "Worker-%d uses db." % worker_id,
-                                extra={'user':"drtest"})
+            self._logger.debug( "Worker-%d uses db." % worker_id)
         try:
             # set scenario status
             scenario_status = models.ScenarioStatus.objects.get(
@@ -261,8 +258,7 @@ class WorkFlowManager:
         finally:
             self._lock_db.release()
             if IE_DEBUG > 3:
-                self._logger.debug( "Worker-%d stops using db." % worker_id,
-                                    extra={'user':"drtest"})
+                self._logger.debug( "Worker-%d stops using db." % worker_id)
 
 
     def delete_scenario(self):

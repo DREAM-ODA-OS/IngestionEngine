@@ -23,8 +23,6 @@ class ProductManager(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         logger = logging.getLogger('dream.file_logger')
-        if IE_DEBUG > 1:
-            logger.debug('Product Manager init.',extra={'user':"drtest"})
     
     def run(self):
         logger = logging.getLogger('dream.file_logger')
