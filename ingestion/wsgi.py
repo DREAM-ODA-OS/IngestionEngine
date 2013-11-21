@@ -28,10 +28,13 @@ application of another framework.
 '''
 
 import os
+import logging
+
+import dm_control
 import product_manager
 import work_flow_manager
 from settings import IE_PROJECT
-
+    
 # We defer to a DJANGO_SETTINGS_MODULE already in the environment.
 # This breaks if running multiple sites in the same mod_wsgi process. 
 # To fix this, use mod_wsgi daemon mode with each site in its own 
@@ -44,6 +47,17 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", IE_PROJECT + ".settings")
 # setting points here.
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
+
+#  Misc. Initialisations
+logger = logging.getLogger('dream.file_logger')
+
+# start the ngEO download manager (external process)
+dmcontroller = dm_control.DownloadManagerController.Instance()
+print `dmcontroller`
+dm_is_running = dmcontroller.start_dm()
+if not dm_is_running:
+    logger.warning("Failed to start Download Manager, "+
+                   "proceeding with Ingestion Engine start-up regardless.")
 
 # start work-flow manager
 wfmanager = work_flow_manager.WorkFlowManager.Instance()

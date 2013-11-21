@@ -13,23 +13,21 @@
 #
 ############################################################
 
+import logging
 from django.db import models
 from django.contrib.auth.models import User
+from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN
 
 import os
 
-from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN, \
-    IE_DOWNLOAD_DIR
+#**************************************************
+#         Download Manager Configuration          *
+#**************************************************
+class Dm_config(models.Model):
+    row_id           = models.IntegerField(primary_key=True)
+    dm_is_installed  = models.IntegerField()
+    dm_pid           = models.IntegerField()
 
-if not os.access(IE_DOWNLOAD_DIR, os.R_OK|os.W_OK):
-    import logging
-    logger = logging.getLogger('dream.file_logger')
-    logger.info("Cannot write/read "+IE_DOWNLOAD_DIR+", attempting to create.")
-    try:
-        os.mkdir(IE_DOWNLOAD_DIR,0740)
-        logger.info("Created "+IE_DOWNLOAD_DIR)
-    except OSError as e:
-        logger.error("Failed to create "+IE_DOWNLOAD_DIR+": "+`e`)
 
 #**************************************************
 #                  Scenario                       *
@@ -116,7 +114,7 @@ class UserScript(models.Model):
 class ScenarioStatus(models.Model):
     id = models.AutoField(primary_key=True)
     is_available = models.IntegerField() # 1 - available, 0 - not available
-    status = models.CharField(max_length=20) # e.g.: downloading, deleting, ...
+    status = models.CharField(max_length=32) # e.g.: downloading, deleting, ...
     done = models.FloatField() # e.g.: 33.3%
     scenario = models.OneToOneField(Scenario)
 

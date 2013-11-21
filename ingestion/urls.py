@@ -72,6 +72,9 @@ urlpatterns = patterns('',
     
     # editScenarioForms.html
     url(r'^scenario/edit/(?P<scenario_id>[1-9]{1,3})',views.editScenario),
+
+    # dar response
+    url(r'^ingest/darResponse',views.darResponse),
     
     # Main page
     url(r'^'+IE_HOME_PAGE,    views.main_page),

@@ -34,12 +34,16 @@ from settings import IE_DEBUG, IE_HOME_PAGE
 from utils import scenario_dict
 
 import work_flow_manager
+import dm_control
 
 IE_DEFAULT_USER = r'dreamer'
 IE_DEFAULT_PASS = r'1234'
 
+dmcontroller = dm_control.DownloadManagerController.Instance()
+
 def main_page(request):
     logger = logging.getLogger('dream.file_logger')
+    dmcontroller._ie_port = request.META['SERVER_PORT']
     if settings.IE_AUTO_LOGIN and \
             (not request.user.is_authenticated()) and \
             request.path == '/'+IE_HOME_PAGE:
@@ -144,8 +148,9 @@ def addScenario(request):
                             (scenario.id,scenario.scenario_name),
                         extra={'user':request.user})
 
-
-            return HttpResponseRedirect('http://127.0.0.1:8000/scenario/overview/')
+            port = request.META['SERVER_PORT']
+            return HttpResponseRedirect(
+                'http://127.0.0.1:'+port+'/scenario/overview/')
         else:
             if IE_DEBUG > 0:
                 logger.debug( "Scenario form is not valid",extra={'user':"drtest"})
@@ -183,7 +188,9 @@ def editScenario(request,scenario_id):
             if IE_DEBUG > 1:
                 print "Scenario: %s %s" % (str(scenario.id),scenario.scenario_name)
             handle_uploaded_scripts(request,scenario)
-            return HttpResponseRedirect('http://127.0.0.1:8000/scenario/overview/')
+            port = request.META['SERVER_PORT']
+            return HttpResponseRedirect(
+                'http://127.0.0.1:' + port + '/scenario/overview/')
         else:
             logger.warn("Scenario form is not valid",extra={'user':request.user})
     else:
@@ -231,7 +238,9 @@ def deleteScenario(request,scenario_id):
     logger = logging.getLogger('dream.file_logger')
     logger.info('Operation: delete scenario: id=%d name=%s' % (scenario.id,scenario.scenario_name) ,extra={'user':request.user})
 
-    return HttpResponseRedirect('http://127.0.0.1:8000/scenario/overview/')
+    port = request.META['SERVER_PORT']
+    return HttpResponseRedirect(
+        'http://127.0.0.1:'+port+'/scenario/overview/')
 
 def configuration_page(request):
     if request.method == 'POST':
@@ -268,9 +277,11 @@ def configuration_page(request):
                         # TODO exception should be implemented
                         os.remove("%s/%s" % \
                                       (settings.MEDIA_ROOT,old_script.script_file)) 
-
-            m.save() # save UserScript to /<project>/media/{(user.id)_(script_name)}
-            return HttpResponseRedirect('http://127.0.0.1:8000/account/configuration/')
+            # save UserScript to /<project>/media/{(user.id)_(script_name)}
+            m.save() 
+            port = request.META['SERVER_PORT']
+            return HttpResponseRedirect(
+                'http://127.0.0.1:'+port+'/account/configuration/')
         else:
             print "Form is not valid"
 
@@ -376,19 +387,24 @@ def addProduct(request):
     return HttpResponse(json.dumps(response_data), content_type="application/json")
 
 
+@csrf_exempt
 def getStatus(request):
     # must be GET request
     response_data = {}
     if request.method == 'GET':
-
         if request.opId:
             pass
-
-
         else:
             response_data['status'] = "failed"
             response_data['errorString'] = "There is no addProduct id."
+    else:
+        response_data['status'] = "failed"
+        response_data['errorString'] = "Request is not GET."
 
+@csrf_exempt
+def darResponse(request):
+    response_data = {}
+    if request.method == 'GET':
 
     else:
         response_data['status'] = "failed"

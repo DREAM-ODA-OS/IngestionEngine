@@ -13,6 +13,7 @@
 ###########################################################
 
 import time, calendar, random
+import os, shutil
 from django.utils.dateformat import DateFormat
 import models
 
@@ -29,11 +30,106 @@ class IngestionError(Exception):
     def __str__(self):
         return repr(self.value)
 
+class DMError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class UnsupportedBboxError(Exception):
     def __init__(self, value):
         self.value = value
     def __str__(self):
         return repr(self.value)
+
+# ------------ Process Id Utilities  ------------------
+def pid_is_valid(pid):
+    if 0 == pid: return False
+    return pid in os.listdir('/proc')
+
+def find_process_ids(match_strings):
+    """ cmdline of the returned pid matches all match_strings """
+    ret_pids = []
+    pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
+    for pid in pids:
+        try:
+            fp = open(os.path.join('/proc', pid, 'cmdline'), 'rb')
+            cmdline = fp.read()
+            fp.close()
+        except:
+            continue
+        # must match all match_strings
+        match = True
+        for s in match_strings:
+            if not s in cmdline:
+                match = False
+                break
+        if match: ret_pids.append(pid)
+    return ret_pids
+
+
+# ------------ Download Manager Properties Handling  ------------------
+def read_props(fn):
+    """ returns the lines in the file as list, and the
+    value of the BASE_DOWNLOAD_FOLDER_ABSOLUTE property,
+    including its index in the lines list """
+    f = open(fn, "r")
+    lines = []
+    download_folder_prop = None
+    download_folder_line = -1
+    dm_listen_port = None
+    i = 0
+    for l in f:
+        lines.append(l)
+        if l[0] != "#":
+            kv = l.split('=')
+            if kv[0] == "BASE_DOWNLOAD_FOLDER_ABSOLUTE":
+                download_folder_prop = kv[1].strip()
+                download_folder_line = i
+            if kv[0] == "WEB_INTERFACE_PORT_NO":
+                dm_listen_port = kv[1].strip()
+        i += 1
+    f.close()
+    return (lines, download_folder_prop, download_folder_line, dm_listen_port)
+
+def backup_props(dm_config_file, logger):
+    """ if the .BAK file already exists then don't back up again """
+    backup_fn = dm_config_file + ".BAK"
+    if not os.access(backup_fn, os.F_OK):
+        shutil.move(dm_config_file, backup_fn)
+        logger.info("Backed up DM's config file to "+backup_fn)
+    else:
+        logger.warning(
+            "Not backing up DM's config, a backup file already exists (" +
+            backup_fn+")")
+
+def write_props(dm_config_file, lines, logger):
+    f = open(dm_config_file, "w")
+    for l in lines:
+        f.write(l)
+    f.close()
+    logger.info("Wrote a new DM config file to "+dm_config_file)
+    
+def setup_dm_paths(dm_config_file, download_dir, logger):
+    """ checks and possilby sets the download manager's idea
+        of where to dowload products to.
+        Returns the DM's listening port """
+    dm_port = None
+    lines, dm_dir, dmd_line, dm_port = read_props(dm_config_file)
+    if len(lines) < 1:
+        raise Exception("Zero length dm properties, fn="+dm_config_file)
+    if dm_dir == None or dmd_line < 0:
+        raise Exception("BASE_DOWNLOAD_FOLDER_ABSOLUTE not found in properties, fn="+dm_config_file)
+    if dm_dir != download_dir:
+        logger.info("Setting Download Manager's " +
+                    "BASE_DOWNLOAD_FOLDER_ABSOLUTE" +
+                    " to "+download_dir + "\n" +
+                    "    Old setting was:\n" + lines[dmd_line]
+                    )
+        lines[dmd_line] = "BASE_DOWNLOAD_FOLDER_ABSOLUTE="+download_dir+"\n"
+        backup_props(dm_config_file, logger)
+        write_props(dm_config_file, lines, logger)
+    return dm_port
 
 # ------------ Bbox --------------------------
 class Bbox:

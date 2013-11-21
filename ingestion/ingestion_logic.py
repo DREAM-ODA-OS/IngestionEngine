@@ -1,8 +1,8 @@
 ############################################################
 #  Project: DREAM
 #  Module:  Task 5 ODA Ingestion Engine 
-#  Contribution: Milan Novacek (CVC)
-#  Date:    Aug 20, 2013
+#  Author: Milan Novacek (CVC)
+#  Date:   Sept 16, 2013
 #
 #    (c) 2013 Siemens Convergence Creators s.r.o., Prague
 #    Licensed under the 'DREAM ODA Ingestion Engine Open License'
@@ -17,6 +17,7 @@ import os
 import urllib2
 import xml.etree.ElementTree as ET
 import xml.parsers.expat
+import dar_builder
 
 from osgeo import osr
 from utils import Bbox, bbox_from_strings, TimePeriod, mkFname, \
@@ -469,27 +470,49 @@ def getGetCoverageURLs(params):
         params, aoi_toi, service_version, md_urls)
     return gc_requests
 
-def invoke_dm(sc_id, urls):
+    
+def request_download(sc_id, urls):
     #create tmp dir for downloads
-    dl_dir = os.path.join(IE_DOWNLOAD_DIR,mkFname(sc_id+"_"))
+    tmp_subdir = mkFname(sc_id+"_")
+    dl_dir = os.path.join(IE_DOWNLOAD_DIR,tmp_subdir)
     try:
         os.mkdir(dl_dir,0740)
         logger.info("Created "+dl_dir)
     except OSError as e:
         logger.error("Failed to create "+dl_dir+": "+`e`)
         raise
-    
-    # TODO DEVELOP TEMP ONLY - DELETE THIS:
-    print "---- TEMP for developent: downloading first 2 ulrs ----"
+
+    # set up the format of the subdirectory names
+    id_digits = 3
+    nreqs = len(urls)
+    if nreqs>10000:  id_digits = 5
+    if nreqs>1000:   id_digits = 4
+    fmt = "p_"+sc_id+"_%0"+`id_digits`+"d"
+
+    urls_with_dirs = []
+    i = 1
+    for url in urls:
+        urls_with_dirs.append( (os.path.join(tmp_subdir, fmt % i), url) )
+        i += 1
+    urls = None
+    dar = dar_builder.build_DAR(urls_with_dirs)
+    urls_with_dirs = None
+
+    dmcontroller = dm_control.DownloadManagerController.Instance()
+    dar_id = dmcontroller.submit_dar(dar)
+
+    return dl_dir, dar_id
+
+def direct_download(sc_id, dl_dir, urls, id_digits):
+    """ used if no Download Manager is available """
+    # TODO DEVELOP TEMP ONLY 
+    print "---- TEMP for development: downloading first 2 ulrs ----"
     print "    (TBD: to be passed to the download manager)"
     i = 0
     fn_base = "prod_"
-    precision = 3
-    nreqs = len(urls)
-    if len>10000:  precision = 5
-    if len>1000:   precision = 4
+
     blk_sz = 8192
-    fmt = "%0"+`precision`+"d"
+    fmt = "%0"+`id_digits`+"d"
     for rr in urls[0:2]:
         buffer = None
         i += 1
@@ -508,8 +531,9 @@ def invoke_dm(sc_id, urls):
             logger.error("Download failed: " + `e`)
         finally:
             if f!=None: f.close()
+            r.close()
+    # END TODO DEVELOP TEMP ONLY - END
 
-    return dl_dir
 
 # ----- the main entrypoint  --------------------------
 def ingestion_logic(scenario_data):
@@ -533,6 +557,6 @@ def ingestion_logic(scenario_data):
     else:
         nreqs = len(gc_requests)
         logger.info("Sending "+`nreqs`+" URLs to the Download Manager")
-        retval = invoke_dm(scenario_data["ncn_id"], gc_requests)
+        retval = request_download(scenario_data["ncn_id"], gc_requests)
 
     return retval

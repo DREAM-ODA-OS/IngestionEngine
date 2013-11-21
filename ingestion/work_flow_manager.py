@@ -37,6 +37,7 @@ class WorkerTask:
     def __init__(self,parameters):
         # parameters are:
         #  {
+        #     "scenario_id",
         #     "task_type":"",  # DELETE_SCENARIO, INGEST_SCENARIO
         #     "scripts":[]
         #   }
@@ -71,7 +72,7 @@ class Worker(threading.Thread):
         parameters = current_task._parameters
         task_type = parameters['task_type']
         if IE_DEBUG > 1:
-            self._logger.debug( "do_task: "+task_type, extra={'user':"drtest"} )
+            self._logger.debug( "do_task: "+task_type )
         if task_type=="DELETE_SCENARIO":
             self._wfm.set_scenario_status(
                 self._id,parameters["scenario_id"],0,"DELETING",0)
@@ -116,7 +117,7 @@ class Worker(threading.Thread):
                 self._id, sc_id, 0, "GENERATING URLS", percent)
             try:
                 scenario_data = models.Scenario.objects.get(id=sc_id)
-                dl_dir = ingestion_logic(scenario_dict(scenario_data))
+                dl_dir, dar_id = ingestion_logic(scenario_dict(scenario_data))
 
                 # run ingestion scripts
                 scripts = parameters["scripts"]
@@ -128,7 +129,7 @@ class Worker(threading.Thread):
                         self._id, sc_id, 0, "INGESTING", percent)
                 self._logger.info(" ****** TODO: ****** NOT Removing "+dl_dir)
                 # TODO remove tmp download dir after ingestion is complete
-                print "          Tmp dowload dir should be removed in production"
+                print "          Tmp download dir should be removed in production"
                 #shutil.rmtree(dl_dir)
 
             except Exception as e:
@@ -161,7 +162,6 @@ class Worker(threading.Thread):
             self._logger.warning(
                 "There is no type of the current task to process. (" + \
                     task_type + ")", extra={'user':"drtest"} )
-        # can be extended
 
 #**************************************************
 #      Auto-Ingest-Scenario-Worker                *

@@ -2,12 +2,13 @@
 #  Project: DREAM
 #  Module:  Task 5 ODA Ingestion Engine 
 #  Author:  Vojtech Stefka  (CVC)
+#  Contribution: Milan Novacek   (CVC)
 #
 #    (c) 2013 Siemens Convergence Creators s.r.o., Prague
 #    Licensed under the 'DREAM ODA Ingestion Engine Open License'
 #     (see the file 'LICENSE' in the top-level directory)
 #
-# Django settings for DREAM project.
+# Django settings for the ingestion engine.
 #
 ############################################################
 
@@ -39,6 +40,29 @@ MANAGERS = ADMINS
 
 PROJECT_DIR = os.path.dirname(__file__)
 
+
+# ------------------- Download Manager -----------------------------
+# The download manager is assumed to be installed in
+#  ../../ngEO-download-manager
+# If this is not the case, then DOWNLOAD_MANAGER_DIR must be set manually.
+app_root = os.path.dirname(os.path.dirname(PROJECT_DIR))
+DOWNLOAD_MANAGER_DIR = \
+    os.path.join(app_root, "ngEO-download-manager")
+if DOWNLOAD_MANAGER_DIR == '':
+    raise Exception ("Undefined DOWNLOAD_MANGER_DIR")
+
+DOWNLOAD_MANAGER_CONFIG_DIR = os.path.join(DOWNLOAD_MANAGER_DIR,"conf")
+
+# The DM configuration file name, incl. its full path prefix.
+DM_CONF_FN = os.path.join(
+    DOWNLOAD_MANAGER_CONFIG_DIR,
+    "userModifiableSettingsPersistentStore.properties")
+
+DM_START_COMMAND = "start-dm.sh"
+
+BASH_EXEC_PATH = "/bin/bash"
+
+# ------------------- Other Django settings  ---------------------------
 AUTHENTICATION_BACKENDS = ('django.contrib.auth.backends.ModelBackend',)
 
 DATABASES = {
