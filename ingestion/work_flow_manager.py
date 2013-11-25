@@ -26,7 +26,7 @@ import views
 from django.utils.timezone import utc
 from settings import IE_DEBUG
 from ingestion_logic import ingestion_logic
-from utils import scenario_dict, UnsupportedBboxError
+from utils import scenario_dict, UnsupportedBboxError, IngestionError
 
 worker_id = 0
 
@@ -115,10 +115,12 @@ class Worker(threading.Thread):
             sc_id = parameters["scenario_id"]
             self._wfm.set_scenario_status(
                 self._id, sc_id, 0, "GENERATING URLS", percent)
-            try:
+            #try:
+            if True:
                 scenario_data = models.Scenario.objects.get(id=sc_id)
                 dl_dir, dar_id = ingestion_logic(scenario_dict(scenario_data))
-
+                if None == dar_id:
+                    raise IngestionError("No DAR generated")
                 # run ingestion scripts
                 scripts = parameters["scripts"]
                 for script in scripts: # scripts absolute path
@@ -131,13 +133,13 @@ class Worker(threading.Thread):
                 # TODO remove tmp download dir after ingestion is complete
                 print "          Tmp download dir should be removed in production"
                 #shutil.rmtree(dl_dir)
-
-            except Exception as e:
+                self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
+                self._logger.info("Ingestion completed.")
+            else:
+            #except Exception as e:
                 self._logger.error("Error while ingesting: " + `e`)
                 self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
 
-            self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
-            self._logger.info("Ingestion completed.")
 
         elif task_type=="ADD-PRODUCT":
             # parameters: addProduct_id,dataRef,addProductScript

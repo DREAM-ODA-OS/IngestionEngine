@@ -29,6 +29,7 @@ application of another framework.
 
 import os
 import logging
+import json
 
 import dm_control
 import product_manager
@@ -48,12 +49,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", IE_PROJECT + ".settings")
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
 
-#  Misc. Initialisations
+#  Misc. Initialisations for DREAM/Ingestion
 logger = logging.getLogger('dream.file_logger')
 
 # start the ngEO download manager (external process)
 dmcontroller = dm_control.DownloadManagerController.Instance()
-print `dmcontroller`
 dm_is_running = dmcontroller.start_dm()
 if not dm_is_running:
     logger.warning("Failed to start Download Manager, "+

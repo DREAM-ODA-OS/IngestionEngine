@@ -26,10 +26,9 @@ import os
 
 from settings import \
     MEDIA_ROOT, LOGGING_DIR, IE_SCRIPTS_DIR, IE_DEFAULT_ADD_SCRIPT
+from dm_control import DownloadManagerController
 
-#TODO XXX tmp for debugging, remove
-import time
-#end remove XXX
+dmcontroller = DownloadManagerController.Instance()
 
 @dajaxice_register(method='POST')
 def delete_scenario_wfm(request,scenario_id):
@@ -118,8 +117,11 @@ def read_logging(request,message_type):
 
 @dajaxice_register(method='POST')
 def ingest_scenario_wfm(request,scenario_id):
-    # ingest scenario - run all scripts related to the scenario
+    # ingest scenario - run all ing. scripts related to the scenario
     logger = logging.getLogger('dream.file_logger')
+    # make sure the IE port is set-up
+    pp = request.META['SERVER_PORT']
+    dmcontroller.set_condIEport(pp)
     scenario = models.Scenario.objects.get(id=int(scenario_id))
     scripts = scenario.script_set.all()
 

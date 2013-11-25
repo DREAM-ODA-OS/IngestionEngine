@@ -12,51 +12,55 @@
 #
 ############################################################
 
-INDENT_STRING = '    '
-DAR_PREAMBLE = """<?xml version="1.0" encoding="UTF-8"?>
-<ngeo:DataAccessMonitoring-Resp
+import xml.etree.ElementTree as ET
+import sys
+
+DAR_PREAMBLE = '<?xml version="1.0" encoding="UTF-8"?>'
+TODO = """<ngeo:DataAccessMonitoring-Resp
     xmlns:ngeo="http://ngeo.eo.esa.int/iicd-d-ws/1.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://ngeo.eo.esa.int/iicd-d-ws/1.0 IF-ngEO-DataAccessMonitoring-Resp.xsd">
     <ngeo:MonitoringStatus>IN_PROGRESS</ngeo:MonitoringStatus>"""
 
-DAR_TAIL = """</ngeo:DataAccessMonitoring-Resp>
-"""
-
-NGEO_NS = "ngeo"
+NGEO_URI = "http://ngeo.eo.esa.int/iicd-d-ws/1.0"
+NGEO_NS  = "{"+NGEO_URI+"}"
+XSI_URI  = "http://www.w3.org/2001/XMLSchema-instance"
+XSI_NS   = "{"+XSI_URI+"}"
+SCHEMA_LOCATION = "http://ngeo.eo.esa.int/iicd-d-ws/1.0 IF-ngEO-DataAccessMonitoring-Resp.xsd"
+DA_RESP = "DataAccessMonitoring-Resp"
+MONITORINGSTATUS = "MonitoringStatus"
 PRODACCESSLIST = "ProductAccessList"
 PRODACCESS = "ProductAccess"
 PRODACCESSURL = "ProductAccessURL"
 PRODACCESSSTATUS = "ProductAccessStatus"
 PRODDOWNLOADDIRECTORY = "ProductDownloadDirectory"
-XML_INDENT = 4*' '
 
-def element(prefix, tag, contents):
-    return "<%s:%s>%s</%s:%s>" % \
-        (prefix,tag,contents,prefix,tag)
-
-def join_and_indent(indent, lines, add_newlines=True):
-    tmp_str = "\n".join(lines)
-    nl = ''
-    if add_newlines: nl = '\n'
-    return nl+indent+tmp_str.replace("\n", "\n" + indent)+nl
+use_register = False
+vers = sys.version_info
+if vers[0] > 2: use_register = True
+if vers[1] > 6 and vers[0] == 2: use_register = True
 
 def build_DAR(urls):
     """ urls consist of a list of tuples (dl_dir, url),
     where dl_dir is the download directory for each url"""
-    dar_products = []
+
+    if use_register:
+        try:
+            ET.register_namespace("ngeo", NGEO_URI)
+            ET.register_namespace("xsi",  XSI_URI)
+        except Exception:
+            pass
+
+    root = ET.Element(NGEO_NS+DA_RESP,
+                      {XSI_NS+"schemaLocation":SCHEMA_LOCATION})
+    ET.SubElement(root, NGEO_NS+MONITORINGSTATUS).text = "IN_PROGRESS"
+    pa_list = ET.SubElement(root, NGEO_NS+PRODACCESSLIST)
+
     for url in urls:
-        elems = [
-            element(NGEO_NS, PRODACCESSURL,         url[1]),
-            element(NGEO_NS, PRODACCESSSTATUS,     "READY"),
-            element(NGEO_NS, PRODDOWNLOADDIRECTORY, url[0])
-            ]
-        prod_access = join_and_indent(XML_INDENT, elems)
-        dar_products.append(element(NGEO_NS, PRODACCESS, prod_access))
-    indented_products = join_and_indent(XML_INDENT, dar_products)
-    dar_ProductAccessList = [element(NGEO_NS, PRODACCESSLIST, indented_products),]
-    
-    return \
-        DAR_PREAMBLE + \
-        join_and_indent(XML_INDENT,dar_ProductAccessList) + \
-        DAR_TAIL
+        pa = ET.SubElement(pa_list, NGEO_NS+PRODACCESS)
+        ET.SubElement(pa, NGEO_NS+PRODACCESSURL).text = url[1]
+        ET.SubElement(pa, NGEO_NS+PRODACCESSSTATUS).text = "READY"
+        ET.SubElement(pa, NGEO_NS+PRODDOWNLOADDIRECTORY).text =  url[0]
+
+    print "dAR:\n"+ DAR_PREAMBLE + ET.tostring(root)
+    return DAR_PREAMBLE + ET.tostring(root)

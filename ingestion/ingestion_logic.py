@@ -21,8 +21,9 @@ import dar_builder
 
 from osgeo import osr
 from utils import Bbox, bbox_from_strings, TimePeriod, mkFname, \
-    NoEPSGCodeError, IngestionError
+    NoEPSGCodeError, IngestionError, DMError
 from settings import IE_DEBUG, IE_DOWNLOAD_DIR
+from dm_control import DownloadManagerController
 
 # For debugging:
 # used to limit the number of DescribeEOCoverageSet requests issued
@@ -498,15 +499,17 @@ def request_download(sc_id, urls):
     dar = dar_builder.build_DAR(urls_with_dirs)
     urls_with_dirs = None
 
-    dmcontroller = dm_control.DownloadManagerController.Instance()
-    dar_id = dmcontroller.submit_dar(dar)
+    dmcontroller = DownloadManagerController.Instance()
+    status, dar_id = dmcontroller.submit_dar(dar)
+    if status != "OK":
+        raise DMError("DAR submit problem, status:" + status)
 
     return dl_dir, dar_id
 
 def direct_download(sc_id, dl_dir, urls, id_digits):
     """ used if no Download Manager is available """
     # TODO DEVELOP TEMP ONLY 
-    print "---- TEMP for development: downloading first 2 ulrs ----"
+    print "---- TEMP for development: downloading first 2 urls ----"
     print "    (TBD: to be passed to the download manager)"
     i = 0
     fn_base = "prod_"
@@ -550,7 +553,7 @@ def ingestion_logic(scenario_data):
     print
 
     nreqs = 0
-    retval = None
+    retval = (None, None)
     gc_requests = getGetCoverageURLs(scenario_data)
     if None==gc_requests:
         logger.warning(" no GetCoverage requests generated")

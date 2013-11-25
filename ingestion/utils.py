@@ -14,38 +14,27 @@
 
 import time, calendar, random
 import os, shutil
+import urllib2
 from django.utils.dateformat import DateFormat
 import models
 
 # ------------ Exceptions  --------------------------
 class NoEPSGCodeError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+    pass
 
 class IngestionError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+    pass
 
 class DMError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+    pass
 
 class UnsupportedBboxError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+    pass
 
 # ------------ Process Id Utilities  ------------------
 def pid_is_valid(pid):
     if 0 == pid: return False
-    return pid in os.listdir('/proc')
+    return `pid` in os.listdir('/proc')
 
 def find_process_ids(match_strings):
     """ cmdline of the returned pid matches all match_strings """
@@ -77,7 +66,8 @@ def read_props(fn):
     lines = []
     download_folder_prop = None
     download_folder_line = -1
-    dm_listen_port = None
+    dm_listen_port_prop  = None
+    dm_listen_port_line  = -1
     i = 0
     for l in f:
         lines.append(l)
@@ -87,10 +77,12 @@ def read_props(fn):
                 download_folder_prop = kv[1].strip()
                 download_folder_line = i
             if kv[0] == "WEB_INTERFACE_PORT_NO":
-                dm_listen_port = kv[1].strip()
+                dm_listen_port_prop = kv[1].strip()
+                dm_listen_port_line = i
         i += 1
     f.close()
-    return (lines, download_folder_prop, download_folder_line, dm_listen_port)
+    return (lines, download_folder_prop, download_folder_line, 
+            dm_listen_port_prop, dm_listen_port_line)
 
 def backup_props(dm_config_file, logger):
     """ if the .BAK file already exists then don't back up again """
@@ -110,16 +102,23 @@ def write_props(dm_config_file, lines, logger):
     f.close()
     logger.info("Wrote a new DM config file to "+dm_config_file)
     
-def setup_dm_paths(dm_config_file, download_dir, logger):
+def setup_dm_config(
+    dm_config_file,
+    download_dir,
+    dm_port,
+    logger):
     """ checks and possilby sets the download manager's idea
         of where to dowload products to.
         Returns the DM's listening port """
-    dm_port = None
-    lines, dm_dir, dmd_line, dm_port = read_props(dm_config_file)
+    lines, dm_dir, dmd_line, old_dm_port, dm_port_line = read_props(dm_config_file)
     if len(lines) < 1:
         raise Exception("Zero length dm properties, fn="+dm_config_file)
     if dm_dir == None or dmd_line < 0:
-        raise Exception("BASE_DOWNLOAD_FOLDER_ABSOLUTE not found in properties, fn="+dm_config_file)
+        raise Exception(
+            "BASE_DOWNLOAD_FOLDER_ABSOLUTE not found in properties, fn="+dm_config_file)
+
+    props_changed = False
+
     if dm_dir != download_dir:
         logger.info("Setting Download Manager's " +
                     "BASE_DOWNLOAD_FOLDER_ABSOLUTE" +
@@ -127,9 +126,18 @@ def setup_dm_paths(dm_config_file, download_dir, logger):
                     "    Old setting was:\n" + lines[dmd_line]
                     )
         lines[dmd_line] = "BASE_DOWNLOAD_FOLDER_ABSOLUTE="+download_dir+"\n"
+        props_changed = True
+    
+    if int(old_dm_port) != dm_port:
+        logger.info("Setting Download Manager's Port to " + `dm_port`)
+        lines[dm_port_line] = "WEB_INTERFACE_PORT_NO="+`dm_port`
+        props_changed = True
+
+    if props_changed:
         backup_props(dm_config_file, logger)
         write_props(dm_config_file, lines, logger)
-    return dm_port
+
+    return `dm_port`
 
 # ------------ Bbox --------------------------
 class Bbox:
@@ -225,6 +233,30 @@ class TimePeriod:
         if self.begin_time > t2.end_time: return False
         if self.end_time   < t2.begin_time: return False
         return True
+
+# ------------ internet access --------------------------
+def read_from_url(
+    url,
+    post_data=None,
+    max_size=851200,    #bytes, 0 for unlimited
+    read_timeout=300    #seconds, 0 for unlimited
+    ):
+    resp = None
+    r = urllib2.urlopen(url, post_data)
+    end_time = time.time() + read_timeout
+    blk_sz = 8192
+    while True:
+        buffer = r.read(blk_sz)
+        if not buffer:
+            break
+        if read_timeout > 0 and time.time() > end_time:
+            raise IngestionError("URL read time expired")
+        if None == resp: resp = buffer
+        else:            resp += buffer
+        if max_size > 0 and None != resp and len(resp) > max_size:
+            raise IngestionError("Max read size exceeded")
+    if None != r: r.close()
+    return resp
 
 # ------------ data handling   --------------------------
 def date_to_iso8601(src_date):

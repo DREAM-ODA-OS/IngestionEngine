@@ -14,6 +14,7 @@
 
 import os
 import logging
+import json
 
 DEBUG = True
 TEMPLATE_DEBUG = False
@@ -28,6 +29,30 @@ SC_NCN_ID_BASE     = 'scid'
 NCN_ID_LEN         = 96
 SC_NAME_LEN        = 64
 SC_DESCRIPTION_LEN = 1024
+
+# ../ingestion_config.json optionally contain:
+# DownloadManagerPort, DownloadDirectory, DownloadManagerDir
+# If DownloadDirectory is not absolute, then it is taken relative to
+# the media directory, as defined further on in this file (setttings.py)
+#
+# Example:
+#
+# {
+#     "DownloadManagerPort": 8082,
+#     "DownloadDirectory"  : "products"
+# }
+
+try:
+    fp = open("ingestion_config.json", "r")
+    config = json.load(fp)
+    fp.close()
+except Exception as e:
+    print "warning: ingestion_settings.json not found, "+`e`
+    print "         using defaults"
+    config = {}
+
+if IE_DEBUG > 0:
+    print "config: \n" + `config`
 
 # located in IE_SCRIPTS_DIR, defined further on down
 IE_DEFAULT_ADD_SCRIPT = 'default_add.sh'
@@ -45,9 +70,27 @@ PROJECT_DIR = os.path.dirname(__file__)
 # The download manager is assumed to be installed in
 #  ../../ngEO-download-manager
 # If this is not the case, then DOWNLOAD_MANAGER_DIR must be set manually.
+DOWNLOAD_MANAGER_PORT = None
+if "DownloadManagerPort" in config:
+    DOWNLOAD_MANAGER_PORT = config["DownloadManagerPort"]
+else:
+    DOWNLOAD_MANAGER_PORT = 8082
 app_root = os.path.dirname(os.path.dirname(PROJECT_DIR))
+
 DOWNLOAD_MANAGER_DIR = \
     os.path.join(app_root, "ngEO-download-manager")
+
+DOWNLOAD_MANAGER_DIR = None
+dmd = None
+if "DownloadManagerDir" in config:
+    dmd = config["DownloadManagerDir"]
+else:
+    dmd = "ngEO-download-manager"
+if dmd.startswith('/'):
+    DOWNLOAD_MANAGER_DIR = dmd
+else:
+    DOWNLOAD_MANAGER_DIR = os.path.join(app_root, dmd)
+
 if DOWNLOAD_MANAGER_DIR == '':
     raise Exception ("Undefined DOWNLOAD_MANGER_DIR")
 
@@ -121,7 +164,15 @@ IE_SCRIPTS_DIR = os.path.join(MEDIA_ROOT, 'scripts')
 
 # Where product files are downloaded to, or subdirs for product download
 #  are placed.
-IE_DOWNLOAD_DIR = os.path.join(MEDIA_ROOT, 'products')
+IE_DOWNLOAD_DIR = None
+if "DownloadDirectory" in config:
+    dld = config["DownloadDirectory"]
+    if dld.startswith('/'):
+        IE_DOWNLOAD_DIR = dld
+    else:
+        IE_DOWNLOAD_DIR = os.path.join(MEDIA_ROOT, dld)
+else:
+    IE_DOWNLOAD_DIR = os.path.join(MEDIA_ROOT, 'products')
 
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files

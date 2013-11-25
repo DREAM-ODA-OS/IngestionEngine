@@ -18,6 +18,7 @@ from django.http import HttpResponseRedirect,HttpResponse
 from django.contrib.auth import logout
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
+from django.views.defaults import server_error
 
 import json
 
@@ -29,21 +30,22 @@ import logging
 import datetime
 from django.utils.timezone import utc
 from django.contrib.auth import authenticate, login
+from django.http import Http404
 
 from settings import IE_DEBUG, IE_HOME_PAGE
-from utils import scenario_dict
+from utils import scenario_dict, read_from_url
+from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
 
 import work_flow_manager
-import dm_control
 
 IE_DEFAULT_USER = r'dreamer'
 IE_DEFAULT_PASS = r'1234'
 
-dmcontroller = dm_control.DownloadManagerController.Instance()
+dmcontroller = DownloadManagerController.Instance()
 
 def main_page(request):
     logger = logging.getLogger('dream.file_logger')
-    dmcontroller._ie_port = request.META['SERVER_PORT']
+    dmcontroller.set_ie_port(request.META['SERVER_PORT'])
     if settings.IE_AUTO_LOGIN and \
             (not request.user.is_authenticated()) and \
             request.path == '/'+IE_HOME_PAGE:
@@ -234,7 +236,6 @@ def deleteScenario(request,scenario_id):
     delete_scripts(scripts)
     scenario.delete()
 
-    # use logging
     logger = logging.getLogger('dream.file_logger')
     logger.info('Operation: delete scenario: id=%d name=%s' % (scenario.id,scenario.scenario_name) ,extra={'user':request.user})
 
@@ -384,7 +385,9 @@ def addProduct(request):
         response_data['errorString'] = "Request is not POST."
     print response_data
     print datetime.datetime.utcnow().replace(tzinfo=utc)
-    return HttpResponse(json.dumps(response_data), content_type="application/json")
+    return HttpResponse(
+        json.dumps(response_data),
+        content_type="application/json")
 
 
 @csrf_exempt
@@ -400,13 +403,40 @@ def getStatus(request):
     else:
         response_data['status'] = "failed"
         response_data['errorString'] = "Request is not GET."
+    return HttpResponse(
+        json.dumps(response_data),
+        content_type="application/json")
 
 @csrf_exempt
 def darResponse(request):
+    logger = logging.getLogger('dream.file_logger')
+    if request.method == 'GET':
+        logger.info("Request to retrieve DAR from" + \
+                        `request.META['REMOTE_ADDR']`)
+        dar = dmcontroller.get_next_dar()
+        if None == dar:
+            logger.error("No dar!")
+            server_error(request)
+        else:
+            return HttpResponse(
+                dar,
+                content_type="application/xml")
+    else:
+        logger.error("Unxexpected POST request on darResponse url,\n" + \
+                         `request.META['SERVER_PORT']`)
+        raise Http404
+
+
+@csrf_exempt
+def dmDARStatus(request):
     response_data = {}
     if request.method == 'GET':
-
+        dm_url = dmcontroller._dm_url
+        url = dm_url+DM_DAR_STATUS_COMMAND
+        response_data = json.loads(read_from_url(url))
+        response_str = json.dumps(response_data,indent=4)
+        return HttpResponse(response_str,content_type="text/plain")
     else:
-        response_data['status'] = "failed"
-        response_data['errorString'] = "Request is not GET."
-
+        logger.error("Unxexpected POST request on dmDARStatusurl,\n" + \
+                         `request.META['SERVER_PORT']`)
+        raise Http404

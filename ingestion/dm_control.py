@@ -16,17 +16,21 @@ from singleton_pattern import Singleton
 import logging
 import subprocess
 import urllib2
+import json
 import os, os.path, time
 from collections import deque
 
 import models
-from utils import find_process_ids, pid_is_valid, setup_dm_paths
+from utils import find_process_ids, pid_is_valid, setup_dm_config, \
+    read_from_url, DMError
 from settings import DOWNLOAD_MANAGER_DIR, DM_START_COMMAND, \
-    IE_DOWNLOAD_DIR, DM_CONF_FN, BASH_EXEC_PATH
+    IE_DOWNLOAD_DIR, DOWNLOAD_MANAGER_PORT, DM_CONF_FN, \
+    BASH_EXEC_PATH, IE_DEBUG
 
 # The %s will be replaced by the port where DM is listening
 DM_URL_TEMPLATE = "http://127.0.0.1:%s/download-manager/"
-DM_DOWNDLOAD_COMMAND = "download"
+DM_DOWNDLOAD_COMMAND  = "download"
+DM_DAR_STATUS_COMMAND = "dataAccessRequests"
 IE_DAR_RESP_URL_TEMPLATE = "http://127.0.0.1:%s/ingest/darResponse"
 
 MAX_PORT_WAIT_SECS     = 40
@@ -104,8 +108,11 @@ class DownloadManagerController:
                            "("+DM_CONF_FN +"), ")
         else:
             try:
-                self._dm_port = setup_dm_paths(
-                    DM_CONF_FN, IE_DOWNLOAD_DIR, self._logger)
+                self._dm_port = setup_dm_config(
+                    DM_CONF_FN,
+                    IE_DOWNLOAD_DIR,
+                    DOWNLOAD_MANAGER_PORT,
+                    self._logger)
             except Exception as e:
                 logger.error(
                     "Error setting/checking DM configuration: " + `e`)
@@ -125,7 +132,7 @@ class DownloadManagerController:
                 "download-manager-webapp-jetty-console.war")
                 )
             if len(dm_pids) > 0:
-                dm_pid = dm_pids[0]
+                dm_pid = int(dm_pids[0])
                 self._logger.info(
                     "Found %d running process(es)." % len(dm_pids))
                 if len(dm_pids) > 1:
@@ -151,7 +158,7 @@ class DownloadManagerController:
                     )
             except Exception as e:
                 self._logger.error(
-                    "Failed to start the  Download Manager:\n" + `e`)
+                    "Failed to start the Download Manager:\n" + `e`)
                 return False
 
             dm_pid = dm_process.pid
@@ -167,7 +174,7 @@ class DownloadManagerController:
         # TODO
         print "TBD / not implemented: stop DM here"
 
-    def submit_dar(self,dar):
+    def submit_dar(self, dar):
         if None == self._dm_port:
             raise DMError("No port for DM")
         if None == self._ie_port:
@@ -176,30 +183,46 @@ class DownloadManagerController:
             self._dar_resp_url = IE_DAR_RESP_URL_TEMPLATE % self._ie_port
 
         self._dar_queue.append(dar)
-        dm_dl_url = self._dm_url + DM_DOWNDLOAD_COMMAND
-        post_data = "darUrl: "+self._dar_resp_url
-TODO = """
-  Put this into a utils function:
-        resp = urllib2.urlopen(dm_dl_url, post_data )
-        resp_str = 
-            while True:
-                buffer = r.read(blk_sz)
-                if not buffer:
-                    break
-        if None != resp: resp.close()
-"""
-TODO = """
-Assuming that this DAR has not been previously added, the following response will be returned:
-{
-   "success":true,
-   "errorMessage":""
-}
+        dm_dl_url = os.path.join(self._dm_url, DM_DOWNDLOAD_COMMAND)
+        post_data = "darUrl="+self._dar_resp_url
+        self._logger.info("Submitting request to DM to retieve DAR:\n" \
+                           + post_data)
+        dm_resp = json.loads(read_from_url(dm_dl_url, post_data))
+        self._logger.debug("dm_response: " + `dm_resp`)
+        dar_id = None
+        if "success" in dm_resp:
+            print "success in dm_resp +++++++++"
+            zz = dm_resp["success"]
+            print "zz:"+`zz`
+        else:
+            print " NOOO success in dm_resp --------"
+        if "success" in dm_resp and dm_resp["success"]:
+            self._logger.info("DM accepted DAR. TODO: set DAR id.")
+            dar_id = "TODO"  #TODO: set dar_id if/when the DM supplies one.
+            if IE_DEBUG > 0:
+                print "dm_resp:\n" + `dm_resp`
+        elif "errorType" in dm_resp and \
+                dm_resp["errorType"] == "DataAccessRequestAlreadyExistsException":
+            return ("DAR_EXISTS", None)
+        else:
+            msg = None
+            if not "errorMessage" in dm_resp:
+                msg = "Unknown error, no 'errorMessage' found in response"
+            else:
+                msg = "DM reports error:\n" + dm_resp["errorMessage"]
+            raise DMError(msg)
+        return ("OK", dar_id)
 
-If the DAR has been previously added, a response similar to the following will be returned:
+    def get_next_dar(self):
+        if len(self._dar_queue) == 0:
+            return None
+        else:
+            return self._dar_queue.popleft()
 
-{
-   "success":false,
-   "errorMessage":"Error whilst adding DAR: DAR with url http://localhost:8080/download-manager-mock-web-server/static/manualDAR already exists",
-   "errorType":"DataAccessRequestAlreadyExistsException"
-}
-"""
+    def set_ie_port(self, port):
+        self._ie_port = port
+
+    def set_condIEport(self,newport):
+        if None == self._ie_port:
+            self._ie_port = newport
+

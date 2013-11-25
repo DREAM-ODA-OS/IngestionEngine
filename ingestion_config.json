@@ -1,0 +1,5 @@
+{
+    "DownloadManagerPort": 8082,
+    "DownloadManagerDir" : "ngEO-download-manager",
+    "DownloadDirectory"  : "products"
+}

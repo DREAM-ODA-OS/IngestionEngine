@@ -49,6 +49,9 @@ urlpatterns = patterns('',
     # getScenario
     url(r'^ingest/ManageScenario/getScenario/id=(?P<ncn_id>.*)$',views.getScenario),
 
+    # DM DAR status list, used mostly for development/debugging
+    url(r'^ingest/dmDARStatus',views.dmDARStatus),
+
     # logout.html
     url(r'^account/logout/',views.logout_page),
      
