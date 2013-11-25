@@ -30,12 +30,13 @@ unpack to a directory next to `iedir`, eg. `oda/ngEO-download-manager`
 (`iedir` in our example) contains the config file `ingestion_config.json`.
 Three of the most fundamental settings are there; for more fine-tuning 
 edit the variables in `settings.py` or in `dm_control.py`. 
-In `ingestion_config.json` if the path for `DownloadManagerDir` 
+Notes about the paths configured In `ingestion_config.json`: if
+the path for `DownloadManagerDir` 
 is not absolute, then it is taken relative 
 to the containing direcotory ('oda' in our example). Similarly, 
 if `DownloadDirectory` is not absolute, then it is taken relative 
 to the media directory, as defined in `setttings.py`.  In our example
-it would be 'oda/iedir/ingestion/media/<DownloadDirectory>/`  The
+it would be 'oda/iedir/ingestion/media/_DownloadDirectory_/`  The
 DownloadDirectory is created if it does not exist.
 0. Start the Ingestion Engine via django's development server. The IE
  will start the Download Manager automatically:
@@ -44,7 +45,7 @@ DownloadDirectory is created if it does not exist.
     cd oda/iedir
     ./manage.py runserver <port>
     ```
-<port> is optional and specifies where the ingestion engine is listening.
+_port_ is optional and specifies where the ingestion engine is listening.
 As a django application the default is 8000.
 A successfuly completed start-up is indicated by the following lines
 being logged to the logfile and to stdout:
