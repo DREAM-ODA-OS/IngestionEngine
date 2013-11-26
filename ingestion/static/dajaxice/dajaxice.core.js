@@ -16,6 +16,15 @@ var Dajaxice = {
     
     ingestion: {
     
+    test1: function(callback_function, argv, custom_settings){
+        Dajaxice.call(
+		      'ingestion.test1',
+		      'GET',
+		      callback_function,
+		      argv,
+		      custom_settings);
+    },
+
     delete_scenario_wfm: function(callback_function, argv, custom_settings){
         Dajaxice.call(
 		      'ingestion.delete_scenario_wfm',
