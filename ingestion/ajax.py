@@ -63,23 +63,38 @@ def delete_scenario_wfm(request,scenario_id):
 
 
 @dajaxice_register(method='GET')
+def test1(request):
+    user = request.user
+    scenarios = user.scenario_set.all()
+    results = []
+    for scenario in scenarios:
+        ss = scenario.scenariostatus
+        result = [scenario.id,
+                  scenario.ncn_id,
+                  scenario.repeat_interval,
+                  ss.id,
+                  0,
+                  ss.status,
+                  ss.done]
+        results.append(result)
+    return simplejson.dumps({'jscenario_status':results})
+    
+@dajaxice_register(method='GET')
 def synchronize_scenarios(request):
-    print "Synchronize scenario"
     logger = logging.getLogger('dream.file_logger')
     user = request.user
     scenarios = user.scenario_set.all()
     results = []
-    i = 0
     for scenario in scenarios:
         ss = scenario.scenariostatus
         result = [scenario.id,
+                  scenario.ncn_id,
                   scenario.repeat_interval,
                   ss.id,
                   ss.is_available,
                   ss.status,
                   ss.done]
         results.append(result)
-        i = i + 1
     return simplejson.dumps({'jscenario_status':results})
 
 

@@ -51,9 +51,6 @@ except Exception as e:
     print "         using defaults"
     config = {}
 
-if IE_DEBUG > 0:
-    print "config: \n" + `config`
-
 # located in IE_SCRIPTS_DIR, defined further on down
 IE_DEFAULT_ADD_SCRIPT = 'default_add.sh'
 

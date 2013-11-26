@@ -115,8 +115,7 @@ class Worker(threading.Thread):
             sc_id = parameters["scenario_id"]
             self._wfm.set_scenario_status(
                 self._id, sc_id, 0, "GENERATING URLS", percent)
-            #try:
-            if True:
+            try:
                 scenario_data = models.Scenario.objects.get(id=sc_id)
                 dl_dir, dar_id = ingestion_logic(scenario_dict(scenario_data))
                 if None == dar_id:
@@ -135,8 +134,7 @@ class Worker(threading.Thread):
                 #shutil.rmtree(dl_dir)
                 self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
                 self._logger.info("Ingestion completed.")
-            else:
-            #except Exception as e:
+            except Exception as e:
                 self._logger.error("Error while ingesting: " + `e`)
                 self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
 
