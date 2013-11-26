@@ -33,10 +33,10 @@ edit the variables in `settings.py` or in `dm_control.py`.
 Notes about the paths configured In `ingestion_config.json`: if
 the path for `DownloadManagerDir` 
 is not absolute, then it is taken relative 
-to the containing direcotory ('oda' in our example). Similarly, 
+to the containing direcotory (`oda` in our example). Similarly, 
 if `DownloadDirectory` is not absolute, then it is taken relative 
 to the media directory, as defined in `setttings.py`.  In our example
-it would be 'oda/iedir/ingestion/media/_DownloadDirectory_/`  The
+it would be `oda/iedir/ingestion/media/_DownloadDirectory_/`  The
 DownloadDirectory is created if it does not exist.
 0. Start the Ingestion Engine via django's development server. The IE
  will start the Download Manager automatically:
@@ -66,4 +66,5 @@ process separately.
 
 ## License
 
-See the LICENSE for licensing conditions.  Basically, the development version is restricted to the DREAM consortium and ESA.
+See the LICENSE for licensing conditions, it is a MIT-style open
+source license.
