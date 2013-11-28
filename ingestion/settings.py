@@ -30,16 +30,16 @@ NCN_ID_LEN         = 96
 SC_NAME_LEN        = 64
 SC_DESCRIPTION_LEN = 1024
 
-# ../ingestion_config.json optionally contain:
-# DownloadManagerPort, DownloadDirectory, DownloadManagerDir
-# If DownloadDirectory is not absolute, then it is taken relative to
-# the media directory, as defined further on in this file (setttings.py)
+PROJECT_DIR = os.path.dirname(__file__)
+
+# ../ingestion_config.json contains:
+# DownloadManagerDir and DM_MaxPortWaitSecs
 #
 # Example:
 #
 # {
-#     "DownloadManagerPort": 8082,
-#     "DownloadDirectory"  : "products"
+#    "DownloadManagerDir" : "../ngEO-download-manager",
+#    "DM_MaxPortWaitSecs": 44
 # }
 
 try:
@@ -60,33 +60,15 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-PROJECT_DIR = os.path.dirname(__file__)
-
 
 # ------------------- Download Manager -----------------------------
-# The download manager is assumed to be installed in
-#  ../../ngEO-download-manager
-# If this is not the case, then DOWNLOAD_MANAGER_DIR must be set manually.
-DOWNLOAD_MANAGER_PORT = None
-if "DownloadManagerPort" in config:
-    DOWNLOAD_MANAGER_PORT = config["DownloadManagerPort"]
-else:
-    DOWNLOAD_MANAGER_PORT = 8082
-app_root = os.path.dirname(os.path.dirname(PROJECT_DIR))
+# The download manager dir must be set in ingestion_config.json,
+# or as DOWNLOAD_MANAGER_DIR  here.
 
-DOWNLOAD_MANAGER_DIR = \
-    os.path.join(app_root, "ngEO-download-manager")
-
-DOWNLOAD_MANAGER_DIR = None
-dmd = None
 if "DownloadManagerDir" in config:
-    dmd = config["DownloadManagerDir"]
+    DOWNLOAD_MANAGER_DIR = config["DownloadManagerDir"]
 else:
-    dmd = "ngEO-download-manager"
-if dmd.startswith('/'):
-    DOWNLOAD_MANAGER_DIR = dmd
-else:
-    DOWNLOAD_MANAGER_DIR = os.path.join(app_root, dmd)
+    DOWNLOAD_MANAGER_DIR = "../ngEO-download-manager"
 
 if DOWNLOAD_MANAGER_DIR == '':
     raise Exception ("Undefined DOWNLOAD_MANGER_DIR")
@@ -98,7 +80,10 @@ DM_CONF_FN = os.path.join(
     DOWNLOAD_MANAGER_CONFIG_DIR,
     "userModifiableSettingsPersistentStore.properties")
 
-DM_START_COMMAND = "start-dm.sh"
+if "DM_MaxPortWaitSecs" in config:
+    MAX_PORT_WAIT_SECS = config["DM_MaxPortWaitSecs"]
+else:
+    MAX_PORT_WAIT_SECS = 40
 
 BASH_EXEC_PATH = "/bin/bash"
 
@@ -158,18 +143,6 @@ MEDIA_ROOT = os.path.join(PROJECT_DIR, 'media')
 MEDIA_URL = '/media/'
 
 IE_SCRIPTS_DIR = os.path.join(MEDIA_ROOT, 'scripts')
-
-# Where product files are downloaded to, or subdirs for product download
-#  are placed.
-IE_DOWNLOAD_DIR = None
-if "DownloadDirectory" in config:
-    dld = config["DownloadDirectory"]
-    if dld.startswith('/'):
-        IE_DOWNLOAD_DIR = dld
-    else:
-        IE_DOWNLOAD_DIR = os.path.join(MEDIA_ROOT, dld)
-else:
-    IE_DOWNLOAD_DIR = os.path.join(MEDIA_ROOT, 'products')
 
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
@@ -240,7 +213,7 @@ TEMPLATE_DIRS = (
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
     #os.path.join(PROJECT_DIR, 'templates'),
-    os.path.join(STATIC_ROOT,'templates'),
+    os.path.join(PROJECT_DIR, "static",'templates'),
 )
 
 INSTALLED_APPS = (
@@ -256,13 +229,15 @@ INSTALLED_APPS = (
     #'django.contrib.admindocs',
     'dajaxice',
     'dajax',
+    'jquery',
     IE_PROJECT
 )
 
 # The logging configuration. 
 # See http://docs.djangoproject.com/en/dev/topics/logging for
 # more details on how to customize the configuration.
-LOGGING_DIR = os.path.join(STATIC_ROOT,"logs")
+
+LOGGING_DIR = os.path.join(os.getcwd(), "logs")
 LOGGING_FILE = os.path.join(LOGGING_DIR,"log")
 LOGGING = {
     'version': 1,

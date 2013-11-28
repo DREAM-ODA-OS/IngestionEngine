@@ -4,10 +4,8 @@
 <html>
 <head>
     <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js">
+    <script src = "{% static 'js/jquery.js' %}">
       </script>
-    <script src="{% static 'js/functions.js' %}"></script>
-    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
     {% block head %}{% endblock %}
 </head>
 
@@ -24,7 +22,7 @@
   </TR>
   <TR BGCOLOR="#90a0ff">
     {% if user.is_authenticated %}
-    <td class="ieBareTblCell"> <p><I>Logged in as: </I> {{user.username}} </p> </td>
+    <!--td class="ieBareTblCell"> <p><I>Logged in as: </I> {{user.username}} </p> </td -->
     <td class="ieBareTblCell" COLSPAN=2> </td>
     <!-- td class="ieBareTblCell" ALIGN=RIGHT ><a href="account/logout/"> LOGOUT </a></td -->
     {% else %}

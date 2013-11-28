@@ -66,7 +66,6 @@ input.StopButton {
     width:32px;             /* make this the size of your image */
     padding-left: 0px;      /* make text start to the right of the image */
     vertical-align: middle; /* align the text vertically centered */
-    align:left;
 }
 
 input.IngestButton {
@@ -80,7 +79,6 @@ input.IngestButton {
     width:32px;             /* make this the size of your image */
     padding-left: 0px;      /* make text start to the right of the image */
     vertical-align: middle; /* align the text vertically centered */
-    align:left;
 }
 
 input.EditButton {
@@ -94,7 +92,6 @@ input.EditButton {
     width:32px;             /* make this the size of your image */
     padding-left: 0px;      /* make text start to the right of the image */
     vertical-align: middle; /* align the text vertically centered */
-    align:left;
 }
 
 input.DeleteButton {
@@ -108,5 +105,4 @@ input.DeleteButton {
     width:32px;             /* make this the size of your image */
     padding-left: 0px;      /* make text start to the right of the image */
     vertical-align: middle; /* align the text vertically centered */
-    align:left;
 }

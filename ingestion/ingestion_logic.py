@@ -22,7 +22,7 @@ import dar_builder
 from osgeo import osr
 from utils import Bbox, bbox_from_strings, TimePeriod, mkFname, \
     NoEPSGCodeError, IngestionError, DMError
-from settings import IE_DEBUG, IE_DOWNLOAD_DIR
+from settings import IE_DEBUG
 from dm_control import DownloadManagerController
 
 # For debugging:
@@ -474,8 +474,10 @@ def getGetCoverageURLs(params):
     
 def request_download(sc_id, urls):
     #create tmp dir for downloads
-    tmp_subdir = mkFname(sc_id+"_")
-    dl_dir = os.path.join(IE_DOWNLOAD_DIR,tmp_subdir)
+    dmcontroller = DownloadManagerController.Instance()
+    root_dl_dir = dmcontroller._download_dir
+    tmp_subdir_name = mkFname(sc_id+"_")
+    dl_dir = os.path.join(root_dl_dir, tmp_subdir_name)
     try:
         os.mkdir(dl_dir,0740)
         logger.info("Created "+dl_dir)
@@ -493,13 +495,12 @@ def request_download(sc_id, urls):
     urls_with_dirs = []
     i = 1
     for url in urls:
-        urls_with_dirs.append( (os.path.join(tmp_subdir, fmt % i), url) )
+        urls_with_dirs.append( (os.path.join(tmp_subdir_name, fmt % i), url) )
         i += 1
     urls = None
     dar = dar_builder.build_DAR(urls_with_dirs)
     urls_with_dirs = None
 
-    dmcontroller = DownloadManagerController.Instance()
     status, dar_id = dmcontroller.submit_dar(dar)
     if status != "OK":
         raise DMError("DAR submit problem, status:" + status)
@@ -540,8 +541,11 @@ def direct_download(sc_id, dl_dir, urls, id_digits):
 
 # ----- the main entrypoint  --------------------------
 def ingestion_logic(scenario_data):
-    if not os.access(IE_DOWNLOAD_DIR, os.R_OK|os.W_OK):
-        raise IngestionError("Cannot write/read "+IE_DOWNLOAD_DIR)
+
+    root_dl_dir = DownloadManagerController.Instance()._download_dir
+
+    if not os.access(root_dl_dir, os.R_OK|os.W_OK):
+        raise IngestionError("Cannot write/read "+root_dl_dir)
 
     if 0 != DEBUG_MAX_DEOCS_URLS:
         logger.info(" DEBUG_MAX_DEOCS_URLS  = "+`DEBUG_MAX_DEOCS_URLS`)

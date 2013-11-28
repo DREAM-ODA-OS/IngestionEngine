@@ -1,5 +1,4 @@
 {
-    "DownloadManagerPort": 8082,
-    "DownloadManagerDir" : "ngEO-download-manager",
-    "DownloadDirectory"  : "products"
+    "DownloadManagerDir" : "../ngEO-download-manager",
+    "DM_MaxPortWaitSecs": 2
 }

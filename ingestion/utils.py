@@ -60,8 +60,8 @@ def find_process_ids(match_strings):
 # ------------ Download Manager Properties Handling  ------------------
 def read_props(fn):
     """ returns the lines in the file as list, and the
-    value of the BASE_DOWNLOAD_FOLDER_ABSOLUTE property,
-    including its index in the lines list """
+    values of BASE_DOWNLOAD_FOLDER_ABSOLUTE and WEB_INTERFACE_PORT_NO.
+    including their idices in the lines list """
     f = open(fn, "r")
     lines = []
     download_folder_prop = None
@@ -84,60 +84,19 @@ def read_props(fn):
     return (lines, download_folder_prop, download_folder_line, 
             dm_listen_port_prop, dm_listen_port_line)
 
-def backup_props(dm_config_file, logger):
-    """ if the .BAK file already exists then don't back up again """
-    backup_fn = dm_config_file + ".BAK"
-    if not os.access(backup_fn, os.F_OK):
-        shutil.move(dm_config_file, backup_fn)
-        logger.info("Backed up DM's config file to "+backup_fn)
-    else:
-        logger.warning(
-            "Not backing up DM's config, a backup file already exists (" +
-            backup_fn+")")
-
-def write_props(dm_config_file, lines, logger):
-    f = open(dm_config_file, "w")
-    for l in lines:
-        f.write(l)
-    f.close()
-    logger.info("Wrote a new DM config file to "+dm_config_file)
-    
-def setup_dm_config(
+def get_dm_config(
     dm_config_file,
-    download_dir,
-    dm_port,
     logger):
-    """ checks and possilby sets the download manager's idea
-        of where to dowload products to.
-        Returns the DM's listening port """
-    lines, dm_dir, dmd_line, old_dm_port, dm_port_line = read_props(dm_config_file)
+    """ get the download manager's listening port and download dir.
+    """
+    lines, dm_dir, dmd_line, dm_port, dm_port_line = read_props(dm_config_file)
     if len(lines) < 1:
         raise Exception("Zero length dm properties, fn="+dm_config_file)
     if dm_dir == None or dmd_line < 0:
         raise Exception(
             "BASE_DOWNLOAD_FOLDER_ABSOLUTE not found in properties, fn="+dm_config_file)
 
-    props_changed = False
-
-    if dm_dir != download_dir:
-        logger.info("Setting Download Manager's " +
-                    "BASE_DOWNLOAD_FOLDER_ABSOLUTE" +
-                    " to "+download_dir + "\n" +
-                    "    Old setting was:\n" + lines[dmd_line]
-                    )
-        lines[dmd_line] = "BASE_DOWNLOAD_FOLDER_ABSOLUTE="+download_dir+"\n"
-        props_changed = True
-    
-    if int(old_dm_port) != dm_port:
-        logger.info("Setting Download Manager's Port to " + `dm_port`)
-        lines[dm_port_line] = "WEB_INTERFACE_PORT_NO="+`dm_port`
-        props_changed = True
-
-    if props_changed:
-        backup_props(dm_config_file, logger)
-        write_props(dm_config_file, lines, logger)
-
-    return `dm_port`
+    return (dm_port, dm_dir)
 
 # ------------ Bbox --------------------------
 class Bbox:

@@ -14,18 +14,14 @@
 
 from singleton_pattern import Singleton
 import logging
-import subprocess
 import urllib2
 import json
 import os, os.path, time
 from collections import deque
 
-import models
-from utils import find_process_ids, pid_is_valid, setup_dm_config, \
+from utils import find_process_ids, pid_is_valid, get_dm_config, \
     read_from_url, DMError
-from settings import DOWNLOAD_MANAGER_DIR, DM_START_COMMAND, \
-    IE_DOWNLOAD_DIR, DOWNLOAD_MANAGER_PORT, DM_CONF_FN, \
-    BASH_EXEC_PATH, IE_DEBUG
+from settings import DM_CONF_FN, MAX_PORT_WAIT_SECS, IE_DEBUG
 
 # The %s will be replaced by the port where DM is listening
 DM_URL_TEMPLATE = "http://127.0.0.1:%s/download-manager/"
@@ -33,7 +29,6 @@ DM_DOWNDLOAD_COMMAND  = "download"
 DM_DAR_STATUS_COMMAND = "dataAccessRequests"
 IE_DAR_RESP_URL_TEMPLATE = "http://127.0.0.1:%s/ingest/darResponse"
 
-MAX_PORT_WAIT_SECS     = 40
 DEFAULT_PORT_WAIT_SECS = 20
 SYSTEM_PROC_NET_PATH   = "/proc/net/tcp"
 PROC_UID_INDEX         = 7
@@ -48,13 +43,15 @@ class DownloadManagerController:
         self._dm_port = None   # string
         self._dm_url  = None
         self._ie_port = None   # string, ingestion engine port
+        self._download_dir = None
         self._dar_resp_url = None
         self._dar_queue = deque()
 
     def wait_for_port(self):
+        port_found = False
         if None == self._dm_port:
             self._logger.warning("No port to wait on!")
-            return
+            return port_found
         self._logger.info("Waiting for DM port "+self._dm_port)
         uid = "%d" % os.getuid()
         start_time = time.time()
@@ -72,9 +69,10 @@ class DownloadManagerController:
                         p = int(fields[PROC_ADDRESS_INDEX].split(":")[1],16)
                         if p == dm_port:
                             waited = time.time() - start_time
-                            msg = "Port OK, waited %2.1f secs." % waited
+                            msg = "DM Port OK, waited %2.1f secs." % waited
                             self._logger.info(msg)
                             found = True
+                            port_found = True
                             break
                 proc.close()
                 proc = None
@@ -92,87 +90,42 @@ class DownloadManagerController:
             self._logger.info("Finished default wait.")
         finally:
             if None != proc: proc.close()
+        return port_found
 
-    def start_dm(self):
-        if not os.access(IE_DOWNLOAD_DIR, os.R_OK|os.W_OK):
-            self._logger.info("Cannot write/read "+IE_DOWNLOAD_DIR+
-                        ", attempting to create.")
-            try:
-                os.mkdir(IE_DOWNLOAD_DIR,0740)
-                self._logger.info("Created "+IE_DOWNLOAD_DIR)
-            except OSError as e:
-                self._logger.error("Failed to create "+IE_DOWNLOAD_DIR+": "+`e`)
-
-        if not os.access(DM_CONF_FN, os.R_OK|os.W_OK):
+    def configure(self):
+        if not os.access(DM_CONF_FN, os.R_OK):
             self._logger.warning("Cannot access download mgr configuration "+
                            "("+DM_CONF_FN +"), ")
         else:
             try:
-                self._dm_port = setup_dm_config(
+                self._dm_port, self._download_dir = get_dm_config(
                     DM_CONF_FN,
-                    IE_DOWNLOAD_DIR,
-                    DOWNLOAD_MANAGER_PORT,
                     self._logger)
             except Exception as e:
                 logger.error(
-                    "Error setting/checking DM configuration: " + `e`)
+                    "Error checking DM configuration: " + `e`)
+                raise
 
-        dm_config = models.Dm_config.objects.get(row_id=1)
-        dm_pid = dm_config.dm_pid
-        if not pid_is_valid(dm_pid):
-            self._logger.warning(
-                "Pid %s is not valid, searching.." % dm_pid)
-            dm_pid = 0
-        if dm_pid == 0:
-            # check to see if it's not running anyway
-            dm_pids = find_process_ids(
-                ("java",
-                "-DDM_HOME="+DOWNLOAD_MANAGER_DIR,
-                "ngEO-download-manager",
-                "download-manager-webapp-jetty-console.war")
-                )
-            if len(dm_pids) > 0:
-                dm_pid = int(dm_pids[0])
-                self._logger.info(
-                    "Found %d running process(es)." % len(dm_pids))
-                if len(dm_pids) > 1:
-                    self._logger.warning(
-                        "Too many running DMs?: " + `dm_pids`)
-            else:
-                self._logger.info("No running DM process found.")
-        if dm_pid != 0:
-            self._logger.info("DM is already running as pid "+`dm_pid`)
-            dm_config.dm_pid = dm_pid
-            dm_config.save()
-        else:
-            start_cmd = os.path.join(DOWNLOAD_MANAGER_DIR, DM_START_COMMAND)
-            self._logger.info("Starting Download Manager:\n" + start_cmd)
+        if None == self._download_dir or '' == self._download_dir:
+            raise  DMError("No download directory")
+
+        if None == self._dm_port or '' == self._dm_port:
+            raise  DMError("No DM port")
+
+        if not os.access(self._download_dir, os.R_OK|os.W_OK):
+            self._logger.info("Cannot write/read "+self._download_dir+
+                        ", attempting to create.")
             try:
-                dm_process = subprocess.Popen(
-                    (start_cmd,),
-                    bufsize=-1,
-                    executable=BASH_EXEC_PATH,
-                    close_fds=True,
-                    shell=True,
-                    cwd=DOWNLOAD_MANAGER_DIR
-                    )
-            except Exception as e:
-                self._logger.error(
-                    "Failed to start the Download Manager:\n" + `e`)
-                return False
+                os.mkdir(self._download_dir,0740)
+                self._logger.info("Created "+self._download_dir)
+            except OSError as e:
+                msg = "Failed to create "+self._download_dir+": "+`e`
+                self._logger.error(msg)
+                raise  DMError(msg)
 
-            dm_pid = dm_process.pid
-            dm_config.dm_pid = dm_pid
-            dm_config.save()
-            self._logger.info("Download Manager started, pid="+`dm_pid`)
-            # wait for DM to start listening on its port.
-            self.wait_for_port()
+        port_ok = self.wait_for_port()
         self._dm_url = DM_URL_TEMPLATE % self._dm_port
-        return dm_pid != 0
-
-    def stop_dm(self):
-        # TODO
-        print "TBD / not implemented: stop DM here"
+        return port_ok
 
     def submit_dar(self, dar):
         if None == self._dm_port:

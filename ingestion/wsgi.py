@@ -54,10 +54,10 @@ logger = logging.getLogger('dream.file_logger')
 
 # start the ngEO download manager (external process)
 dmcontroller = dm_control.DownloadManagerController.Instance()
-dm_is_running = dmcontroller.start_dm()
+dm_is_running = dmcontroller.configure()
 if not dm_is_running:
-    logger.warning("Failed to start Download Manager, "+
-                   "proceeding with Ingestion Engine start-up regardless.")
+    logger.warning("Could not reliably verify a listening Download Manager port, "+
+                   "Ingestion Engine started-up regardless.")
 
 # start work-flow manager
 wfmanager = work_flow_manager.WorkFlowManager.Instance()
