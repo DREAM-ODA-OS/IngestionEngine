@@ -1,4 +1,4 @@
 {
     "DownloadManagerDir" : "../ngEO-download-manager",
-    "DM_MaxPortWaitSecs": 2
+    "DM_MaxPortWaitSecs": 40
 }

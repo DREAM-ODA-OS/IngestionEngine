@@ -16,7 +16,9 @@ from singleton_pattern import Singleton
 import logging
 import urllib2
 import json
-import os, os.path, time
+import os, os.path
+import time
+import sys
 from collections import deque
 
 from utils import find_process_ids, pid_is_valid, get_dm_config, \
@@ -80,8 +82,10 @@ class DownloadManagerController:
                 time.sleep(1)
                 if time.time() > end_time:
                     self._logger.warning(
-                        "Wait time elapsed without finding open port.")
+                        "Wait time elapsed without finding the listening port.")
                     break
+                sys.stdout.write(".")
+                sys.stdout.flush()
         except Exception as e:
             self._logger.warning(
                 "Internal Error in wait_for_port() %s\n" % `e` +
