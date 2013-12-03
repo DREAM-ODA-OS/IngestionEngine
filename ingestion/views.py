@@ -31,9 +31,10 @@ import datetime
 from django.utils.timezone import utc
 from django.contrib.auth import authenticate, login
 from django.http import Http404
+from urllib2 import URLError
 
-from settings import IE_DEBUG, IE_HOME_PAGE
-from utils import scenario_dict, read_from_url
+from settings import IE_DEBUG, IE_HOME_PAGE, JQUERYUI_OFFLINEURL
+from utils import read_from_url
 from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
 
 import work_flow_manager
@@ -61,7 +62,9 @@ def main_page(request):
     return render_to_response(
         'base.html',
         {'user':request.user,
-         'home_page':IE_HOME_PAGE})
+         'home_page':IE_HOME_PAGE,
+         'jqueryui_offlineurl': JQUERYUI_OFFLINEURL
+         })
 
 def logout_page(request):
     settings.IE_AUTO_LOGIN = False
@@ -80,7 +83,9 @@ def overviewScenario(request):
         request,
         {'scenarios':scenarios,
          'scenario_status':scenario_status,
-         'home_page':IE_HOME_PAGE})
+         'home_page':IE_HOME_PAGE,
+         'jqueryui_offlineurl': JQUERYUI_OFFLINEURL
+         })
 
     return render_to_response('overviewScenario.html',variables)
 
@@ -333,7 +338,7 @@ def getScenario(request,ncn_id):
     if request.method == 'GET':
         try:
             scenario = models.Scenario.objects.get(ncn_id=ncn_id)
-            response_data = scenario_dict(scenario)
+            response_data = models.scenario_dict(scenario)
         except Exception as e:
             response_data['status'] = 1
             response_data['errorString'] = "%s" % e
@@ -408,12 +413,13 @@ def getStatus(request):
         content_type="application/json")
 
 @csrf_exempt
-def darResponse(request):
+def darResponse(request,seq_id):
     logger = logging.getLogger('dream.file_logger')
     if request.method == 'GET':
         logger.info("Request to retrieve DAR from" + \
-                        `request.META['REMOTE_ADDR']`)
-        dar = dmcontroller.get_next_dar()
+                        `request.META['REMOTE_ADDR']` +\
+                        ", id="+`seq_id`)
+        dar = dmcontroller.get_next_dar(seq_id)
         if None == dar:
             logger.error("No dar!")
             server_error(request)
@@ -433,7 +439,13 @@ def dmDARStatus(request):
     if request.method == 'GET':
         dm_url = dmcontroller._dm_url
         url = dm_url+DM_DAR_STATUS_COMMAND
-        response_data = json.loads(read_from_url(url))
+        try:
+            response_data = json.loads(read_from_url(url))
+        except URLError as e:
+            return HttpResponse(
+                "Cannot connect to Download Manager: " + `e`,
+                content_type="text/plain")
+            
         response_str = json.dumps(response_data,indent=4)
         return HttpResponse(response_str,content_type="text/plain")
     else:

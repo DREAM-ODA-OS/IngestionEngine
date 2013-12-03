@@ -6,13 +6,14 @@ DREAM Ingestion Engine
 This is a development version, not released.
 Most features are expected not to be functional yet.
 
-## Update 25.11.2013:
+### Update 03.12.2013:
 
-*  The interface to the ngEO Download Manager (v 0.5.4) is now partially
-operational. Feedback to the user is still lagging. The IE+DM can now
-actually download something, although the downloaded products are not
+*  The interface to the ngEO Download Manager (v 0.5.4) is now operational.
+The IE+DM can now download products, up to executing the add-product script(s)
+for registering products in the ODA server; the actual registration remains
+to be tested.
 registered in the ODA server yet. For development and debugging only
-the first 3 donwload URLs generated for a given scenario are downloaded.
+the first 4 download URLs generated for a given scenario are downloaded.
 A test-scnenario is pre-loaded in the db.
 
 ## Installation and Configuration
@@ -35,7 +36,7 @@ install these if you don't have them.
 0. possibly run `./manage.py syncdb` and `./manage.py collectstatic`
 0.  The top-level Ingestion Engine directory (`ing` in our example) 
 contains the main config file `ingestion_config.json`.
-The single configuration required here is to set the path
+It is mandatory to set the path
 for `DownloadManagerDir`; this is the location of the DM's home dir
 (from there the Ingestion Engine finds the Download Managers `config`
 directory).  A relative path given here is taken relative to the
@@ -46,7 +47,7 @@ The DownloadDirectory is created if it does not exist as long as its
 parent directory exists (i.e. a full recursive path is not created).
 If you should require more fine-tuning then
 edit the variables in `settings.py` or in `dm_control.py`. 
-0. Make sure the Donwload Manger(DM) is configured correctly: 
+0. Make sure the Download Manger(DM) is configured correctly: 
 The config is in
 `ngEO-download-manager/conf/userModifiableSettingsPersistentStore.properties`.
 Ensure that `WEB_INTERFACE_PORT_NO` and
@@ -58,7 +59,7 @@ values as the _running_ DM.
 ### Launching
 0. It is assumed the DM is either already running or will be started
 more or less concurrently with the IE; the IE will wait some time
-for the DM to be available.
+(configurable) for the DM to be available.
 0. For testing, start the Ingestion Engine via django's development server.
 Note the dev server should not be used for production or for pages publicly accessible
 from the Internet.
@@ -80,7 +81,7 @@ being logged to the logfile and to stdout:
 0. View the Ingestion Admin Client page in a browser:
     `http://127.0.0.1:8000/ingestion`
 
-0. To shut down the dev server, use '^C'.
+0. To shut down the dev server, use `^C`.
 
 ## License
 

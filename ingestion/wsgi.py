@@ -56,7 +56,7 @@ logger = logging.getLogger('dream.file_logger')
 dmcontroller = dm_control.DownloadManagerController.Instance()
 dm_is_running = dmcontroller.configure()
 if not dm_is_running:
-    logger.warning("Could not reliably verify a listening Download Manager port, "+
+    logger.warning("Could not verify a listening Download Manager port, "+
                    "Ingestion Engine started-up regardless.")
 
 # start work-flow manager

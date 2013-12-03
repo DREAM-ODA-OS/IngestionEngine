@@ -22,7 +22,7 @@ IE_AUTO_LOGIN  = True
 IE_DEBUG       = 2
 
 #Ingestion Engine Constants
-IE_PROJECT = 'ingestion'
+IE_PROJECT   = 'ingestion'
 IE_HOME_PAGE = 'ingestion'
 
 SC_NCN_ID_BASE     = 'scid'
@@ -65,6 +65,9 @@ MANAGERS = ADMINS
 # The download manager dir must be set in ingestion_config.json,
 # or as DOWNLOAD_MANAGER_DIR  here.
 
+# How often to query the DM for the status of a running DAR, seconds
+DAR_STATUS_INTERVAL = 1.250
+
 if "DownloadManagerDir" in config:
     DOWNLOAD_MANAGER_DIR = config["DownloadManagerDir"]
 else:
@@ -86,6 +89,25 @@ else:
     MAX_PORT_WAIT_SECS = 40
 
 BASH_EXEC_PATH = "/bin/bash"
+
+# ------------------- Otional Off-line setting  -----------------------
+# Can be used to reduce web traffic during rapid development cycles, or
+# to develop / tune offline. Note for production it probably does not
+# make much sense: while in general enabling this should not harm anyhing,
+# the data volumes during ingestion are likely to be orders magnitude 
+# larger and online access to the product facility is likely needed anyway.
+# To enable, in ../ingestion_settings.json set "LocalJQueryUiURL" to
+# a URL that serves js/jquery-ui-1.10.3.custom.min.js and
+# css/smmothness/jquery-ui.css, e.g.:
+#  "LocalJQueryUiURL": "http://127.0.0.1/offline/jquery-ui/"
+# For details of how this is applied see static/templates/base.html.
+#
+if "LocalJQueryUiURL"  in config:
+    JQUERYUI_OFFLINEURL = config["LocalJQueryUiURL"]
+else:
+    JQUERYUI_OFFLINEURL = ""
+
+
 
 # ------------------- Other Django settings  ---------------------------
 AUTHENTICATION_BACKENDS = ('django.contrib.auth.backends.ModelBackend',)
@@ -114,7 +136,7 @@ ALLOWED_HOSTS = []
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
 # In a Windows environment this must be set to your system time zone.
-TIME_ZONE = 'America/Chicago'
+TIME_ZONE = 'Europe/Brussels'
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
@@ -131,7 +153,7 @@ USE_I18N = True
 USE_L10N = True
 
 # If you set this to False, Django will not use timezone-aware datetimes.
-USE_TZ = True
+USE_TZ = False
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/var/www/example.com/media/"

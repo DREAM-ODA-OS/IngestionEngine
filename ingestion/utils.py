@@ -13,10 +13,19 @@
 ###########################################################
 
 import time, calendar, random
-import os, shutil
+import os
+import os.path
+import shutil
+import re
 import urllib2
-from django.utils.dateformat import DateFormat
-import models
+import traceback
+
+BLK_SZ = 8192
+MAX_MANIF_FILES = 750000
+MANIFEST_FN = "MANIFEST"
+META_SUFFIX = ".meta"
+DATA_SUFFIX = ".data"
+
 
 # ------------ Exceptions  --------------------------
 class NoEPSGCodeError(Exception):
@@ -203,69 +212,276 @@ def read_from_url(
     resp = None
     r = urllib2.urlopen(url, post_data)
     end_time = time.time() + read_timeout
-    blk_sz = 8192
     while True:
-        buffer = r.read(blk_sz)
-        if not buffer:
+        buff = r.read(BLK_SZ)
+        if not buff:
             break
         if read_timeout > 0 and time.time() > end_time:
             raise IngestionError("URL read time expired")
-        if None == resp: resp = buffer
-        else:            resp += buffer
+        if None == resp: resp = buff
+        else:            resp += buff
         if max_size > 0 and None != resp and len(resp) > max_size:
             raise IngestionError("Max read size exceeded")
     if None != r: r.close()
     return resp
 
-# ------------ data handling   --------------------------
-def date_to_iso8601(src_date):
-    return DateFormat(src_date).format("c")
+# ------------ file utils: splitting, data handling  -----------------
+def read_headers(fp):
+    headers = {}
+    nl = re.compile('\r?\n')
 
-def scenario_dict(db_model):
-    """ creates a dictionary from a database model record """
-    response_data = {}
-    for s in (
-        "repeat_interval",
-        "cloud_cover",
-        "view_angle",
-        "sensor_type",
-        "dsrc",
-        "dsrc_login",
-        "dsrc_password",
-        "default_priority",
-        "default_script",
-        "preprocessing",
-        "ncn_id"):
-        response_data[s] = str(getattr(db_model,s))
+    l = fp.readline()
+    i = 0
+    while not nl.match(l):
+        i += 1
+        kv = l.split(":", 1)
+        if len(kv) > 1:
+            headers[kv[0]] = kv[1].strip()
+        if i>256:
+            raise IngestionError("More than 256 headers encountered")
+        l = fp.readline()
 
-    # convert dates to ISO-8601
-    response_data["from_date"    ] = date_to_iso8601(db_model.from_date)
-    response_data["to_date"      ] = date_to_iso8601(db_model.to_date)
-    response_data["starting_date"] = date_to_iso8601(db_model.starting_date)
+    return headers
 
-    if db_model.aoi_type == models.AOI_BBOX_CHOICE:
-        response_data['aoi_bbox'] = {
-            'lc' : (db_model.bb_lc_long, db_model.bb_lc_lat),
-            'uc' : (db_model.bb_uc_long, db_model.bb_uc_lat)
-            }
+
+def split_wcs_tmp(path, f, logger):
+    """ TEMPORARY: splits a file into mime/multipart parts,
+        More or less expects the boundary to be '--wcs',
+        but will check and try with whatever it finds in the
+        first line.
+        The file must start with a line that is the boundary,
+        followed by a line starting with "Content-Type:"
+        follwed by a blank line,
+        follwed by a line starting with '<?xml'.
+    """
+    manif_str = None
+    fn = os.path.join(path,f)
+    fp = open(fn, "r")
+    meta_fp = None
+    data_fp = None
+    meta_fname = None
+    data_fname = None
+    delete_orig = True
+
+    # These headers from the data part will be put in the manifest file
+    disclose_headers = [
+        "Content-Type",
+        "Content-Description",
+        "Content-Disposition",
+        "Content-Id",
+        ]
+
+    try:
+        l1 = fp.readline()
+        l2 = fp.readline()
+        l3 = fp.readline()
+        l4 = fp.readline()
+
+        if (not l2.startswith("Content-Type:")) or \
+                None == re.match('\r?\n',l3) or \
+                not l4.startswith('<?xml'):
+            # The file is not what we expect.
+            raise IngestionError("Unexpected file contents in: "+fn)
+
+        boundary = None
+        m = re.match('--wcs\r?\n', l1)
+        if None != m:
+            boundary = m.group()
+        else:
+            m = re.match('\S\r?\n', l1)
+            if None != m: boundary = m.group()
+        if None == boundary:
+            raise IngestionError("Initial boundary not found, f=: "+fn)
+
+        # create meta-data file
+        meta_type = l2.split('Content-Type:')[1].strip()
+        meta_fname = fn + META_SUFFIX
+        if os.path.exists(meta_fname):
+            # something is wrong if this name already exists,
+            # just bail rather than try to create a unique one.
+            raise IngestionError("File exists: "+meta_fname)
+
+        meta_fp = open(meta_fname,"w")
+        meta_fp.write(l4)
+        l = l4
+        while l != boundary:
+            meta_fp.write(l)
+            l = fp.readline()
+        meta_fp.close()
+
+        eol = None
+        if boundary[-2:-1] == '\r': eol = '\r\n'
+        else:                       eol = '\n'
+        raw_bound = eol+boundary.rstrip()
+
+        # create data file
+        hdrs = read_headers(fp)
+        data_fname = None
+        if len(hdrs) < 1:
+            logger.warning("No HTTP/mime headers found after boundary ('"+
+                           boundary.rstrip()+"') in file " + f)
+            delete_orig = False
+        elif "Content-Disposition" in hdrs \
+                and "filename=" in hdrs["Content-Disposition"]:
+            cd = hdrs["Content-Disposition"].split("filename=")
+            if len(cd) == 2:
+                data_fname = os.path.join(path, cd[1])
+
+        if None == data_fname:
+            data_fname = fn+DATA_SUFFIX
+            delete_orig = False
+
+        if os.path.exists(data_fname):
+            # something is wrong if this name already exists,
+            # just bail rather than try to create a unique one.
+            raise IngestionError("File exists: "+data_fname)
+
+        data_fp = open(data_fname, "w")
+        buff = None
+        while True:
+            buff = fp.read(BLK_SZ)
+            if not buff:
+                break
+            if raw_bound in buff:
+                break
+            data_fp.write(buff)
+        if not buff:
+            logger.warning("Unexpected EOF while splitting "+fn)
+            delete_orig = False
+        else:
+            rests = buff.split(raw_bound)
+            if len(rests) < 2:
+                logger.warning("Failed to separate colosing boundary, f=" + fn)
+                delete_orig = False
+            elif len(rests[1]) > 4:
+                logger.warning("unexpected trailing chars after boundary, f="+fn)
+                delete_orig = False
+            data_fp.write(rests[0])
+
+        data_fp.close()
+
+        if delete_orig:
+            os.unlink(fn)
+
+        extra_manifest = ''
+        for h in disclose_headers:
+            if h in hdrs:
+                extra_manifest += h + '="' + hdrs[h] + '"\n'
+
+        manif_str = \
+            'METADATA="'+meta_fname + '"\n' + \
+            'META_TYPE="'+meta_type + '"\n' + \
+            'DATA="'+data_fname     + '"\n' + \
+            extra_manifest
+        
+        return manif_str
+
+    except Exception as e:
+        fp.close()
+        if meta_fp != None: meta_fp.close()
+        if data_fp != None: data_fp.close()
+        logger.error("Exception while splitting file '"+f+"': "+`e`)
+        logger.debug(traceback.format_exc(4))
+        return None
+
+# ------------ product handling  --------------------------
+# Split each downloaded product into its parts and generate
+#  a product manifest for the ODA server
+# TODO: the splitting should be done by the EO-WCS DM plugin
+#       instead of doing it here
+#
+def create_manifest(dir_path, ncn_id, logger):
+
+    manif_str = ''
+    files = os.listdir(dir_path)
+    if len(files) > 1:
+        logger.warning("Found " + `len(files)` + " in " + dir_path + \
+                           ", expect 1.")
+    for f in files:
+        if f.startswith(MANIFEST_FN) or f.endswith(META_SUFFIX) or f.endswith(DATA_SUFFIX):
+            logger.warning("Ingestion: ignoring "+f)
+            continue
+        ret = split_wcs_tmp(dir_path, f, logger)
+        if not ret:
+            logger.error("Failed to split file '"+f+"'.")
+            continue
+        else:
+            manif_str += ret
+
+    if manif_str:
+        manif_str = \
+            'SCENARIO_NCN_ID="'+ncn_id + '"\n' + \
+            'DOWNLOAD_DIR="'+ dir_path + '"\n' + \
+            manif_str
+        mf_name = os.path.join(dir_path, MANIFEST_FN)
+        if os.path.exists(mf_name):
+            logger.warning("MANIFEST file already exists in "+dir_path+", " +
+                       "Creating another one")
+            i = 0
+            while os.path.exists(mf_name):
+                i += 1
+                mm = "MANIFEST_" + `i`
+                mf_name = os.path.join(dir_path, mm)
+                if i > MAX_MANIF_FILES:
+                    raise IngestionError(
+                        "Too many manifest files (>"+`MAX_MANIF_FILES`+")")
+
+        mf_fp = open(mf_name,"w")
+        mf_fp.write(manif_str)
+        mf_fp.close()
+
+        return mf_name
+
     else:
-        raise UnsupportedBboxError("Unsupported BBOX type for scenario id=" +\
-                                       db_model.ncn_id)
+        return None
 
-    return response_data
 
-# ------------ tmp name generating function  --------------------------
+# ------------ Directory check access & create  --------------------------
+def check_or_make_dir(dir_path,logger):
+    if not os.access(dir_path, os.R_OK|os.W_OK):
+        logger.info("Cannot write/read "+dir_path+", attempting to create.")
+        try:
+            os.mkdir(dir_path,0740)
+            logger.info("Created "+dir_path)
+        except OSError as e:
+            msg = "Failed to create "+dir_path+": "+`e`
+            logger.error(msg)
+            raise  DMError(msg)
+
+
+# ------------ tmp name generating functions  --------------------------
 def mkFname(base):
-    st_time = time.localtime()
-    fn = base + `(st_time.tm_year - 2010)` + \
+    st_time = time.gmtime()
+    fn = base + \
         '%03d'%st_time.tm_yday + '_' + \
         '%02d'%st_time.tm_hour + \
         '%02d'%st_time.tm_min + \
-        '%02d'%st_time.tm_sec + \
-        chr(random.randrange(ord('a'), ord('z'))) + \
+        '%02d'%st_time.tm_sec + '_' + \
         chr(random.randrange(ord('a'), ord('z'))) + \
         chr(random.randrange(ord('a'), ord('z'))) + \
         chr(random.randrange(ord('a'), ord('z'))) + \
         chr(random.randrange(ord('a'), ord('z'))) + \
         chr(random.randrange(ord('a'), ord('z')))
     return fn
+
+
+def mkIdBase():
+    st_time = time.gmtime()
+    return `(st_time.tm_year - 2010)` + \
+        '%03d'%st_time.tm_yday + '%02d'%st_time.tm_hour + \
+        '%03d'% + random.randrange(1000) + "_"
+
+if __name__ == '__main__':
+    # used for stand-alone testing
+    class Logger():
+        def info(self,s):   print "INFO: "+s
+        def warning(self,s):print "WARN: "+s
+        def error(self,s):  print "*ERR: "+s
+        def debug(sefl,s):  print "DEBG: "+s
+
+    import sys
+    if len(sys.argv) > 1: print sys.argv[1]
+
+    print mkFname("zz")
+
+    

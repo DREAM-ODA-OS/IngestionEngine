@@ -16,18 +16,11 @@
 import logging
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils.dateformat import DateFormat
+
 from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN
 
 import os
-
-#**************************************************
-#         Download Manager Configuration          *
-#**************************************************
-class Dm_config(models.Model):
-    row_id           = models.IntegerField(primary_key=True)
-    dm_is_installed  = models.IntegerField()
-    dm_pid           = models.IntegerField()
-
 
 #**************************************************
 #                  Scenario                       *
@@ -44,6 +37,44 @@ AOI_CHOICES = (
     (AOI_POLY_CHOICE, 'Polygon'),
 )
 
+# ------------ conversion utilities  --------------------------
+def date_to_iso8601(src_date):
+    return DateFormat(src_date).format("c")
+
+def scenario_dict(db_model):
+    """ creates a dictionary from a database model record """
+    response_data = {}
+    for s in (
+        "repeat_interval",
+        "cloud_cover",
+        "view_angle",
+        "sensor_type",
+        "dsrc",
+        "dsrc_login",
+        "dsrc_password",
+        "default_priority",
+        "default_script",
+        "preprocessing",
+        "ncn_id"):
+        response_data[s] = str(getattr(db_model,s))
+
+    # convert dates to ISO-8601
+    response_data["from_date"    ] = date_to_iso8601(db_model.from_date)
+    response_data["to_date"      ] = date_to_iso8601(db_model.to_date)
+    response_data["starting_date"] = date_to_iso8601(db_model.starting_date)
+
+    if db_model.aoi_type == AOI_BBOX_CHOICE:
+        response_data['aoi_bbox'] = {
+            'lc' : (db_model.bb_lc_long, db_model.bb_lc_lat),
+            'uc' : (db_model.bb_uc_long, db_model.bb_uc_lat)
+            }
+    else:
+        raise UnsupportedBboxError("Unsupported BBOX type for scenario id=" +\
+                                       db_model.ncn_id)
+
+    return response_data
+
+# ------------  scenario model definition  --------------------------
 class Scenario(models.Model):
     id                   = models.AutoField(primary_key=True)
     ncn_id               = models.CharField(max_length=NCN_ID_LEN)

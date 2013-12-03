@@ -18,12 +18,15 @@ import urllib2
 import xml.etree.ElementTree as ET
 import xml.parsers.expat
 import dar_builder
+import json
+import time
 
 from osgeo import osr
-from utils import Bbox, bbox_from_strings, TimePeriod, mkFname, \
-    NoEPSGCodeError, IngestionError, DMError
-from settings import IE_DEBUG
-from dm_control import DownloadManagerController
+from utils import Bbox, bbox_from_strings, TimePeriod, mkFname, DMError, \
+    NoEPSGCodeError, IngestionError, read_from_url, check_or_make_dir
+from settings import IE_DEBUG, DAR_STATUS_INTERVAL
+from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
+import work_flow_manager
 
 # For debugging:
 # used to limit the number of DescribeEOCoverageSet requests issued
@@ -267,6 +270,11 @@ def extract_CoverageId(cd):
             pass
     return covId
 
+# ------------ status reporting  -------------------
+def set_status(sc_id, st_text, percentage):
+    work_flow_manager.WorkFlowManager.Instance().set_scenario_status(
+        0, sc_id, 0, st_text, percentage)
+
 # ------------ processing --------------------------
 def getXmlTree(url, expected_tag):
     err  = None
@@ -389,7 +397,11 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
     gc_requests = []
     ndeocs = 1    # number of DescribeEOCOverageSet urls processed
     ngc    = 1
+    toteocs = float(len(md_urls))
     for md_url in md_urls:
+        set_status(params["sc_id"],
+                   "Create DAR: get MD",
+                   (float(ndeocs)/toteocs)*100.0)
         if 0 != DEBUG_MAX_DEOCS_URLS:
             if ndeocs>DEBUG_MAX_DEOCS_URLS: break
             ndeocs += 1
@@ -472,12 +484,16 @@ def getGetCoverageURLs(params):
     return gc_requests
 
     
-def request_download(sc_id, urls):
+def request_download(sc_ncn_id, urls):
+
     #create tmp dir for downloads
     dmcontroller = DownloadManagerController.Instance()
     root_dl_dir = dmcontroller._download_dir
-    tmp_subdir_name = mkFname(sc_id+"_")
-    dl_dir = os.path.join(root_dl_dir, tmp_subdir_name)
+    yr_name = str(time.gmtime().tm_year)
+    yr_subdir = os.path.join(root_dl_dir, yr_name)
+    check_or_make_dir(yr_subdir,logger)
+    tmp_subdir_name = mkFname(sc_ncn_id+"_")
+    dl_dir = os.path.join(yr_subdir, tmp_subdir_name)
     try:
         os.mkdir(dl_dir,0740)
         logger.info("Created "+dl_dir)
@@ -490,57 +506,91 @@ def request_download(sc_id, urls):
     nreqs = len(urls)
     if nreqs>10000:  id_digits = 5
     if nreqs>1000:   id_digits = 4
-    fmt = "p_"+sc_id+"_%0"+`id_digits`+"d"
+    fmt = "p_"+sc_ncn_id+"_%0"+`id_digits`+"d"
 
     urls_with_dirs = []
     i = 1
     for url in urls:
-        urls_with_dirs.append( (os.path.join(tmp_subdir_name, fmt % i), url) )
+        # DM takes paths relative to its download dir, we have inserted
+        #  a year-dir in between.
+        urls_with_dirs.append( (os.path.join(yr_name, tmp_subdir_name, fmt % i), url) )
         i += 1
     urls = None
     dar = dar_builder.build_DAR(urls_with_dirs)
     urls_with_dirs = None
 
-    status, dar_id = dmcontroller.submit_dar(dar)
+    status, dar_url, dm_dar_id = dmcontroller.submit_dar(dar)
     if status != "OK":
         raise DMError("DAR submit problem, status:" + status)
 
-    return dl_dir, dar_id
+    return dl_dir, dar_url, dm_dar_id
 
-def direct_download(sc_id, dl_dir, urls, id_digits):
-    """ used if no Download Manager is available """
-    # TODO DEVELOP TEMP ONLY 
-    print "---- TEMP for development: downloading first 2 urls ----"
-    print "    (TBD: to be passed to the download manager)"
-    i = 0
-    fn_base = "prod_"
+def get_dar_status(dar_url):
+    dmcontroller = DownloadManagerController.Instance()
+    dm_url = dmcontroller._dm_url
+    url = dm_url+DM_DAR_STATUS_COMMAND
+    try:
+        dar_status = json.loads(read_from_url(url))
+    except urllib2.URLError as e:
+        raise DMError("Unable to get DAR status from DM, error=" + `e`)
+    if not "dataAccessRequests" in dar_status:
+        raise DMError(
+            "Bad DAR status from DM; no 'dataAccessRequests' found.")
+    dar = dar_status["dataAccessRequests"]
+    request = None
+    for r in dar:
+        if not "darURL" in r:
+            continue
+        if r["darURL"] == dar_url:
+            request = r
+            break
+    return request
 
-    blk_sz = 8192
-    fmt = "%0"+`id_digits`+"d"
-    for rr in urls[0:2]:
-        buffer = None
-        i += 1
-        fn = fn_base + fmt % i
-        print "downloading: "+ rr
-        f = None
-        try:
-            f = open(os.path.join(dl_dir, fn), "wb")
-            r = urllib2.urlopen( rr )
-            while True:
-                buffer = r.read(blk_sz)
-                if not buffer:
-                    break
-                f.write(buffer)
-        except urllib2.URLError as e:
-            logger.error("Download failed: " + `e`)
-        finally:
-            if f!=None: f.close()
-            r.close()
-    # END TODO DEVELOP TEMP ONLY - END
-
+def wait_for_download(sc_id, dar_url):
+    """ blocks until the DM reports that the DAR with this dar_url
+        has completed all constituent individual product downloads
+    """
+    set_status(sc_id, "Downloading", 1)
+    request = get_dar_status(dar_url)
+    if None == request:
+        # wait and try again
+        time.sleep(DAR_STATUS_INTERVAL)
+        request = get_dar_status(dar_url)
+        if None == request:
+            time.sleep(1)
+            request = get_dar_status(dar_url)
+        if None == request:
+            raise DMError(
+                "Bad DAR status from DM; no 'dataAccessRequests' found.")
+    product_list = request["productList"]
+    n_products = len(product_list)
+    total_percent = n_products * 100
+    all_done = False
+    while not all_done:
+        all_done = True
+        part_percent = 0
+        for product in product_list:
+            if "productProgress" not in product:
+                continue
+            progress = product["productProgress"]
+            if progress["status"] != "COMPLETED":
+                all_done = False
+            if "progressPercentage" not in progress:
+                part_percent += 100
+            else:
+                part_percent += progress["progressPercentage"]
+        percent_done = int( (float(part_percent)/float(total_percent))*100 )
+        if percent_done < 1: percent_done = 1
+        set_status(sc_id, "Downloading ("+`n_products`+")", percent_done)
+        if all_done:
+            break
+        time.sleep(DAR_STATUS_INTERVAL)
+        request = get_dar_status(dar_url)
+        product_list = request["productList"]
+    
 
 # ----- the main entrypoint  --------------------------
-def ingestion_logic(scenario_data):
+def ingestion_logic(sc_id, scenario_data):
 
     root_dl_dir = DownloadManagerController.Instance()._download_dir
 
@@ -552,18 +602,20 @@ def ingestion_logic(scenario_data):
     if 0 != DEBUG_MAX_GETCOV_URLS:
         logger.info(" DEBUG_MAX_GETCOV_URLS = "+`DEBUG_MAX_GETCOV_URLS`)
 
-    for k in scenario_data.keys():
-        print "  "+k+":\t\t  "+`scenario_data[k]`
-    print
-
     nreqs = 0
-    retval = (None, None)
+    retval = (None, None, None)
+    
+    scenario_data["sc_id"] = sc_id
     gc_requests = getGetCoverageURLs(scenario_data)
     if None==gc_requests:
         logger.warning(" no GetCoverage requests generated")
     else:
         nreqs = len(gc_requests)
         logger.info("Sending "+`nreqs`+" URLs to the Download Manager")
-        retval = request_download(scenario_data["ncn_id"], gc_requests)
+        dl_dir, dar_url, dar_id = \
+            request_download(scenario_data["ncn_id"], gc_requests)
+        wait_for_download(sc_id, dar_url)
+        logger.info("Products for scenario " + scenario_data["ncn_id"]+
+                    " downloaded to " + dl_dir)
 
-    return retval
+    return dl_dir, dar_url, dar_id

@@ -19,10 +19,11 @@ import json
 import os, os.path
 import time
 import sys
+import threading
 from collections import deque
 
 from utils import find_process_ids, pid_is_valid, get_dm_config, \
-    read_from_url, DMError
+    read_from_url, DMError, mkIdBase, check_or_make_dir
 from settings import DM_CONF_FN, MAX_PORT_WAIT_SECS, IE_DEBUG
 
 # The %s will be replaced by the port where DM is listening
@@ -48,6 +49,8 @@ class DownloadManagerController:
         self._download_dir = None
         self._dar_resp_url = None
         self._dar_queue = deque()
+        self._lock_queue = threading.Lock()
+        self._seq_id  = 0
 
     def wait_for_port(self):
         port_found = False
@@ -106,7 +109,7 @@ class DownloadManagerController:
                     DM_CONF_FN,
                     self._logger)
             except Exception as e:
-                logger.error(
+                self._logger.error(
                     "Error checking DM configuration: " + `e`)
                 raise
 
@@ -116,16 +119,11 @@ class DownloadManagerController:
         if None == self._dm_port or '' == self._dm_port:
             raise  DMError("No DM port")
 
-        if not os.access(self._download_dir, os.R_OK|os.W_OK):
-            self._logger.info("Cannot write/read "+self._download_dir+
-                        ", attempting to create.")
-            try:
-                os.mkdir(self._download_dir,0740)
-                self._logger.info("Created "+self._download_dir)
-            except OSError as e:
-                msg = "Failed to create "+self._download_dir+": "+`e`
-                self._logger.error(msg)
-                raise  DMError(msg)
+        check_or_make_dir(self._download_dir, self._logger)
+        #now add this year's dir
+        year = str(time.gmtime().tm_year)
+        yr_dld = os.path.join(self._download_dir,year)
+        check_or_make_dir(yr_dld, self._logger)
 
         port_ok = self.wait_for_port()
         self._dm_url = DM_URL_TEMPLATE % self._dm_port
@@ -139,28 +137,35 @@ class DownloadManagerController:
         if None == self._dar_resp_url:
             self._dar_resp_url = IE_DAR_RESP_URL_TEMPLATE % self._ie_port
 
-        self._dar_queue.append(dar)
+        # lock the queue since access is potentially from the
+        # work_flow_manager worker threads
+        self._lock_queue.acquire()
+        try:
+            self._seq_id += 1
+            dar_seq_id = mkIdBase()+`self._seq_id`
+            dar_q_item = (dar_seq_id, dar)
+            self._dar_queue.append(dar_q_item)
+        except Exception as e:
+            raise
+        finally:
+            self._lock_queue.release()
+
         dm_dl_url = os.path.join(self._dm_url, DM_DOWNDLOAD_COMMAND)
-        post_data = "darUrl="+self._dar_resp_url
+        dar_url = self._dar_resp_url+"/"+dar_seq_id
+        post_data = "darUrl="+dar_url
         self._logger.info("Submitting request to DM to retieve DAR:\n" \
                            + post_data)
         dm_resp = json.loads(read_from_url(dm_dl_url, post_data))
         self._logger.debug("dm_response: " + `dm_resp`)
-        dar_id = None
-        if "success" in dm_resp:
-            print "success in dm_resp +++++++++"
-            zz = dm_resp["success"]
-            print "zz:"+`zz`
-        else:
-            print " NOOO success in dm_resp --------"
+        dm_dar_id = None
         if "success" in dm_resp and dm_resp["success"]:
             self._logger.info("DM accepted DAR. TODO: set DAR id.")
-            dar_id = "TODO"  #TODO: set dar_id if/when the DM supplies one.
-            if IE_DEBUG > 0:
-                print "dm_resp:\n" + `dm_resp`
+            dm_dar_id = "TODO"  #TODO: set dm_dar_id if/when the DM supplies one.
         elif "errorType" in dm_resp and \
                 dm_resp["errorType"] == "DataAccessRequestAlreadyExistsException":
-            return ("DAR_EXISTS", None)
+            # TODO: try to auto-recover/find the status/resume the dar
+            #       but this should occur only exceptionally/almost never
+            return ("DAR_EXISTS", None, None)
         else:
             msg = None
             if not "errorMessage" in dm_resp:
@@ -168,13 +173,26 @@ class DownloadManagerController:
             else:
                 msg = "DM reports error:\n" + dm_resp["errorMessage"]
             raise DMError(msg)
-        return ("OK", dar_id)
+        
+        return ("OK", dar_url, dm_dar_id)
 
-    def get_next_dar(self):
+    def get_next_dar(self, dar_seq_id):
         if len(self._dar_queue) == 0:
             return None
         else:
-            return self._dar_queue.popleft()
+            if self._dar_queue[0][0] == dar_seq_id:
+                dar = self._dar_queue.popleft()[1]
+            else:
+                self._logger.warning("Out-of-sequnce dar access, dar_seq_id:" + \
+                                         `dar_seq_id`)
+                dar = self.find_dar(dar_seq_id)
+            return dar
+                
+    def find_dar(dar_seq_id):
+        for d in self._dar_queue:
+            if d[0] == dar_seq_id:
+                return d[1]
+        return None
 
     def set_ie_port(self, port):
         self._ie_port = port

@@ -77,7 +77,7 @@ urlpatterns = patterns('',
     url(r'^scenario/edit/(?P<scenario_id>[1-9]{1,3})',views.editScenario),
 
     # dar response
-    url(r'^ingest/darResponse',views.darResponse),
+    url(r'^ingest/darResponse/(?P<seq_id>.*)$',views.darResponse),
     
     # Main page
     url(r'^'+IE_HOME_PAGE,    views.main_page),

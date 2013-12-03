@@ -4,32 +4,61 @@
 
 {% block head %}
 
-    <!-- link rel="stylesheet"
-    href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" / -->
+    {% if jqueryui_offlineurl %}
+      <link rel="stylesheet"
+      href="{{jqueryui_offlineurl}}css/smoothness/jquery-ui.css" />
+    {% else %}
+      <link rel="stylesheet"
+      href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+    {% endif %}
 
 {% dajaxice_js_import 'nocsrf' %}
 
 <script>
     // !!! do not import another jquery to support jquery-ui !!!
+
+    // globals
     jscenarios = []; // global array of scenarios
     first_time = 1; // global parameter
 
+    //  the globals operation_pending and was_active is used to determine if
+    //  sync_scenarios should be called periodically
+    operation_pending = false;
+    was_active = false;
+
+
     $(document).ready(function() {
+
         if (first_time==1) {
-            Dajaxice.ingestion.synchronize_scenarios(update_scenario);
+             sync_scenarios();
         }
-/*
-            window.setInterval(
+
+        window.setInterval(
             function(){
-                Dajaxice.ingestion.synchronize_scenarios(update_scenario);
+                var active = false
+                for (var i=0; i<jscenarios.length; i++) {
+                    // Continuous updates while done is not zero.
+                    if (jscenarios[i].st_done > 0) {
+                        active = true;
+                        was_active = true;
+                    }
+                }
+                if (active || operation_pending) {
+                    sync_scenarios();
+                }
+                // Reset pending flag when activity stops
+                if (!active && was_active) {
+                        operation_pending = false;
+                        was_active = false;
+                }
             },
-            5000); // every 5000 milliseconds
-*/
-    });
+            1250); // every so often, in milliceconds
+        });
+
 
     function run_delete(id_scenario) {
         // update status of scenario
-        synchronize_scenarios();
+        sync_scenarios();
         for (var i=0; i<jscenarios.length; i++) {
             if (id_scenario==jscenarios[i].id && jscenarios[i].st_isav!=0) {
                 if(confirm('Delete scenario - ' + id_scenario + '?')) {
@@ -43,10 +72,10 @@
 
     function run_ingestion(id_scenario){
         // update status of scenario
-        synchronize_scenarios();
+        sync_scenarios();
         for (var i=0; i<jscenarios.length; i++) {
             if (id_scenario==jscenarios[i].id && jscenarios[i].st_isav!=0) {
-                if(confirm('Ingest scenario - ' + jscenarios[i].ncn_id + '?')) {
+                if(confirm('Ingest scenario ' + jscenarios[i].ncn_id+'?')) {
                     // send ajax request to Work-Flow-Manager to ingest scenario
                     Dajaxice.ingestion.ingest_scenario_wfm(
                         function(data){
@@ -57,11 +86,15 @@
                             }
                         },
                         {"scenario_id":id_scenario});
+                    // ensure updates of the page via sychronize_scenario
+                    operation_pending = true;
                 }
+            } else {
+                alert('Scenario '+jscenarios[i].ncn_id+
+                      'is locked - operation in progress');
             }
         }
     }
-
 
     function stop_ingestion(s)
     {
@@ -80,9 +113,8 @@
 
     function goToLocation(s)
     {
-        var main_page = new String("http://127.0.0.1:8000/")
-        var page = main_page.concat(s);
-        window.location.replace(page)
+        var new_page = "http://".concat(window.location.host,"/",s);
+        window.location.replace(new_page)
     }
 
 
@@ -164,9 +196,12 @@
             element.innerHTML = " " + jscenarios[i].st_st;
 
             // update progress bar
-            current_id = "#div_progress_bar_" + jscenarios[i].id;
             done = jscenarios[i].st_done;
-            // TODO $(current_id).progressbar({ value: done });
+            el = document.getElementById("progress_bar_"+jscenarios[i].id);
+            el.style.width = done.toString() + "%";
+            // if use jqueryui, instead of the above do this:
+            //    current_id = "#div_progress_bar_" + jscenarios[i].id;
+            //    $(current_id).progressbar({ value: done });
 
             //  enable/disable buttons
             buttons = [
@@ -179,7 +214,6 @@
             for (var j=0; j<buttons.length; j++) {
                 //current_id = "#" + buttons[j] + "_" + jscenarios[i].id;
                 current_id = buttons[j] + "_" + jscenarios[i].id;
-                var aaa = jscenarios[i].st_isav;
                 if (jscenarios[i].st_isav==0) { // disable
                     document.getElementById(current_id).disabled = true;
                 }else { // enable
@@ -196,9 +230,11 @@
         }
     }
 
-    function synchronize_scenarios() {
+    function sync_scenarios() {
        Dajaxice.ingestion.synchronize_scenarios(update_scenario);
     }
+
+    function localtest1(){}
 
 </script>
     
@@ -220,9 +256,10 @@
 {% endblock %}
 {% block content %}
 
-<!--for debugging>
+<!-- for debugging>
 <INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST1" title="for debugging"
-  onClick="Dajaxice.ingestion.test1(update_scenario)" -->
+  onClick="localtest1()" -->
+<!--  onClick="Dajaxice.ingestion.test1(update_scenario)" -->
 <!--        onClick="Dajaxice.ingestion.synchronize_scenarios(update_scenario)" -->
 <!-- INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST2"
        onClick="update_webpage()" -->
@@ -271,7 +308,13 @@
         id="stop_button_{{scenario.id}}"
         OnClick="stop_ingestion({{scenario.id}})">
       </TD>
-    <TD> ... <!--div id="div_progress_bar_{{scenario.id}}" ALIGN=CENTER/--></TD>
+      <TD> <div id="pro_container__{{scenario.id}}"
+                    style="width:100%; height:10px; border:1px solid black; vertical-align:middle; padding:0" >
+               <div id="progress_bar_{{scenario.id}}" 
+                    style="width:20%; height:10px; border:none; background-color:#6666dd; vertical-align:sub; padding:0" >
+               </div>
+               </div>
+      </TD>
     </TR>
 </TABLE>
 

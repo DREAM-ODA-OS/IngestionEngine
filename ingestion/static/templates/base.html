@@ -5,7 +5,14 @@
 <head>
     <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
     <script src = "{% static 'js/jquery.js' %}">
+    </script>
+    {% if jqueryui_offlineurl %}
+      <script src="{{jqueryui_offlineurl}}js/jquery-ui-1.10.3.custom.min.js">
       </script>
+    {% else %}
+      <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+    {% endif %}
+
     {% block head %}{% endblock %}
 </head>
 
@@ -21,6 +28,11 @@
     <TD><P><IMG SRC={% static "images/ESA_logo_dark_blue_bare.png" %} NAME="logo" ALIGN=RIGHT HEIGHT=73 BORDER=0></P></TD>
   </TR>
   <TR BGCOLOR="#90a0ff">
+    <td><a href="/{{home_page}}"> HOME </a></td>
+    <td class="ieBareTblCell" ALIGN=CENTER ><a href="/scenario/overview/"> SCENARIO OVERVIEW </a></td>
+    <td class="ieBareTblCell" ALIGN=RIGHT ><a href="/ingest/dmDARStatus"> Dl Mgr DAR status</a></td>
+  </TR>
+  <TR BGCOLOR="#90a0ff">
     {% if user.is_authenticated %}
     <!--td class="ieBareTblCell"> <p><I>Logged in as: </I> {{user.username}} </p> </td -->
     <td class="ieBareTblCell" COLSPAN=2> </td>
@@ -32,18 +44,18 @@
   
 </TABLE>
 
-<p> This is a temporary placeholder page, not for production use.
-Most of the functions here are not fully implemented at this time.
+<p> This is a development version.
+Some of the functions here are not fully implemented at this time.
 </p>
 
-<table>
+<!-- table>
     <tr><td><a href="/{{home_page}}"> HOME </a></td></tr>
     {% if user.is_authenticated %}
     <tr><td><a href="/scenario/overview/"> SCENARIO OVERVIEW </a></td></tr>
     <tr><td><a href="/ingest/dmDARStatus"> Download Manager DAR status</a></td></tr>
     <!-- tr><td><a href="/account/configuration/"> CONFIGURATION </a></td></tr -->
     {% endif %}
-</table>
+<!-- /table -->
 
 {% block title %} {% endblock %}
 {% block content %} {% endblock %}
