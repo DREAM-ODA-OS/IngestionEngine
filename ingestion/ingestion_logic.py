@@ -436,7 +436,7 @@ def getMD_urls(params, service_version, id_list):
     return md_urls
     
 
-def getGetCoverageURLs(params):
+def getCoverageURLs(params):
     if IE_DEBUG > 1:
         print "   getMDList: params=" + `params`
     
@@ -606,7 +606,7 @@ def ingestion_logic(sc_id, scenario_data):
     retval = (None, None, None)
     
     scenario_data["sc_id"] = sc_id
-    gc_requests = getGetCoverageURLs(scenario_data)
+    gc_requests = getCoverageURLs(scenario_data)
     if None==gc_requests:
         logger.warning(" no GetCoverage requests generated")
     else:
@@ -617,5 +617,6 @@ def ingestion_logic(sc_id, scenario_data):
         wait_for_download(sc_id, dar_url)
         logger.info("Products for scenario " + scenario_data["ncn_id"]+
                     " downloaded to " + dl_dir)
+        retval = (dl_dir, dar_url, dar_id)
 
-    return dl_dir, dar_url, dar_id
+    return retval

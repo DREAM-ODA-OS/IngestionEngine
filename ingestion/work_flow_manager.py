@@ -129,8 +129,6 @@ class Worker(threading.Thread):
             self._logger.info(
                 "wfm: executing INGEST_SCENARIO, id=" +\
                     `parameters["scenario_id"]`)
-        #self._wfm.set_scenario_status(
-        #    self._id,parameters["scenario_id"],0,"INGESTING",1)
 
         percent = 1
         sc_id = parameters["scenario_id"]

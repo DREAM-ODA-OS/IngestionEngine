@@ -61,7 +61,9 @@ class ScenarioForm(forms.ModelForm):
 
     def clean_from_date(self):
         data = self.cleaned_data['from_date']
-        t1 = datetime.datetime(1990,1,1,0,0,0).replace(tzinfo=utc)
+        # for time-zone aware dates use this one instead:
+        #t1 = datetime.datetime(1990,1,1,0,0,0).replace(tzinfo=utc)
+        t1 = datetime.datetime(1990,1,1,0,0,0).replace()
         t2 = datetime.datetime.utcnow()
         if not data>=t1 and data<=t2:
             raise forms.ValidationError(
@@ -70,7 +72,9 @@ class ScenarioForm(forms.ModelForm):
 
     def clean_to_date(self):
         data = self.cleaned_data['to_date']
-        t1 = datetime.datetime(1990,1,1,0,0,0).replace(tzinfo=utc)
+        # for time-zone aware dates use this one instead:
+        #t1 = datetime.datetime(1990,1,1,0,0,0).replace(tzinfo=utc)
+        t1 = datetime.datetime(1990,1,1,0,0,0).replace()
         t2 = datetime.datetime.utcnow()
         if not data>=t1 and data<=t2:
             raise forms.ValidationError("Date (To Date) doesn't lie in the interval.")
@@ -127,7 +131,9 @@ class ScenarioForm(forms.ModelForm):
         self.fields['repeat_interval' ].label = 'Repeat Interval(seconds)'
 
         # initial values
-        d2 = datetime.datetime.utcnow().replace(tzinfo=utc)
+        # for time-zone aware dates use this one instead:
+        #d2 = datetime.datetime.utcnow().replace(tzinfo=utc)
+        d2 = datetime.datetime.utcnow().replace()
         d1 = d2 - datetime.timedelta(days=365)
         self.fields['ncn_id'          ].initial = \
             models.make_ncname(SC_NCN_ID_BASE)

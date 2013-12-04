@@ -346,7 +346,8 @@ def getScenario(request,ncn_id):
         # method POST
         response_data['status'] = 1
         response_data['errorString'] = "Request method is not GET."
-    return HttpResponse(json.dumps(response_data), content_type="application/json")
+    return HttpResponse(json.dumps(response_data),
+                        content_type="application/json")
 
 
 @csrf_exempt
@@ -359,7 +360,9 @@ def addProduct(request):
 
         if dataRef: # metadata will be implemented later
             addProduct = models.ProductInfo()
-            addProduct.info_date = datetime.datetime.utcnow().replace(tzinfo=utc)
+            # for time-zone aware dates use this one instead:
+            #addProduct.info_date = datetime.datetime.utcnow().replace(tzinfo=utc)
+            addProduct.info_date = datetime.datetime.utcnow().replace()
             addProduct.info_status = "processing"
             addProduct.save()
 
@@ -388,8 +391,8 @@ def addProduct(request):
     else:
         response_data['status'] = 1
         response_data['errorString'] = "Request is not POST."
-    print response_data
-    print datetime.datetime.utcnow().replace(tzinfo=utc)
+    #print response_data
+    #print datetime.datetime.utcnow().replace()
     return HttpResponse(
         json.dumps(response_data),
         content_type="application/json")

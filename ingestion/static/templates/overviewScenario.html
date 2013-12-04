@@ -88,6 +88,7 @@
                         {"scenario_id":id_scenario});
                     // ensure updates of the page via sychronize_scenario
                     operation_pending = true;
+                    sync_scenarios();
                 }
             } else {
                 alert('Scenario '+jscenarios[i].ncn_id+
@@ -136,6 +137,7 @@
         scenario.st_isav = data[4];
         scenario.st_st   = data[5];
         scenario.st_done = data[6];
+        console.log(scenario);
         return scenario;
     }
 
