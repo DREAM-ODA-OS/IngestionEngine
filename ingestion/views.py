@@ -36,7 +36,7 @@ from urllib2 import URLError
 from settings import IE_DEBUG, IE_HOME_PAGE, JQUERYUI_OFFLINEURL
 from utils import read_from_url
 from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
-
+from uqmd import updateMetaData
 import work_flow_manager
 
 IE_DEFAULT_USER = r'dreamer'
@@ -352,7 +352,7 @@ def getScenario(request,ncn_id):
 
 @csrf_exempt
 def addProduct(request):
-    # must be POST request
+    # must be a POST request
     response_data = {}
     if request.method == 'POST':
         dataRef = request.POST['dataRef']
@@ -452,6 +452,20 @@ def dmDARStatus(request):
         response_str = json.dumps(response_data,indent=4)
         return HttpResponse(response_str,content_type="text/plain")
     else:
-        logger.error("Unxexpected POST request on dmDARStatusurl,\n" + \
+        logger.error("Unxexpected POST request on dmDARStatus url,\n" + \
+                         `request.META['SERVER_PORT']`)
+        raise Http404
+
+@csrf_exempt
+def updateMD_operation(request):
+    # must be a POST request
+    response_data = {}
+    if request.method == 'POST':
+        response_data = updateMetaData(request.body)
+        return HttpResponse(
+            json.dumps(response_data),
+            content_type="application/json")
+    else:
+        logger.error("Unxexpected GET request on updateMD url,\n" + \
                          `request.META['SERVER_PORT']`)
         raise Http404

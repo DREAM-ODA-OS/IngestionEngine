@@ -23,20 +23,20 @@ import time
 
 from osgeo import osr
 from utils import Bbox, bbox_from_strings, TimePeriod, mkFname, DMError, \
-    NoEPSGCodeError, IngestionError, read_from_url, check_or_make_dir
+    NoEPSGCodeError, IngestionError, read_from_url, check_or_make_dir, make_new_dir
 from settings import IE_DEBUG, DAR_STATUS_INTERVAL
 from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
 import work_flow_manager
 
 # For debugging:
-# used to limit the number of DescribeEOCoverageSet requests issued
+# MAX_DEOCS_URLS limits the number of DescribeEOCoverageSet requests issued,
+# MAX_GETCOV_URLS limits the number of GetCoverage requests generated
 # 0 means unlimited
-DEBUG_MAX_DEOCS_URLS = 2
-
-# For debugging:
-# used to limit the number of GetCoverage requests generated
-# 0 means unlimited
-DEBUG_MAX_GETCOV_URLS = 3
+DEBUG_MAX_DEOCS_URLS  = 0
+DEBUG_MAX_GETCOV_URLS = 0
+if IE_DEBUG>0:
+    DEBUG_MAX_DEOCS_URLS  = 2
+    DEBUG_MAX_GETCOV_URLS = 3
 
 # namespaces
 wcs_vers = '2.0'
@@ -105,6 +105,47 @@ def bbox_to_WGS84(epsg, bbox):
     new_ur = ct.TransformPoint(bbox.ur[0], bbox.ur[1])
     bbox.ll = (new_ll[0], new_ll[1])
     bbox.ur = (new_ur[0], new_ur[1])
+
+def create_dl_dir(leaf_name_root, extradir=None):
+    # structure of dirs created, shown by example:
+    # 1) no extradir:
+    #    2013
+    #     +-10
+    #        +-leaf_name_root05_120101_55abbbc
+    #            ...
+    #
+    # 2) with extradir:
+    #    2013
+    #     +-10
+    #        +-extradir
+    #            +-leaf_name_root05_120102_44deeef
+    #                ...
+
+    root_dl_dir = DownloadManagerController.Instance().get_download_dir()
+    st_time = time.gmtime()
+    yr_name = str(st_time.tm_year)
+    
+    rel_path  = yr_name
+    full_path = os.path.join(root_dl_dir, yr_name)
+    check_or_make_dir(full_path, logger)
+
+    mon_name = str(st_time.tm_mon)
+    rel_path  = os.path.join(rel_path,  mon_name)
+    full_path = os.path.join(full_path, mon_name)
+    check_or_make_dir(full_path, logger)
+
+    if extradir:
+        rel_path  = os.path.join(rel_path,  extradir)
+        full_path = os.path.join(full_path, extradir)
+        check_or_make_dir(full_path, logger)
+
+    leaf_dir_name = mkFname(leaf_name_root)
+
+    rel_path  = os.path.join (rel_path,  leaf_dir_name)
+    full_path = os.path.join (full_path, leaf_dir_name)
+    make_new_dir(full_path, logger)
+
+    return full_path, rel_path
 
 # ------------ XML parsing --------------------------
 def is_nc_tag(qtag, nctag):
@@ -487,20 +528,7 @@ def getCoverageURLs(params):
 def request_download(sc_ncn_id, urls):
 
     #create tmp dir for downloads
-    dmcontroller = DownloadManagerController.Instance()
-    root_dl_dir = dmcontroller._download_dir
-    yr_name = str(time.gmtime().tm_year)
-    yr_subdir = os.path.join(root_dl_dir, yr_name)
-    check_or_make_dir(yr_subdir,logger)
-    tmp_subdir_name = mkFname(sc_ncn_id+"_")
-    dl_dir = os.path.join(yr_subdir, tmp_subdir_name)
-    try:
-        os.mkdir(dl_dir,0740)
-        logger.info("Created "+dl_dir)
-    except OSError as e:
-        logger.error("Failed to create "+dl_dir+": "+`e`)
-        raise
-
+    full_path, rel_path = create_dl_dir(sc_ncn_id+"_")
     # set up the format of the subdirectory names
     id_digits = 3
     nreqs = len(urls)
@@ -511,19 +539,18 @@ def request_download(sc_ncn_id, urls):
     urls_with_dirs = []
     i = 1
     for url in urls:
-        # DM takes paths relative to its download dir, we have inserted
-        #  a year-dir in between.
-        urls_with_dirs.append( (os.path.join(yr_name, tmp_subdir_name, fmt % i), url) )
+        urls_with_dirs.append(  (os.path.join(rel_path, fmt % i), url) )
         i += 1
     urls = None
     dar = dar_builder.build_DAR(urls_with_dirs)
     urls_with_dirs = None
 
+    dmcontroller = DownloadManagerController.Instance()
     status, dar_url, dm_dar_id = dmcontroller.submit_dar(dar)
     if status != "OK":
         raise DMError("DAR submit problem, status:" + status)
 
-    return dl_dir, dar_url, dm_dar_id
+    return full_path, dar_url, dm_dar_id
 
 def get_dar_status(dar_url):
     dmcontroller = DownloadManagerController.Instance()

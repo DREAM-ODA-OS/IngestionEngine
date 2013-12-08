@@ -43,6 +43,10 @@ urlpatterns = patterns('',
     # addProduct script (JSON)
     url(r'^ingest/addProduct/addProduct',views.addProduct),
 
+    # uqmd - updateQualityMetaData (JSON / mixed)
+    # Implements the interface  IF-DREAM-O-UpdateQualityMD
+    url(r'^ingest/uqmd/updateMD', views.updateMD_operation),
+
     # listScenarios
     url(r'^ingest/ManageScenario/listScenarios',views.getListScenarios),
 

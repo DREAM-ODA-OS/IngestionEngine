@@ -37,7 +37,7 @@ class ScriptsForm(forms.ModelForm):
 class ScenarioForm(forms.ModelForm):
     class Meta:
         model = models.Scenario
-        exclude = ['id','user','aoi_file']
+        exclude = ['id','user','aoi_file', 'sensor_type']
 
     def clean_cloud_cover(self):
         data = self.cleaned_data['cloud_cover']
@@ -117,6 +117,10 @@ class ScenarioForm(forms.ModelForm):
         self.fields['scenario_name'   ].label = 'Scenario Name'
         self.fields['scenario_description'].label = 'Scenario Description'
 #        self.fields['aoi'             ].label = 'AOI'
+        self.fields['bb_lc_long'      ].label = 'BBox Lower long'
+        self.fields['bb_lc_lat'       ].label = 'BBox Lower lat'
+        self.fields['bb_uc_long'      ].label = 'BBox Upper long'
+        self.fields['bb_uc_lat '      ].label = 'BBox Upper lat'
         self.fields['from_date'       ].label = 'From'
         self.fields['to_date'         ].label = 'To'
         self.fields['cloud_cover'     ].label = 'Max Cloud Cover'

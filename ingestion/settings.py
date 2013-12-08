@@ -19,6 +19,8 @@ import json
 DEBUG = True
 TEMPLATE_DEBUG = False
 IE_AUTO_LOGIN  = True
+
+# set to 0 for no debugging
 IE_DEBUG       = 2
 
 #Ingestion Engine Constants
@@ -29,6 +31,13 @@ SC_NCN_ID_BASE     = 'scid'
 NCN_ID_LEN         = 96
 SC_NAME_LEN        = 64
 SC_DESCRIPTION_LEN = 1024
+
+# Scripts are located in IE_SCRIPTS_DIR, defined further on down
+#  Here use only the leaf file name, not the full path
+IE_DEFAULT_ADD_SCRIPT  = 'default_add.sh'
+IE_DEFAULT_UQMD_SCRIPT = 'default_uqmd.sh'
+
+UQMD_SUBDIR = 'uqmd_metadata'
 
 PROJECT_DIR = os.path.dirname(__file__)
 
@@ -50,9 +59,6 @@ except Exception as e:
     print "warning: ingestion_settings.json not found, "+`e`
     print "         using defaults"
     config = {}
-
-# located in IE_SCRIPTS_DIR, defined further on down
-IE_DEFAULT_ADD_SCRIPT = 'default_add.sh'
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),

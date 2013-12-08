@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="ISO-8859-1"?><wcseo:RectifiedDataset gml:id="L930863_20090209_L5_196_030_ESA_surf_pente_30m.RGB_WSG84" xmlns:eop="http://www.opengis.net/eop/2.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:gmlcov="http://www.opengis.net/gmlcov/1.0" xmlns:om="http://www.opengis.net/om/2.0" xmlns:ows="http://www.opengis.net/ows/2.0" xmlns:swe="http://www.opengis.net/swe/2.0" xmlns:wcseo="http://www.opengis.net/wcseo/1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wcseo/1.0 http://schemas.opengis.net/wcseo/1.0/wcsEOAll.xsd">
+  <gml:boundedBy>
+    <gml:Envelope axisLabels="lat long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326" uomLabels="deg deg">
+      <gml:lowerCorner>42.8504 5.514</gml:lowerCorner>
+      <gml:upperCorner>42.8624 5.524</gml:upperCorner>
+    </gml:Envelope>
+  </gml:boundedBy>
+  <gml:domainSet>
+    <gml:RectifiedGrid dimension="2" gml:id="grid_L930863_20090209_L5_196_030_ESA_surf_pente_30m.RGB_WSG84">
+      <gml:limits>
+        <gml:GridEnvelope>
+          <gml:low>0 0</gml:low>
+          <gml:high>30 36</gml:high>
+        </gml:GridEnvelope>
+      </gml:limits>
+      <gml:axisLabels>lat long</gml:axisLabels>
+      <gml:origin>
+        <gml:Point gml:id="grid_origin_L930863_20090209_L5_196_030_ESA_surf_pente_30m.RGB_WSG84" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+          <gml:pos>42.862400 5.514000</gml:pos>
+        </gml:Point>
+      </gml:origin>
+      <gml:offsetVector srsName="http://www.opengis.net/def/crs/EPSG/0/4326">0 0.000323</gml:offsetVector>
+      <gml:offsetVector srsName="http://www.opengis.net/def/crs/EPSG/0/4326">-0.000324 0</gml:offsetVector>
+    </gml:RectifiedGrid>
+  </gml:domainSet>
+  <gml:rangeSet>
+    <gml:File>
+      <gml:rangeParameters xlink:arcrole="fileReference" xlink:href="cid:coverage/L930863_20090209_L5_196_030_ESA_surf_pente_30m.RGB_WSG84_20131202211106.tif" xlink:role="http://www.opengis.net/spec/GMLCOV_geotiff-coverages/1.0/conf/geotiff-coverage"/>
+      <gml:fileReference>cid:coverage/L930863_20090209_L5_196_030_ESA_surf_pente_30m.RGB_WSG84_20131202211106.tif</gml:fileReference>
+      <gml:fileStructure/>
+      <gml:mimeType>image/tiff</gml:mimeType>
+    </gml:File>
+  </gml:rangeSet>
+  <gmlcov:rangeType>
+    <swe:DataRecord>
+      <swe:field name="red">
+        <swe:Quantity definition="http://www.opengis.net/def/property/OGC/0/Radiance">
+          <swe:description>Red Channel</swe:description>
+          <swe:nilValues/>
+          <swe:uom code="W.m-2.Sr-1"/>
+          <swe:constraint>
+            <swe:AllowedValues>
+              <swe:interval>0 255</swe:interval>
+              <swe:significantFigures>3</swe:significantFigures>
+            </swe:AllowedValues>
+          </swe:constraint>
+        </swe:Quantity>
+      </swe:field>
+      <swe:field name="green">
+        <swe:Quantity definition="http://www.opengis.net/def/property/OGC/0/Radiance">
+          <swe:description>Green Channel</swe:description>
+          <swe:nilValues/>
+          <swe:uom code="W.m-2.Sr-1"/>
+          <swe:constraint>
+            <swe:AllowedValues>
+              <swe:interval>0 255</swe:interval>
+              <swe:significantFigures>3</swe:significantFigures>
+            </swe:AllowedValues>
+          </swe:constraint>
+        </swe:Quantity>
+      </swe:field>
+      <swe:field name="blue">
+        <swe:Quantity definition="http://www.opengis.net/def/property/OGC/0/Radiance">
+          <swe:description>Blue Channel</swe:description>
+          <swe:nilValues/>
+          <swe:uom code="W.m-2.Sr-1"/>
+          <swe:constraint>
+            <swe:AllowedValues>
+              <swe:interval>0 255</swe:interval>
+              <swe:significantFigures>3</swe:significantFigures>
+            </swe:AllowedValues>
+          </swe:constraint>
+        </swe:Quantity>
+      </swe:field>
+      <swe:field name="aplha">
+        <swe:Quantity definition="http://www.opengis.net/def/property/OGC/0/Radiance">
+          <swe:description>Alpha Channel</swe:description>
+          <swe:nilValues/>
+          <swe:uom code="W.m-2.Sr-1"/>
+          <swe:constraint>
+            <swe:AllowedValues>
+              <swe:interval>0 255</swe:interval>
+              <swe:significantFigures>3</swe:significantFigures>
+            </swe:AllowedValues>
+          </swe:constraint>
+        </swe:Quantity>
+      </swe:field>
+    </swe:DataRecord>
+  </gmlcov:rangeType>
+<gmlcov:metadata><gmlcov:Extension><wcseo:EOMetadata><eop:EarthObservation gml:id="eop_L930863_20090209_L5_196_030_ESA_surf_pente_30m_RGB_WSG84" xmlns:eop="http://www.opengis.net/eop/2.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:om="http://www.opengis.net/om/2.0" xmlns:swe="http://www.opengis.net/swe/1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/opt/2.0 ../xsd/opt.xsd">
+    <om:phenomenonTime>
+        <gml:TimePeriod gml:id="tp_L930863_20090209_L5_196_030_ESA_surf_pente_30m_RGB_WSG84">
+            <gml:beginPosition>2009-02-09T00:00:00</gml:beginPosition>
+            <gml:endPosition>2009-02-09T00:00:00</gml:endPosition>
+        </gml:TimePeriod>
+    </om:phenomenonTime>
+    <om:procedure>
+        <eop:EarthObservationEquipment gml:id="equ_L930863_20090209_L5_196_030_ESA_surf_pente_30m_RGB_WSG84">
+            <eop:platform>
+                <eop:Platform>
+                    <eop:shortName>LANDSAT5</eop:shortName>
+                </eop:Platform>
+            </eop:platform>
+            <eop:instrument>
+                <eop:Instrument>
+                    <eop:shortName>TM</eop:shortName>
+                </eop:Instrument>
+            </eop:instrument>
+            <eop:sensor>
+                <eop:Sensor>
+                    <eop:sensorType>OPTICAL</eop:sensorType>
+                </eop:Sensor>
+            </eop:sensor>
+        </eop:EarthObservationEquipment>
+    </om:procedure>
+    <om:featureOfInterest>
+        <eop:Footprint gml:id="footprint_L930863_20090209_L5_196_030_ESA_surf_pente_30m_RGB_WSG84"><eop:multiExtentOf><gml:MultiSurface gml:id="multisurface_L930863_20090209_L5_196_030_ESA_surf_pente_30m_RGB_WSG84" srsName="EPSG:4326"><gml:surfaceMember><gml:Polygon gml:id="polygon_L930863_20090209_L5_196_030_ESA_surf_pente_30m_RGB_WSG84"><gml:exterior><gml:LinearRing><gml:posList>42.85040000 5.51400000 42.86240000 5.51400000 42.86240000 5.52400000 42.85040000 5.52400000 42.85040000 5.51400000</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember></gml:MultiSurface></eop:multiExtentOf></eop:Footprint>
+    </om:featureOfInterest>
+    <om:result/>
+    <eop:metaDataProperty>
+        <eop:EarthObservationMetaData>
+            <eop:identifier>L930863_20090209_L5_196_030_ESA_surf_pente_30m_RGB_WSG84</eop:identifier>
+        </eop:EarthObservationMetaData>
+    </eop:metaDataProperty>
+</eop:EarthObservation><wcseo:lineage><wcseo:referenceGetCoverage><ows:Reference xlink:href="http://data.eox.at/instance00/ows?service=wcs&amp;amp;version=2.0.1&amp;amp;request=GetCoverage&amp;amp;format=image/tiff&amp;amp;mediatype=multipart/mixed&amp;amp;CoverageId=L930863_20090209_L5_196_030_ESA_surf_pente_30m.RGB_WSG84&amp;amp;subset=Lat,http://www.opengis.net/def/crs/EPSG/0/4326(42.8504,42.862400000000001)&amp;amp;subset=Long,http://www.opengis.net/def/crs/EPSG/0/4326(5.5140000000000002,5.524)"/></wcseo:referenceGetCoverage><gml:timePosition>2013-12-02T21:11:06Z</gml:timePosition></wcseo:lineage></wcseo:EOMetadata></gmlcov:Extension></gmlcov:metadata></wcseo:RectifiedDataset>

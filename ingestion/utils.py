@@ -8,17 +8,21 @@
 #    Licensed under the 'DREAM ODA Ingestion Engine Open License'
 #     (see the file 'LICENSE' in the top-level directory)
 #
-#  Miscellenaous utilities for ingestion logic.
+#  Miscellaneous utilities for ingestion logic.
 #
 ###########################################################
 
 import time, calendar, random
 import os
 import os.path
+from os import open   as osopen
+from os import fdopen
+from os import O_WRONLY, O_CREAT, O_EXCL
 import shutil
 import re
 import urllib2
 import traceback
+from math import floor
 
 BLK_SZ = 8192
 MAX_MANIF_FILES = 750000
@@ -64,6 +68,64 @@ def find_process_ids(match_strings):
                 break
         if match: ret_pids.append(pid)
     return ret_pids
+
+
+# ------------ tmp name generating functions  --------------------------
+def mkFname(base):
+    tnow = time.time()
+    ms = "%03d" % int(1000*(tnow-floor(tnow)))
+    st_time = time.gmtime(tnow)
+    fn = base + \
+        '%02d'%st_time.tm_mday + '_' + \
+        '%02d'%st_time.tm_hour + \
+        '%02d'%st_time.tm_min + \
+        '%02d'%st_time.tm_sec + '_' + ms +\
+        chr(random.randrange(ord('a'), ord('z'))) + \
+        chr(random.randrange(ord('a'), ord('z'))) + \
+        chr(random.randrange(ord('a'), ord('z'))) + \
+        chr(random.randrange(ord('a'), ord('z'))) + \
+        chr(random.randrange(ord('a'), ord('z')))
+    return fn
+
+
+def mkIdBase():
+    st_time = time.gmtime()
+    return `(st_time.tm_year - 2010)` + \
+        '%03d'%st_time.tm_yday + \
+        '%02d'%st_time.tm_hour + \
+        '%02d'%st_time.tm_min + \
+        '%03d'% + random.randrange(1000) + "_"
+
+def mk_unique_fn(dir_path, leaf_root, maxtries):
+    full_path = os.path.join(dir_path, leaf_root)
+    i = 0
+    while os.path.exists(full_path):
+        i += 1
+        mm = leaf_root + "_" + `i`
+        full_path = os.path.join(dir_path, mm)
+        if i > maxtries:
+            raise IngestionError(
+                "Too many non_unique files (>"+`maxtries`+"), " +
+                "last_tried: '"+full_path+"'")
+    return full_path
+
+def open_unique_file(dir_path, leaf_root, maxtries):
+    i = 0
+    fname = mk_unique_fn(dir_path, leaf_root, maxtries)
+    err_str = None
+    while i<256:
+        try:
+            print "trying ... "+fname
+            fd = osopen(fname, O_WRONLY | O_CREAT | O_EXCL, 0640)
+            fp = fdopen(fd,"w")
+            return fp, fname
+        except OSError as e:
+            err_str = `e`
+            print err_str
+        fname = mk_unique_fn(dir_path, leaf_root+"_"+`i`+"_", 8)
+    # exhausted all attempts
+    raise IngestionError("Cannot open unique file: "+ fname+\
+                             ", error: "+err_str)
 
 
 # ------------ Download Manager Properties Handling  ------------------
@@ -324,6 +386,8 @@ def split_wcs_tmp(path, f, logger):
         elif "Content-Disposition" in hdrs \
                 and "filename=" in hdrs["Content-Disposition"]:
             cd = hdrs["Content-Disposition"].split("filename=")
+            if cd.startswith('/') or '../' in cd:
+                raise IngestionError("Bad filename="+cd)
             if len(cd) == 2:
                 data_fname = os.path.join(path, cd[1])
 
@@ -437,39 +501,29 @@ def create_manifest(dir_path, ncn_id, logger):
 
 
 # ------------ Directory check access & create  --------------------------
-def check_or_make_dir(dir_path,logger):
+def make_new_dir(dir_path, logger):
+    try:
+        os.mkdir(dir_path,0740)
+        logger.info("Created "+dir_path)
+    except OSError as e:
+        msg = "Failed to create "+dir_path+": "+`e`
+        logger.error(msg)
+        raise  DMError(msg)
+
+def check_or_make_dir(dir_path, logger):
     if not os.access(dir_path, os.R_OK|os.W_OK):
-        logger.info("Cannot write/read "+dir_path+", attempting to create.")
+        if logger:
+            logger.debug("Cannot write/read "+dir_path+", attempting to create.")
         try:
             os.mkdir(dir_path,0740)
-            logger.info("Created "+dir_path)
+            if logger:
+                logger.info("Created "+dir_path)
         except OSError as e:
             msg = "Failed to create "+dir_path+": "+`e`
-            logger.error(msg)
+            if logger:
+                logger.error(msg)
             raise  DMError(msg)
 
-
-# ------------ tmp name generating functions  --------------------------
-def mkFname(base):
-    st_time = time.gmtime()
-    fn = base + \
-        '%03d'%st_time.tm_yday + '_' + \
-        '%02d'%st_time.tm_hour + \
-        '%02d'%st_time.tm_min + \
-        '%02d'%st_time.tm_sec + '_' + \
-        chr(random.randrange(ord('a'), ord('z'))) + \
-        chr(random.randrange(ord('a'), ord('z'))) + \
-        chr(random.randrange(ord('a'), ord('z'))) + \
-        chr(random.randrange(ord('a'), ord('z'))) + \
-        chr(random.randrange(ord('a'), ord('z')))
-    return fn
-
-
-def mkIdBase():
-    st_time = time.gmtime()
-    return `(st_time.tm_year - 2010)` + \
-        '%03d'%st_time.tm_yday + '%02d'%st_time.tm_hour + \
-        '%03d'% + random.randrange(1000) + "_"
 
 if __name__ == '__main__':
     # used for stand-alone testing
@@ -481,7 +535,5 @@ if __name__ == '__main__':
 
     import sys
     if len(sys.argv) > 1: print sys.argv[1]
-
-    print mkFname("zz")
 
     

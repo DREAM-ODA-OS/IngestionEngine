@@ -52,6 +52,9 @@ class DownloadManagerController:
         self._lock_queue = threading.Lock()
         self._seq_id  = 0
 
+    def get_download_dir(self):
+        return self._download_dir
+
     def wait_for_port(self):
         port_found = False
         if None == self._dm_port:
@@ -129,6 +132,13 @@ class DownloadManagerController:
         self._dm_url = DM_URL_TEMPLATE % self._dm_port
         return port_ok
 
+    def _get_next_seq_id(self):
+        if self._seq_id >= sys.maxint - 1:
+            self._seq_id = 0
+        else:
+            self._seq_id += 1
+        return self._seq_id
+
     def submit_dar(self, dar):
         if None == self._dm_port:
             raise DMError("No port for DM")
@@ -141,8 +151,7 @@ class DownloadManagerController:
         # work_flow_manager worker threads
         self._lock_queue.acquire()
         try:
-            self._seq_id += 1
-            dar_seq_id = mkIdBase()+`self._seq_id`
+            dar_seq_id = mkIdBase()+`self._get_next_seq_id()`
             dar_q_item = (dar_seq_id, dar)
             self._dar_queue.append(dar_q_item)
         except Exception as e:
@@ -183,11 +192,11 @@ class DownloadManagerController:
             if self._dar_queue[0][0] == dar_seq_id:
                 dar = self._dar_queue.popleft()[1]
             else:
-                self._logger.warning("Out-of-sequnce dar access, dar_seq_id:" + \
+                self._logger.warning("Out-of-sequence dar access, dar_seq_id:" + \
                                          `dar_seq_id`)
                 dar = self.find_dar(dar_seq_id)
             return dar
-                
+    
     def find_dar(dar_seq_id):
         for d in self._dar_queue:
             if d[0] == dar_seq_id:
