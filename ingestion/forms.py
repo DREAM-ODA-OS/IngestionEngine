@@ -103,7 +103,7 @@ class ScenarioForm(forms.ModelForm):
         
         self.fields['scenario_description'].widget = \
             forms.Textarea(attrs={'cols':70,'rows':6})
-        self.fields['sensor_type'].widget = forms.RadioSelect(choices=SENSOR_CHOICES)
+#        self.fields['sensor_type'].widget = forms.RadioSelect(choices=SENSOR_CHOICES)
         
         self.fields['dsrc'            ].widget = \
             forms.TextInput(attrs={'size':60})
@@ -120,12 +120,12 @@ class ScenarioForm(forms.ModelForm):
         self.fields['bb_lc_long'      ].label = 'BBox Lower long'
         self.fields['bb_lc_lat'       ].label = 'BBox Lower lat'
         self.fields['bb_uc_long'      ].label = 'BBox Upper long'
-        self.fields['bb_uc_lat '      ].label = 'BBox Upper lat'
+        self.fields['bb_uc_lat'       ].label = 'BBox Upper lat'
         self.fields['from_date'       ].label = 'From'
         self.fields['to_date'         ].label = 'To'
         self.fields['cloud_cover'     ].label = 'Max Cloud Cover'
         self.fields['view_angle'      ].label = 'Max View Angle'
-        self.fields['sensor_type'     ].label = 'Sensor Type'
+#        self.fields['sensor_type'     ].label = 'Sensor Type'
         self.fields['dsrc'            ].label = 'Data Source'
         self.fields['dsrc_login'      ].label = 'Data Src login'
         self.fields['dsrc_password'   ].label = 'Data Src password'
@@ -158,7 +158,7 @@ class ScenarioForm(forms.ModelForm):
         self.fields['to_date'             ].required = False
         self.fields['cloud_cover'         ].required = False
         self.fields['view_angle'          ].required = False
-        self.fields['sensor_type'         ].required = False
+#        self.fields['sensor_type'         ].required = False
         self.fields['dsrc'                ].required = False
         self.fields['dsrc_login'          ].required = False
         self.fields['dsrc_password'       ].required = False
