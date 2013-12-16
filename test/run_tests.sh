@@ -5,3 +5,6 @@ echo '---- IF-DREAM-O-UpdateQualityMD --------'
 echo
 echo '---- IF-DREAM-O-AddProduct --------'
 ( cd addProduct_sa; ./test_addProd.py )
+echo
+echo '---- IF-DREAM-O-ManageScenario --------'
+( cd manageScenario_sa; ./test_manageScenario.py )

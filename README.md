@@ -26,8 +26,7 @@ interface: `test/addProduct_sa/test_addProd.py`
 
 *  (03.12.) The interface to the ngEO Download Manager (v 0.5.4) is operational.
 
-*  (03.12.) The IE+DM can download products from product facilities using EO-WCS to
-provide metadata and data.
+*  (03.12.) The IE+DM can download products from product facilities that use EO-WCS.
 Registering products in the ODA server remains
 to be tested; the IE executes the registation shell script
 `ingestion/media/scripts/def_ingest.sh`

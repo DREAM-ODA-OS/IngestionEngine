@@ -476,7 +476,7 @@ def getMD_urls(params, service_version, id_list):
 
 def getCoverageURLs(params):
     if IE_DEBUG > 1:
-        print "   getMDList: params=" + `params`
+        print "   getCoverageURLs: params=" + `params`
     
     url_parts = params['dsrc'].split(":", 1)
     if len(url_parts) < 2:

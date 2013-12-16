@@ -377,8 +377,16 @@ def getAddStatus(request,args):
     try:
         pi = models.ProductInfo.objects.get(id__exact=iid)
         response_data['status'] = pi.info_status
+
         if pi.info_error:
             response_data["errorString"] = pi.info_error
+
+        if pi.new_product_id:
+            response_data["productId"] = pi.new_product_id
+
+        if pi.product_url:
+            response_data["url"] = pi.product_url
+
     except models.ProductInfo.DoesNotExist:
         response_data['status'] = "idError"
         response_data["errorString"] = "Id not found."
