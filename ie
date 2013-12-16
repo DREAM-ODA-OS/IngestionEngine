@@ -1,0 +1,6 @@
+#( cd ../ngEO-download-manager; ./start_dm.sh )
+if [[ ! -f ingestion/static/db/dream.db ]]
+then
+  ./manage.py syncdb --noinput
+fi
+./manage.py runserver
