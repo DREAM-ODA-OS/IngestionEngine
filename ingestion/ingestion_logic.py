@@ -123,25 +123,22 @@ def create_dl_dir(leaf_name_root, extradir=None):
 
     root_dl_dir = DownloadManagerController.Instance().get_download_dir()
     st_time = time.gmtime()
-    yr_name = str(st_time.tm_year)
-    
-    rel_path  = yr_name
-    full_path = os.path.join(root_dl_dir, yr_name)
-    check_or_make_dir(full_path, logger)
-
+    yr_name  = str(st_time.tm_year)
     mon_name = str(st_time.tm_mon)
-    rel_path  = os.path.join(rel_path,  mon_name)
-    full_path = os.path.join(full_path, mon_name)
-    check_or_make_dir(full_path, logger)
-
-    if extradir:
-        rel_path  = os.path.join(rel_path,  extradir)
-        full_path = os.path.join(full_path, extradir)
-        check_or_make_dir(full_path, logger)
-
     leaf_dir_name = mkFname(leaf_name_root)
 
-    rel_path  = os.path.join (rel_path,  leaf_dir_name)
+    if extradir:
+        path = (yr_name, mon_name, extradir, leaf_dir_name)
+    else:
+        path = (yr_name, mon_name, leaf_dir_name)
+    
+    rel_path  = os.path.join(*path)
+
+    full_path = root_dl_dir
+    for p in path[:-1]:
+        full_path = os.path.join(full_path, p)
+        check_or_make_dir(full_path, logger)
+
     full_path = os.path.join (full_path, leaf_dir_name)
     make_new_dir(full_path, logger)
 

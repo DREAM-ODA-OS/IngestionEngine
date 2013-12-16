@@ -40,18 +40,23 @@ urlpatterns = patterns('',
     # login.html
     url(r'^account/login/',login, {'template_name': 'login.html'}),
 
-    # addProduct script (JSON)
-    url(r'^ingest/addProduct/addProduct',views.addProduct),
+    # addProduct (JSON) and the associated getStatus
+    url(r'^ingest/addProduct/addProduct',views.addProduct_operation),
+    url(r'^ingest/AddProduct/addProduct',views.addProduct_operation),
+    url(r'^ingest/addProduct/getStatus/id=(?P<op_id>.*)$',
+        views.getAddStatus_operation),
+    url(r'^ingest/AddProduct/getStatus/id=(?P<op_id>.*)$',
+        views.getAddStatus_operation),
 
     # uqmd - updateQualityMetaData (JSON / mixed)
     # Implements the interface  IF-DREAM-O-UpdateQualityMD
     url(r'^ingest/uqmd/updateMD', views.updateMD_operation),
 
     # listScenarios
-    url(r'^ingest/ManageScenario/listScenarios',views.getListScenarios),
+    url(r'^ingest/ManageScenario/listScenarios',views.getListScenarios_operation),
 
     # getScenario
-    url(r'^ingest/ManageScenario/getScenario/id=(?P<ncn_id>.*)$',views.getScenario),
+    url(r'^ingest/ManageScenario/getScenario/id=(?P<ncn_id>.*)$',views.getScenario_operation),
 
     # DM DAR status list, used mostly for development/debugging
     url(r'^ingest/dmDARStatus',views.dmDARStatus),

@@ -25,7 +25,7 @@ import logging
 import os
 
 from settings import \
-    MEDIA_ROOT, LOGGING_DIR, IE_SCRIPTS_DIR, IE_DEFAULT_ADD_SCRIPT
+    MEDIA_ROOT, LOGGING_DIR, IE_SCRIPTS_DIR, IE_DEFAULT_INGEST_SCRIPT
 from dm_control import DownloadManagerController
 
 dmcontroller = DownloadManagerController.Instance()
@@ -148,7 +148,7 @@ def ingest_scenario_wfm(request,scenario_id):
         ingest_scripts = []
         if scenario.default_script != 0:
             ingest_scripts.append( os.path.join(
-                IE_SCRIPTS_DIR, IE_DEFAULT_ADD_SCRIPT) )
+                IE_SCRIPTS_DIR, IE_DEFAULT_INGEST_SCRIPT) )
         for s in scripts:
             ingest_scripts.append("%s" % s.script_path)
 

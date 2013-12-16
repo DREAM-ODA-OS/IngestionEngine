@@ -8,6 +8,8 @@
 # (c) 2013 Siemens Convergence Creators, s.r.o, Prague.
 #--------------------------------------------------------
 
+TEST_SUBJECT='IF-DREAM-O-UpdateQualityMD'
+
 import json
 import time
 
@@ -106,7 +108,8 @@ else:
     print "FAILED"
 
 if not n_errors:
-    print "ALL TESTS PASSED"
+    print TEST_SUBJECT+": TESTS PASSED"
+
 else:
     print "FAILED with "+`n_errors`+" failures."
 

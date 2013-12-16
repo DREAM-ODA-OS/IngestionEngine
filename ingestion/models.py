@@ -13,14 +13,15 @@
 #
 ############################################################
 
+import os
+
 import logging
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.dateformat import DateFormat
 
-from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN
+from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN, PROD_ERROR_LEN
 
-import os
 
 #**************************************************
 #                  Scenario                       *
@@ -107,19 +108,24 @@ class Scenario(models.Model):
 #**************************************************
 #                   Script                        *
 #**************************************************   
-class Script(models.Model): # should be ScenarioScript to make it comprehensible
+class Script(models.Model): # ScenarioScript 
     id = models.AutoField(primary_key=True)
-    script_name = models.CharField(max_length=50)
-    script_path = models.CharField(max_length=50) # local address on the django server
+    script_name = models.CharField(max_length=256)
+    script_path = models.CharField(max_length=2048) # local address on the django server
     scenario = models.ForeignKey(Scenario)
     
 
-
+#**************************************************
+#              Product Info                       *
+#  Used for the AddProduct operation              *
+#**************************************************   
 class ProductInfo(models.Model):
-    id = models.AutoField(primary_key=True)
-    info_status = models.CharField(max_length=50)
-    info_error = models.CharField(max_length=200)
-    info_date = models.DateTimeField()
+    id             = models.AutoField(primary_key=True)
+    info_status    = models.CharField(max_length=50)
+    info_error     = models.CharField(max_length=PROD_ERROR_LEN)
+    info_date      = models.DateTimeField()
+    new_product_id = models.CharField(max_length=256)
+    product_url    = models.CharField(max_length=4096)
 
 
 

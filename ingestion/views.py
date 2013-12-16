@@ -19,55 +19,86 @@ from django.contrib.auth import logout
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.views.defaults import server_error
-
-import json
-
-import models
-import forms
-import settings
-import os
-import logging
-import datetime
 from django.utils.timezone import utc
 from django.contrib.auth import authenticate, login
 from django.http import Http404
 from urllib2 import URLError
 
-from settings import IE_DEBUG, IE_HOME_PAGE, JQUERYUI_OFFLINEURL
+import os
+import logging
+import datetime
+import json
+
+import models
+import forms
+import work_flow_manager
+
+from settings import set_autoLogin, \
+    IE_DEBUG, IE_HOME_PAGE, IE_AUTO_LOGIN, \
+    MEDIA_ROOT, JQUERYUI_OFFLINEURL, AUTHENTICATION_BACKENDS
 from utils import read_from_url
 from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
 from uqmd import updateMetaData
-import work_flow_manager
+from add_product import add_product_submit
 
 IE_DEFAULT_USER = r'dreamer'
 IE_DEFAULT_PASS = r'1234'
 
 dmcontroller = DownloadManagerController.Instance()
 
-def main_page(request):
+def do_post_operation(op, request):
+    # must be a POST request
+    response_data = {}
+
+    if request.method == 'POST':
+        response_data = op(request.body)
+        return HttpResponse(
+            json.dumps(response_data),
+            content_type="application/json")
+
+    else:
+        logger = logging.getLogger('dream.file_logger')
+        logger.error("Unxexpected GET request on url "+`request.path_info`)
+        raise Http404
+
+def auto_login(request):
+    if not IE_AUTO_LOGIN:
+        return
+
     logger = logging.getLogger('dream.file_logger')
+    new_user = authenticate(
+        username=IE_DEFAULT_USER,
+        password=IE_DEFAULT_PASS)
+    if None == new_user:
+        logger.warn('Cannot log in user '+IE_DEFAULT_USER)
+    else:
+        new_user.backend=AUTHENTICATION_BACKENDS[0]
+        login(request, new_user)
+        logger.info('Auto-logged-in ' + IE_DEFAULT_USER+".")
+    return new_user
+    
+
+def main_page(request):
     dmcontroller.set_ie_port(request.META['SERVER_PORT'])
-    if settings.IE_AUTO_LOGIN and \
-            (not request.user.is_authenticated()) and \
+    user = request.user
+
+    if user.username != IE_DEFAULT_USER:
+        user = auto_login(request)
+
+    elif IE_AUTO_LOGIN and \
+            (not user.is_authenticated()) and \
             request.path == '/'+IE_HOME_PAGE:
-        new_user = authenticate(
-            username=IE_DEFAULT_USER,
-            password=IE_DEFAULT_PASS)
-        if None == new_user:
-            logger.warn('Cannot log in user '+IE_DEFAULT_USER)
-        else:
-            new_user.backend=settings.AUTHENTICATION_BACKENDS[0]
-            login(request, new_user)
-            logger.info('Auto-logged-in ' + IE_DEFAULT_USER+".")
+        user = auto_login(request)
+
     return render_to_response(
         'base.html',
-        {'user':request.user,
+        {'user': user,
          'home_page':IE_HOME_PAGE,
          'jqueryui_offlineurl': JQUERYUI_OFFLINEURL
          })
 
 def logout_page(request):
-    settings.IE_AUTO_LOGIN = False
+    settings.set_autoLogin(False)
     logout(request)
     return HttpResponseRedirect('/')
 
@@ -75,6 +106,9 @@ def logout_page(request):
 def overviewScenario(request):
     # retrieve scenarios for current user
     user = request.user
+    if not request.user.username == IE_DEFAULT_USER:
+        user = auto_login(request)
+
     scenarios = user.scenario_set.all()
     scenario_status = []
     for s in scenarios:
@@ -110,7 +144,7 @@ def handle_uploaded_scripts(request,scenario):
     for filename in request.FILES: # files is dictionary
         f = request.FILES[filename] 
         file_path = "%s/scripts/%s_%s_%d" % \
-            (settings.MEDIA_ROOT, str(request.user.id), str(scenario.id), i)
+            (MEDIA_ROOT, str(request.user.id), str(scenario.id), i)
         try:
             destination = open(file_path,'w')
             if f.multiple_chunks:
@@ -229,7 +263,7 @@ def deleteScenario(request,scenario_id):
     current_task = work_flow_manager.WorkerTask(
         {"scenario_id":scenario_id,
          "task_type":"DELETE_SCENARIO",
-         "scripts":["%s/%s" % (settings.MEDIA_ROOT,del_script.script_file)]
+         "scripts":["%s/%s" % (MEDIA_ROOT,del_script.script_file)]
          })
     wfm.put_task_to_queue(current_task)
 
@@ -271,7 +305,7 @@ def configuration_page(request):
                         old_script.delete()
                         # TODO exception should be implemented
                         os.remove("%s/%s" % \
-                                      (settings.MEDIA_ROOT,old_script.script_file)) 
+                                      (MEDIA_ROOT,old_script.script_file)) 
 
             elif "button_submit_2" in request.POST: # name of button in template
                 print "Delete Form  is valid"
@@ -282,7 +316,7 @@ def configuration_page(request):
                         old_script.delete()
                         # TODO exception should be implemented
                         os.remove("%s/%s" % \
-                                      (settings.MEDIA_ROOT,old_script.script_file)) 
+                                      (MEDIA_ROOT,old_script.script_file)) 
             # save UserScript to /<project>/media/{(user.id)_(script_name)}
             m.save() 
             port = request.META['SERVER_PORT']
@@ -308,112 +342,119 @@ def configuration_page(request):
          'home_page':IE_HOME_PAGE})
     return render_to_response('configuration.html',variables)
 
+##################################################################
+# Non-interactive intefaces
 
-@csrf_exempt
-def getListScenarios(request):
-    # must be GET request
+
+def getListScnerios(request):
     response_data = []
+    scenarios = models.Scenario.objects.all()
+    for s in scenarios:
+        response_data.append(
+            {'id':'%s' % s.ncn_id,
+             'name': '%s' % s.scenario_name,
+             'decription':'%s' % s.scenario_description})
+    return "scenarios", response_data
+
+def getScenario(request,args):
+    response_data = {}
+    scenario = models.Scenario.objects.get(ncn_id=args[0])
+    response_data = models.scenario_dict(scenario)
+    return "scenario", response_data
+
+def getAddStatus(request,args):
+    # Possible Error values:
+    #     processing
+    #     failed
+    #     success
+    #     idError
+    #
+
+    response_data = {}
+
+    iid = int(args[0])
+    pi = None
+    try:
+        pi = models.ProductInfo.objects.get(id__exact=iid)
+        response_data['status'] = pi.info_status
+        if pi.info_error:
+            response_data["errorString"] = pi.info_error
+    except models.ProductInfo.DoesNotExist:
+        response_data['status'] = "idError"
+        response_data["errorString"] = "Id not found."
+
+    return response_data
+
+
+def get_request_json(func, request,
+                     args=None,
+                     string_error=False,
+                     wrapper=True):
+    """ if wrapper is True, func is expected to return a tuple:
+        (key_string, data)
+        where string is the keyword in the final json response
+        sent to the requestor, and data is its value.
+        The response will then be json structure like this:
+          { "status" : 0 , key_string : data }
+        If wrapper is True, the response is returned without
+        the "status" json wrapper, and need not be tuple then.
+        args is a tuple passed on to the func
+    """
+    response_data = {}
+
+    if string_error:
+        failure_status = 'failed'
+        success_status = 'success'
+    else:
+        failure_status = 1
+        success_status = 0
+
     if request.method == 'GET':
         try:
-            scenarios = models.Scenario.objects.all()
-            for s in scenarios:
-                response_data.append(
-                    {'id':'%s' % s.ncn_id,
-                     'name': '%s' % s.scenario_name,
-                     'decription':'%s' % s.scenario_description})
+            if args:
+                op_response = func(request, args=args)
+            else:
+                op_response = func(request)
+            if wrapper:
+                response_data['status'] = success_status
+                response_data[op_response[0]] = op_response[1]
+            else:
+                response_data = op_response
         except Exception as e:
-            response_data['status'] = 1
+            response_data['status'] = failure_status
             response_data['errorString'] = "%s" % e
     else:
-        # method POST
-        response_data['status'] = 1
+        # method was POST
+        response_data['status'] = failure_status
         response_data['errorString'] = "Request method is not GET."
-    return HttpResponse(json.dumps(response_data), content_type="application/json")
-
-
-@csrf_exempt
-def getScenario(request,ncn_id):
-    # must be GET method
-    response_data = {}
-    if request.method == 'GET':
-        try:
-            scenario = models.Scenario.objects.get(ncn_id=ncn_id)
-            response_data = models.scenario_dict(scenario)
-        except Exception as e:
-            response_data['status'] = 1
-            response_data['errorString'] = "%s" % e
-    else:
-        # method POST
-        response_data['status'] = 1
-        response_data['errorString'] = "Request method is not GET."
-    return HttpResponse(json.dumps(response_data),
-                        content_type="application/json")
-
-
-@csrf_exempt
-def addProduct(request):
-    # must be a POST request
-    response_data = {}
-    if request.method == 'POST':
-        dataRef = request.POST['dataRef']
-        username = request.POST['username']
-
-        if dataRef: # metadata will be implemented later
-            addProduct = models.ProductInfo()
-            # for time-zone aware dates use this one instead:
-            #addProduct.info_date = datetime.datetime.utcnow().replace(tzinfo=utc)
-            addProduct.info_date = datetime.datetime.utcnow().replace()
-            addProduct.info_status = "processing"
-            addProduct.save()
-
-            response_data['opId'] = str(addProduct.id)
-            response_data['status'] = 0
-
-            # process addProduct data by work_flow_manager
-            wfm = work_flow_manager.WorkFlowManager.Instance()
-            script = None
-            try:
-                user = User.objects.get(username=username)
-                script = models.UserScript.objects.filter(script_name__exact="addProduct-script",user_id=user.id)
-                if len(script)>0:
-                    print "%s/%s" %(settings.MEDIA_ROOT,script[0].script_file)
-                    current_task = work_flow_manager.WorkerTask({"task_type":"ADD-PRODUCT","addProductScript":"%s/%s" % (settings.MEDIA_ROOT,script[0].script_file),"dataRef":dataRef,"addProduct_id":addProduct.id})
-                    wfm.put_task_to_queue(current_task)
-                else:
-                    response_data['status'] = 1
-                    response_data['errorString'] = "User: %s doesn't have defined addProduct script." % username
-            except Exception as e:
-                response_data['status'] = 1
-                response_data['errorString'] = "Error %s" % e
-        else:
-            response_data['status'] = 1
-            response_data['errorString'] = "Missing input data."
-    else:
-        response_data['status'] = 1
-        response_data['errorString'] = "Request is not POST."
-    #print response_data
-    #print datetime.datetime.utcnow().replace()
     return HttpResponse(
         json.dumps(response_data),
         content_type="application/json")
 
 
 @csrf_exempt
-def getStatus(request):
-    # must be GET request
-    response_data = {}
-    if request.method == 'GET':
-        if request.opId:
-            pass
-        else:
-            response_data['status'] = "failed"
-            response_data['errorString'] = "There is no addProduct id."
-    else:
-        response_data['status'] = "failed"
-        response_data['errorString'] = "Request is not GET."
-    return HttpResponse(
-        json.dumps(response_data),
-        content_type="application/json")
+def getListScenarios_operation(request):
+    # expect a GET request
+    return get_request_json(getListScnerios, request)
+
+
+@csrf_exempt
+def getScenario_operation(request,ncn_id):
+    return get_request_json(getScenario, request, args=(ncn_id,))
+
+
+@csrf_exempt
+def addProduct_operation(request):
+    return do_post_operation(add_product_submit, request)
+
+@csrf_exempt
+def getAddStatus_operation(request, op_id):
+    return get_request_json(getAddStatus,
+                            request,
+                            args=(op_id,),
+                            string_error=True,
+                            wrapper=False)
+
 
 @csrf_exempt
 def darResponse(request,seq_id):
@@ -452,20 +493,11 @@ def dmDARStatus(request):
         response_str = json.dumps(response_data,indent=4)
         return HttpResponse(response_str,content_type="text/plain")
     else:
+        logger = logging.getLogger('dream.file_logger')
         logger.error("Unxexpected POST request on dmDARStatus url,\n" + \
                          `request.META['SERVER_PORT']`)
         raise Http404
 
 @csrf_exempt
 def updateMD_operation(request):
-    # must be a POST request
-    response_data = {}
-    if request.method == 'POST':
-        response_data = updateMetaData(request.body)
-        return HttpResponse(
-            json.dumps(response_data),
-            content_type="application/json")
-    else:
-        logger.error("Unxexpected GET request on updateMD url,\n" + \
-                         `request.META['SERVER_PORT']`)
-        raise Http404
+    return do_post_operation(updateMetaData, request)

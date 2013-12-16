@@ -29,6 +29,7 @@ import views
 from django.utils.timezone import utc
 from settings import IE_DEBUG
 from ingestion_logic import ingestion_logic
+from add_product import add_product_wfunc
 from utils import UnsupportedBboxError, IngestionError, create_manifest
 
 worker_id = 0
@@ -38,16 +39,20 @@ worker_id = 0
 #**************************************************
 class WorkerTask:
     def __init__(self,parameters):
-        # parameters are:
+        # parameters must contain at least 'task_type'.
+        # task_types are the keys for Worker.task_functions, see below.
+        # Different task types then have their specific parameters.
+        # E.g. for the INGEST_SCENARIO, these are:
         #  {
+        #     "task_type",
         #     "scenario_id",
-        #     "task_type":"",  # DELETE_SCENARIO, INGEST_SCENARIO
-        #     "scripts":[]
+        #     "scripts"
         #   }
+        #
         self._parameters = parameters
         ss = WorkFlowManager.Instance().set_scenario_status
         if "scenario_id" in parameters:
-            # set to at least 1% done to keep the web page updates active
+            # set percent done to at least 1% to keep the web page updates active
             ss(0, parameters["scenario_id"], 0, "QUEUED", 1)
 
 #**************************************************
@@ -64,7 +69,7 @@ class Worker(threading.Thread):
         self.task_functions = {
             "DELETE_SCENARIO": self.delete_func,
             "INGEST_SCENARIO": self.ingest_func,
-            "ADD-PRODUCT":     self.add_prod_func
+            "ADD_PRODUCT":     add_product_wfunc       # from add_product
             }
 
     def run(self):
@@ -188,25 +193,6 @@ class Worker(threading.Thread):
                 traceback.print_exc(4,sys.stdout)
                 raise
 
-    def add_prod_func(self,parameters):
-        # parameters: addProduct_id,dataRef,addProductScript
-        # run addProduct script
-        addProduct = models.ProductInfo.objects.filter(
-            id=parameters["addProduct_id"])[0]
-        addProduct.info_status = "processing"
-        try:
-            command = "%s %s" % (
-                parameters["addProductScript"],
-                parameters["dataRef"])
-            self._logger.info( "Running - %s" % command )
-            
-            os.system(command) # TODO use subprocess.Popen
-            addProduct.info_status = "done"
-        except Exception as e:
-            addProduct.info_error = "Error %s" % e
-            addProduct.info_status = "failed"
-        finally:
-                addProduct.save()
 
 
 #**************************************************
@@ -235,7 +221,7 @@ class AISWorker(threading.Thread):
                            scenario.repeat_interval))
                 # use the following for tz-aware datetimes
                 #t_now = datetime.datetime.utcnow().replace(tzinfo=utc)
-                t_now = datetime.datetime.utcnow().replace()
+                t_now = datetime.datetime.utcnow()
                 if scenario.starting_date <= t_now and scenario.repeat_interval!=0:
                     t_delta = datetime.timedelta(seconds=scenario.repeat_interval)
                     t_prev = t_now - t_delta

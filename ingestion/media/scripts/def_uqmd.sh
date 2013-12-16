@@ -1,4 +1,20 @@
 #!/usr/bin/env bash
+#
+#  DREAM Update MetaData script template.
+#  This script is invoked by the Ingestion Engine
+#  during the operation updateMD on the interface
+#   IF-DREAM-O-UpdateQualityMD
+#
+# usage:
+# $0   [ -add | -replace ]  <ProductID>  <metadatafile>
+#    
+#  metadatafile is a full pathname.
+#
+# The script should exit with status 0 if all went well
+# and non-zero otherwise.  The expected range of error
+# codes is 1-9.
+#
+
 echo "Update MetaData script started on" $(date)
 echo args: $*
 

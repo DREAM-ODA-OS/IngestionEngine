@@ -113,16 +113,19 @@ def open_unique_file(dir_path, leaf_root, maxtries):
     i = 0
     fname = mk_unique_fn(dir_path, leaf_root, maxtries)
     err_str = None
-    while i<256:
+    while i<64:
+        i += 1
         try:
-            print "trying ... "+fname
             fd = osopen(fname, O_WRONLY | O_CREAT | O_EXCL, 0640)
             fp = fdopen(fd,"w")
             return fp, fname
         except OSError as e:
             err_str = `e`
             print err_str
-        fname = mk_unique_fn(dir_path, leaf_root+"_"+`i`+"_", 8)
+        try:
+            fname = mk_unique_fn(dir_path, leaf_root+"_"+`i`+"_", 8)
+        except IngestionError:
+            pass
     # exhausted all attempts
     raise IngestionError("Cannot open unique file: "+ fname+\
                              ", error: "+err_str)
@@ -524,6 +527,8 @@ def check_or_make_dir(dir_path, logger):
                 logger.error(msg)
             raise  DMError(msg)
 
+def get_base_fname(orig_full_path):
+    return  os.path.basename(orig_full_path)
 
 if __name__ == '__main__':
     # used for stand-alone testing
@@ -536,4 +541,4 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1: print sys.argv[1]
 
-    
+ 

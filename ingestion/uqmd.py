@@ -1,7 +1,10 @@
 ############################################################
 #  Project: DREAM
+#
 #  Module:  Task 5 ODA Ingestion Engine 
+#
 #  Author: Milan Novacek (CVC)
+#
 #  Date:   Oct 29, 2013
 #
 #    (c) 2013 Siemens Convergence Creators s.r.o., Prague
@@ -70,12 +73,8 @@ def updateMetaData(postData):
     command = None
     productID = None
     action = None
-    import sys
-    #try:
-    if True:
-        sys.stdout.flush()
+    try:
         msg = message_from_string(postData)
-        sys.stdout.flush()
         for part in msg.walk():
             # multipart/* are just containers
             if part.get_content_maintype() == 'multipart':
@@ -110,7 +109,7 @@ def updateMetaData(postData):
         elif not "productID" in command or not "action" in command:
             status = 12
             error_str = "Mandatory productID or action not found."
-    try:
+
         if 0 == status:
             status, error_str, md_filename = write_md(
                 command["productID"],metadata)

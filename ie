@@ -1,6 +1,25 @@
-#( cd ../ngEO-download-manager; ./start_dm.sh )
-if [[ ! -f ingestion/static/db/dream.db ]]
+#!/usr/bin/env sh
+
+INGESTION_DIR=ingestion
+
+ie_dd=$(dirname $0)
+
+ing_dir=$ie_dd/$INGESTION_DIR
+if [[ ! -d $ing_dir ]]
+then
+  echo "FATAL: missing subdirectory '$ing_dir', exiting"
+  exit 2
+fi
+
+cd $ie_dd
+
+if [[ ! -d $INGESTION_DIR/static/db ]]
+then
+  mkdir $INGESTION_DIR/static/db
+fi
+
+if [[ ! -f $INGESTION_DIR/static/db/dream.db ]]
 then
   ./manage.py syncdb --noinput
 fi
-./manage.py runserver
+./manage.py runserver $1

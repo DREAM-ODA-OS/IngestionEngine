@@ -31,13 +31,16 @@ SC_NCN_ID_BASE     = 'scid'
 NCN_ID_LEN         = 96
 SC_NAME_LEN        = 64
 SC_DESCRIPTION_LEN = 1024
+PROD_ERROR_LEN     = 2048
 
 # Scripts are located in IE_SCRIPTS_DIR, defined further on down
 #  Here use only the leaf file name, not the full path
-IE_DEFAULT_ADD_SCRIPT  = 'default_add.sh'
-IE_DEFAULT_UQMD_SCRIPT = 'default_uqmd.sh'
+IE_DEFAULT_INGEST_SCRIPT  = 'def_ingest.sh'
+IE_DEFAULT_UQMD_SCRIPT    = 'def_uqmd.sh'
+IE_DEFAULT_ADDPROD_SCRIPT = 'def_addProduct.sh'
 
 UQMD_SUBDIR = 'uqmd_metadata'
+ADDPRODUCT_SUBDIR = 'added_products'
 
 PROJECT_DIR = os.path.dirname(__file__)
 
@@ -307,3 +310,8 @@ LOGGING = {
         }
     }
 }
+
+def set_autoLogin(auto):
+    global IE_AUTO_LOGIN
+    IE_AUTO_LOGIN = auto
+

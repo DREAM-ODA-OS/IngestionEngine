@@ -1,12 +1,38 @@
 #!/usr/bin/env sh
-echo "default script started"
+# 
+#  DREAM Ingestion script template.
+#  This script is invoked by the Ingestion Engine
+#  to ingest a downloaded product into the ODA server.
+#
+# usage:
+# $0 <manifest-file>
+#
+#  The script should exit with a 0 status to indicate
+# success; a non-zero status indicates failure.
+#
+# The manifest file is further input to this script,
+# and contains KV pairs.  Values are strings enclosed
+# in quotes. Here are examples of the most important
+# KV pairs contained in the manifest file:
+#
+#    SCENARIO_NCN_ID="scid0"
+#    DOWNLOAD_DIR="/path/p_scid0_001"
+#    METADATA="/path/p_scid0_001/ows.meta"
+#    DATA="/path/p_scid0_001/p1.tif"
+#
+#
+
+echo "Default Ingestion script started."
+
+if [[ $# < 1 ]]
+then
+    echo "Not enough args, exiting with status 1."
+    exit 1
+fi
+
 echo arg: $1
 echo "arg1 contains:"
 cat $1
 sleep 1
-echo "default script running"
-sleep 1
-echo "default script still running"
-sleep 1
-echo "default script finishing with status 3."
-exit 3
+echo "Default Ingestion script finishing with status 0."
+exit 0

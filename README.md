@@ -4,17 +4,38 @@ IngestionEngine
 DREAM Ingestion Engine
 
 This is a development version, not released.
-Most features are expected not to be functional yet.
 
-### Update 03.12.2013:
+### Update 16.12.2013:
 
-*  The interface to the ngEO Download Manager (v 0.5.4) is now operational.
-The IE+DM can now download products, up to executing the add-product script(s)
-for registering products in the ODA server; the actual registration remains
-to be tested.
-registered in the ODA server yet. For development and debugging only
-the first 4 download URLs generated for a given scenario are downloaded.
-A test-scnenario is pre-loaded in the db.
+*  The interface IF-DREAM-O-UpdateQualityMD is operational up
+to (including)  executing the ODA-Server update script
+`ingestion/media/scripts/def_uqmd.sh`, which is an intenal inteface
+to the ODA Server.  See the script for details on this internal IF.
+
+* The test script `test/updateQualityMD_sa/test_uqmd.py`
+serves as an example of how to use the IF-DREAM-O-UpdateQualityMD interface.
+
+*  The interface IF-DREAM-O-AddProduct is operational up
+to (including)  executing the ODA-Server update script
+`ingestion/media/scripts/def_addProduct.sh`, which is an intenal inteface
+to the ODA Server. See the script for details on this internal IF.
+The inteface IF-DREAM-O-AddProduct comprises two operations: 
+`addProduct` and `getStatus`.
+An example of how to use these is shown in the test script for this
+interface: `test/addProduct_sa/test_addProd.py`
+
+*  (03.12.) The interface to the ngEO Download Manager (v 0.5.4) is operational.
+
+*  (03.12.) The IE+DM can download products from product facilities using EO-WCS to
+provide metadata and data.
+Registering products in the ODA server remains
+to be tested; the IE executes the registation shell script
+`ingestion/media/scripts/def_ingest.sh`
+For development and debugging only the first 4 download URLs generated
+for a given scenario are downloaded.
+
+* (03.12.) A test-scnenario is pre-loaded on first start-up, see the
+installation instructions below.
 
 ## Installation and Configuration
 
@@ -33,7 +54,7 @@ install these if you don't have them.
 
 ### Installation and Configuration
 0. Download the IngestionEngine, e.g. to a directory `oda/ing`
-0. possibly run `./manage.py syncdb` and `./manage.py collectstatic`
+0. possibly run `./manage.py collectstatic`
 0.  The top-level Ingestion Engine directory (`ing` in our example) 
 contains the main config file `ingestion_config.json`.
 It is mandatory to set the path
@@ -60,19 +81,23 @@ values as the _running_ DM.
 0. It is assumed the DM is either already running or will be started
 more or less concurrently with the IE; the IE will wait some time
 (configurable) for the DM to be available.
-0. For testing, start the Ingestion Engine via django's development server.
+0. For testing, start the Ingestion Engine via the suplied script 'ie'; it
+will check to see if initialization is needed and then run django's development server.
 Note the dev server should not be used for production or for pages publicly accessible
 from the Internet.
 
     ```
     cd oda/iedir
-    ./manage.py runserver <port>
+    ./ie [port]
     ```
 _port_ is optional and specifies where the ingestion engine is listening.
 As a django application the default is 8000.
-If the DM is also running, then a successfuly completed start-up 
-of the IE is indicated by the following line
-being logged to the logfile and to stdout:
+
+`ie` is a script that runs `./manage.py syncdb` if needed (e.g. on first time
+startup) to ininialise the Ingestion Engine's database and to pre-load a 
+test-scenario.  Then it runs `./manage.py runserver`
+If the DM is also running, then a successfuly completed start-up of the IE is
+indicated by the following line being logged to the logfile and to stdout:
 
     ```
     DM Port OK, waited 22.2 secs.
