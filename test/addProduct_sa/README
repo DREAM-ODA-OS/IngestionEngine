@@ -1,0 +1,19 @@
+Puropose of test:
+  In a standalone mode, verify the addProduct and getStatus
+  operations on the interface IF-DREAM-O-AddProduct.
+
+Prepare:
+  Ensure the Ingestion Engine is running.
+  The download manager need not be running.
+
+Procedure:
+  Execute the python script 'test_addProd.py'
+
+Evaluation:
+  The test program reports results on stdout.
+  Inspect the log of the Ingestion Engine.
+  The addProduct operation should be shown as having run successfully
+  for the 'test valid input'.
+  There are also some error conditions tested, the log should show
+  an approprite error for each of the error condition tests.
+
