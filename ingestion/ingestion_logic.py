@@ -22,11 +22,23 @@ import json
 import time
 
 from osgeo import osr
+
+import work_flow_manager
 from utils import Bbox, bbox_from_strings, TimePeriod, mkFname, DMError, \
     NoEPSGCodeError, IngestionError, read_from_url, check_or_make_dir, make_new_dir
-from settings import IE_DEBUG, DAR_STATUS_INTERVAL
-from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
-import work_flow_manager
+from settings import \
+    IE_DEBUG, \
+    DAR_STATUS_INTERVAL
+from dm_control import \
+    DownloadManagerController, \
+    DM_DAR_STATUS_COMMAND
+from models import \
+    DSRC_EOWCS_CHOICE, \
+    DSRC_OSCAT_CHOICE, \
+    AOI_BBOX_CHOICE,   \
+    AOI_POLY_CHOICE,   \
+    AOI_SHPFILE_CHOICE
+
 
 # For debugging:
 # MAX_DEOCS_URLS limits the number of DescribeEOCoverageSet requests issued,
@@ -340,9 +352,10 @@ def getXmlTree(url, expected_tag):
     else:
         return ( resp, parse_file(resp, expected_tag, resp.geturl()) )
 
-def getDssList(eo_dss_list, req_bb, req_time):
+def getDssList(eo_dss_list, aoi_toi):
     # get list of datasets that overlap bbox
     id_list = []
+    req_bb, req_time = aoi_toi
     for dss in eo_dss_list:
         bb1 = extract_WGS84bbox(dss)
         if None == bb1:
@@ -453,8 +466,17 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
     return gc_requests
 
 
-def getProducts(params):
-    pass
+def extract_aoi_toi(params):
+    # extract bbox and toi from request input
+    req_aoi = params["aoi_bbox"]
+    req_bb_ll = ( float(req_aoi["lc"][0]), float(req_aoi["lc"][1]) )
+    req_bb_ur = ( float(req_aoi["uc"][0]), float(req_aoi["uc"][1]) )
+    req_bb = Bbox( req_bb_ll, req_bb_ur )
+
+    req_time = TimePeriod(params['from_date'], params['to_date'])
+
+    return req_bb, req_time
+
 
 def getMD_urls(params, service_version, id_list):
     req_aoi = params["aoi_bbox"]
@@ -473,7 +495,35 @@ def getMD_urls(params, service_version, id_list):
         md_urls.append( base_url + "&EOId=" + dss_id )
     return md_urls
     
+def urls_from_OSCAT(params):
+    raise IngestionError("Catalogues are not yet implemented")
 
+def urls_from_EOWCS(params):
+    base_url = params['dsrc'] + "?" + SERVICE_WCS
+    url_GetCapabilities = base_url + "&" + WCS_GET_CAPS
+    (fp, caps) = getXmlTree(url_GetCapabilities, CAPABILITIES_TAG)
+    if None == caps:
+        logger.error("Cannot parse getCap file. Url="+url_GetCapabilities)
+        if None != fp: fp.close()
+        return None
+        
+    service_version = extract_ServiceTypeVersion(caps).strip()
+    wcseo_dss = extract_DatasetSeriesSummary(caps)
+
+    caps = None  # no longer needed
+    fp.close()
+
+    aoi_toi = extract_aoi_toi(params)
+    id_list = getDssList(wcseo_dss, aoi_toi)
+
+    md_urls = getMD_urls(params, service_version, id_list)
+    if IE_DEBUG>1:
+        logger.debug("Qualified "+`len(md_urls)`+" md_urls")
+    gc_requests = process_csDescriptions(
+        params, aoi_toi, service_version, md_urls)
+    return gc_requests
+
+    
 def getCoverageURLs(params):
     if IE_DEBUG > 1:
         print "   getCoverageURLs: params=" + `params`
@@ -489,39 +539,13 @@ def getCoverageURLs(params):
              "Requested '"+url_parts[0]+"' is not supported.")
         return None
 
-    base_url = params['dsrc'] + "?" + SERVICE_WCS
-    url_GetCapabilities = base_url + "&" + WCS_GET_CAPS
-    (fp, caps) = getXmlTree(url_GetCapabilities, CAPABILITIES_TAG)
-    if None == caps:
-        logger.error("Cannot parse getCap file. Url="+url_GetCapabilities)
-        if None != fp: fp.close()
-        return None
-        
-    service_version = extract_ServiceTypeVersion(caps).strip()
+    if params['dsrc_type'] == DSRC_EOWCS_CHOICE:
+        return urls_from_EOWCS(params)
+    elif params['dsrc_type'] == DSRC_OSCAT_CHOICE:
+        return urls_from_OSCAT(params)
+    else:
+        raise IngestionError("bad dsrc_type:" + params['dsrc_type'])
 
-    # set up bbox from request input
-    req_aoi = params["aoi_bbox"]
-    req_bb_ll = ( float(req_aoi["lc"][0]), float(req_aoi["lc"][1]) )
-    req_bb_ur = ( float(req_aoi["uc"][0]), float(req_aoi["uc"][1]) )
-    req_bb = Bbox( req_bb_ll, req_bb_ur )
-
-    req_time = TimePeriod(params['from_date'], params['to_date'])
-
-    aoi_toi = (req_bb, req_time)
-    wcseo_dss = extract_DatasetSeriesSummary(caps)
-    id_list = getDssList(wcseo_dss, req_bb, req_time)
-
-    caps = None  # no longer needed
-    fp.close()
-
-    md_urls = getMD_urls(params, service_version, id_list)
-    if IE_DEBUG>1:
-        logger.debug("Qualified "+`len(md_urls)`+" md_urls")
-    gc_requests = process_csDescriptions(
-        params, aoi_toi, service_version, md_urls)
-    return gc_requests
-
-    
 def request_download(sc_ncn_id, urls):
 
     #create tmp dir for downloads

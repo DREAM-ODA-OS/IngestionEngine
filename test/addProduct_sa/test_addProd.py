@@ -51,7 +51,7 @@ from urllib2 import HTTPError
 
 METADATA = "short.xml"
 DATA     = "empty.tif"
-DEBUG    = 0
+DEBUG    = 1
 SERVICE_URL = 'http://127.0.0.1:8000/ingest/addProduct/addProduct'
 STATUS_URL  = 'http://127.0.0.1:8000/ingest/addProduct/getStatus'
 
@@ -124,6 +124,7 @@ def check_status_ok(op_id):
 
         else:
             indent = old_indent
+            print indent+"getStatus returned:\n" + indent+`resp`
             return True
 
     except Exception as e:
@@ -179,6 +180,8 @@ def test_valid(meta_path, data_path):
 
     try:
         resp = json.loads(read_from_url(SERVICE_URL, json.dumps(request)))
+        if DEBUG > 0:
+            print indent+"received:\n"+`resp`
     except HTTPError as e:
         print
         print indent+"HTTPError: " + `e`

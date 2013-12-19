@@ -22,4 +22,7 @@ if [[ ! -f $INGESTION_DIR/static/db/dream.db ]]
 then
   ./manage.py syncdb --noinput
 fi
-./manage.py runserver $1
+if [ $? == 0 ]
+then
+  ./manage.py runserver $1
+fi

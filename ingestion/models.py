@@ -30,20 +30,39 @@ def make_ncname(root):
     n = Scenario.objects.count()
     return root+`n`
 
-AOI_BBOX_CHOICE = 'BB'
-AOI_POLY_CHOICE = 'PO'
+# ------------ choice types  --------------------------
+
+#  Area Of Interest
+AOI_BBOX_CHOICE    = 'BB'
+AOI_POLY_CHOICE    = 'PO'
+AOI_SHPFILE_CHOICE = 'SH'
 
 AOI_CHOICES = (
-    (AOI_BBOX_CHOICE, 'Bounding Box'),
-    (AOI_POLY_CHOICE, 'Polygon'),
+    (AOI_BBOX_CHOICE,    'Bounding Box'),
+    (AOI_POLY_CHOICE,    'Polygon'),
+    (AOI_SHPFILE_CHOICE, 'Shapefile'),
 )
+
+# Data Source
+DSRC_EOWCS_CHOICE  = 'EO'    # EO-WCS
+DSRC_OSCAT_CHOICE  = 'OC'    # OpenSearch Catalogue
+
+DSRC_CHOICES = (
+    (DSRC_EOWCS_CHOICE,  'EO-WCS'),
+    (DSRC_OSCAT_CHOICE,  'OpenSearch Catalogue'),
+)
+
 
 # ------------ conversion utilities  --------------------------
 def date_to_iso8601(src_date):
     return DateFormat(src_date).format("c")
 
 def scenario_dict(db_model):
-    """ creates a dictionary from a database model record """
+    """ creates a dictionary from a database model record,
+        using selected fields. Converts some fields into
+        a more structured representation: e.g. a bbox is
+        built up from individual database fields.
+    """
     response_data = {}
     for s in (
         "repeat_interval",
@@ -51,6 +70,7 @@ def scenario_dict(db_model):
         "view_angle",
         "sensor_type",
         "dsrc",
+        "dsrc_type",
         "dsrc_login",
         "dsrc_password",
         "default_priority",
@@ -70,7 +90,7 @@ def scenario_dict(db_model):
             'uc' : (db_model.bb_uc_long, db_model.bb_uc_lat)
             }
     else:
-        raise UnsupportedBboxError("Unsupported BBOX type for scenario id=" +\
+        raise UnsupportedBboxError("Unsupported AOI type for scenario id=" +\
                                        db_model.ncn_id)
 
     return response_data
@@ -86,23 +106,29 @@ class Scenario(models.Model):
         choices=AOI_CHOICES,
         default=AOI_BBOX_CHOICE)
     aoi_file             = models.CharField(max_length=1024)
+    aoi_poly_lat         = models.CommaSeparatedIntegerField(max_length=1024)
+    aoi_poly_long        = models.CommaSeparatedIntegerField(max_length=1024)
     bb_lc_long           = models.FloatField()
     bb_lc_lat            = models.FloatField()
     bb_uc_long           = models.FloatField()
     bb_uc_lat            = models.FloatField()
-    repeat_interval      = models.IntegerField()
     from_date            = models.DateTimeField()
     to_date              = models.DateTimeField()
-    starting_date        = models.DateTimeField()
     cloud_cover          = models.FloatField()
     view_angle           = models.FloatField()
     sensor_type          = models.CharField(max_length=96)
     dsrc                 = models.CharField(max_length=1024)
+    dsrc_type            = models.CharField(
+        max_length=2,
+        choices=DSRC_CHOICES,
+        default=DSRC_EOWCS_CHOICE)
     dsrc_login           = models.CharField(max_length=64)
     dsrc_password        = models.CharField(max_length=64)
     preprocessing        = models.IntegerField()
     default_script       = models.IntegerField()
     default_priority     = models.IntegerField()
+    starting_date        = models.DateTimeField()
+    repeat_interval      = models.IntegerField()
     user                 = models.ForeignKey(User)
     
 #**************************************************

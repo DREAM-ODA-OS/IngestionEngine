@@ -112,7 +112,17 @@ def overviewScenario(request):
     scenarios = user.scenario_set.all()
     scenario_status = []
     for s in scenarios:
-        scenario_status.append(s.scenariostatus)
+        try:
+            scenario_status.append(s.scenariostatus)
+        except models.ScenarioStatus.DoesNotExist:
+            print 'adding '+`s.ncn_id`
+            sstat = models.ScenarioStatus(
+                scenario=s,
+                is_available=1,
+                status='IDLE',
+                done=0.0)
+            sstat.save()
+            scenario_status.append(sstat)
     variables = RequestContext(
         request,
         {'scenarios':scenarios,

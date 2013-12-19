@@ -89,8 +89,8 @@ urlpatterns = patterns('',
     url(r'^ingest/darResponse/(?P<seq_id>.*)$',views.darResponse),
     
     # Main page
-    #url(r'^'+IE_HOME_PAGE,    views.main_page),
-    #url(r'^'+IE_HOME_PAGE+'/',views.main_page),
+    # Skip showing the main page views.main_page,
+    # and go straight to scenario overview instead
     url(r'^'+IE_HOME_PAGE,    views.overviewScenario),
     url(r'^'+IE_HOME_PAGE+'/',views.overviewScenario),
     

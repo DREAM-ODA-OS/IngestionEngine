@@ -18,8 +18,8 @@ from django.utils.timezone import utc
 from settings import SC_NCN_ID_BASE
 
 class ScriptForm(forms.Form):
-   name = forms.CharField(max_length=20)
-   file = forms.FileField()
+    name = forms.CharField(max_length=20)
+    file = forms.FileField()
 
 
 class UserScriptForm(forms.ModelForm):
@@ -35,16 +35,18 @@ class ScriptsForm(forms.ModelForm):
 
 
 class ScenarioForm(forms.ModelForm):
+   
     class Meta:
-        model = models.Scenario
-        exclude = ['id','user','aoi_file', 'sensor_type']
+       model = models.Scenario
+       exclude = ['id','user','aoi_file', 'sensor_type', 'dsrc_type',
+                   'aoi_poly_lat', 'aoi_poly_long']
 
     def clean_cloud_cover(self):
-        data = self.cleaned_data['cloud_cover']
-        if not data>=0 and data<100:
-            raise forms.ValidationError(
+       data = self.cleaned_data['cloud_cover']
+       if not data>=0 and data<100:
+          raise forms.ValidationError(
                "Max Cloud Cover must be in the interval from 0 to 100.")
-        return data
+       return data
 
     def clean_view_angle(self):
         data = self.cleaned_data['view_angle']
@@ -105,15 +107,24 @@ class ScenarioForm(forms.ModelForm):
             forms.Textarea(attrs={'cols':70,'rows':6})
 #        self.fields['sensor_type'].widget = forms.RadioSelect(choices=SENSOR_CHOICES)
         
+        self.fields['scenario_name'   ].widget = \
+            forms.TextInput(attrs={'size':60})
         self.fields['dsrc'            ].widget = \
             forms.TextInput(attrs={'size':60})
         self.fields['dsrc_password'   ].widget = forms.PasswordInput()
         self.fields['preprocessing'   ].widget = forms.CheckboxInput()
         self.fields['default_script'  ].widget = forms.CheckboxInput()
+        self.fields['from_date'       ].widget = forms.SplitDateTimeWidget(attrs={'size':11})
+        self.fields['to_date'         ].widget = forms.SplitDateTimeWidget(attrs={'size':11})
+        self.fields['starting_date'   ].widget = forms.SplitDateTimeWidget(attrs={'size':11})
+        self.fields['bb_lc_long'      ].widget = forms.TextInput(attrs={'size':11})
+        self.fields['bb_lc_lat'       ].widget = forms.TextInput(attrs={'size':11})
+        self.fields['bb_uc_long'      ].widget = forms.TextInput(attrs={'size':11})
+        self.fields['bb_uc_lat'       ].widget = forms.TextInput(attrs={'size':11})
         
-        
-        # label of widgets
+        # widget labels
         #self.fields['id'].label = "ID Scenario"
+        self.fields['ncn_id'          ].label = 'Unique Id'
         self.fields['scenario_name'   ].label = 'Scenario Name'
         self.fields['scenario_description'].label = 'Scenario Description'
 #        self.fields['aoi'             ].label = 'AOI'
@@ -127,9 +138,10 @@ class ScenarioForm(forms.ModelForm):
         self.fields['view_angle'      ].label = 'Max View Angle'
 #        self.fields['sensor_type'     ].label = 'Sensor Type'
         self.fields['dsrc'            ].label = 'Data Source'
+#        self.fields['dsrc_type'       ].label = 'Data Src Type'
         self.fields['dsrc_login'      ].label = 'Data Src login'
         self.fields['dsrc_password'   ].label = 'Data Src password'
-        self.fields['preprocessing'   ].label = 'PreProcessing' 
+        self.fields['preprocessing'   ].label = 'S2 atmos. pre-process' 
         self.fields['default_priority'].label = 'Default priority'
         self.fields['starting_date'   ].label = 'Repeat Starting Date'
         self.fields['repeat_interval' ].label = 'Repeat Interval(seconds)'
@@ -160,6 +172,7 @@ class ScenarioForm(forms.ModelForm):
         self.fields['view_angle'          ].required = False
 #        self.fields['sensor_type'         ].required = False
         self.fields['dsrc'                ].required = False
+#        self.fields['dsrc_type'           ].required = False
         self.fields['dsrc_login'          ].required = False
         self.fields['dsrc_password'       ].required = False
         self.fields['preprocessing'       ].required = False

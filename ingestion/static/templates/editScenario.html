@@ -239,7 +239,46 @@ Editor</FONT></FONT></P>
 
 <form method="post" action="" enctype="multipart/form-data">{% csrf_token %}
     <table>
-        {{ form.as_table }}
+        <!-- form.as_table -->
+      {% for b in form %}
+        {% if "id_starting_date" in b.id_for_label %}
+        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+        <tr><td></td> <th>{{ b.label_tag }}</th> <td> {{ b }} </td><td></td></tr>
+         {% elif "id_aoi_type" in b.id_for_label %}
+        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+        <tr><td></td> <th>{{ b.label_tag }}</th> <td> {{ b }} </td><td></td></tr>
+       {% elif "id_bb_" in b.id_for_label%}
+
+          {% if "id_bb_lc_long" in b.id_for_label %}
+          <tr>
+            <td></td>
+            <th align="right">BBOX:&nbsp;</th> 
+            <td align="left">Lower corner long,lat:
+                 {{ b }}
+          {% elif "id_bb_lc_lat" in b.id_for_label%}
+                  {{ b }}
+            </td>
+            <td>  </td> 
+          </tr>
+          {% elif "id_bb_uc_long" in b.id_for_label%}
+          <tr>
+            <td></td>
+            <td></td>
+            <td align="left">Upper corner long,lat:
+                  {{ b }}  
+          {% elif "id_bb_uc_lat" in b.id_for_label%}
+                  {{ b }} 
+            </td>
+             <td>  </td>
+          </tr>
+          <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+
+          {% endif %}
+           
+        {% else %}
+        <tr><td> </td> <th> {{ b.label_tag }}</th><td> {{ b }} </td><td></td></tr>
+        {% endif %}
+	  {% endfor %}
     </table>
 
 	<p> </p>

@@ -102,7 +102,10 @@ bad_request = {
 mmsg = create_mime_msg(json.dumps(bad_request), metadata).as_string()
 resp = json.loads(read_from_url(SERVICE_URL, mmsg))
 
-if resp['status'] == 1: print "OK"
+if resp['status'] == 1:
+    print "OK"
+    if DEBUG>0:
+        print "response:\n"+`resp`
 else:
     n_errors += 1
     print "FAILED"
