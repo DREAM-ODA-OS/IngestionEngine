@@ -32,7 +32,7 @@ DM_DOWNDLOAD_COMMAND  = "download"
 DM_DAR_STATUS_COMMAND = "dataAccessRequests"
 IE_DAR_RESP_URL_TEMPLATE = "http://127.0.0.1:%s/ingest/darResponse"
 
-DEFAULT_PORT_WAIT_SECS = 20
+DEFAULT_PORT_WAIT_SECS = 25
 SYSTEM_PROC_NET_PATH   = "/proc/net/tcp"
 PROC_UID_INDEX         = 7
 PROC_STATUS_INDEX      = 3

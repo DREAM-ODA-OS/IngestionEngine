@@ -98,6 +98,10 @@ class Worker(threading.Thread):
             self._logger.warning(
                 "There is no type of the current task to process. (" + \
                     task_type + ")", extra={'user':"drtest"} )
+        except Exception as e:
+            self._logger.error(
+                "Worker do_task caught exception " + `e` +
+                "- Recovering from Internal Error")
 
     def delete_func(self,parameters):
             self._wfm.set_scenario_status(
@@ -140,10 +144,25 @@ class Worker(threading.Thread):
         self._wfm.set_scenario_status(
             self._id, sc_id, 0, "GENERATING URLS", percent)
         try:
-            scenario_data = models.Scenario.objects.get(id=sc_id)
+            scenario = models.Scenario.objects.get(id=sc_id)
+
+            eoids = scenario.eoid_set.all()
+            eoid_strs = []
+            for e in eoids:
+                eoid_strs.append(e.eoid_val)
+
+            #extraconditions = scenario.extraconditions_set.all()
+            extras_list = []
+            #for e in extraconditions:
+            #    extras_list.append( (e.xpath, e.value) )
+
             # ingestion_logic blocks until DM is finished downloading
             dl_dir, dar_url, dar_id = \
-                ingestion_logic(sc_id, models.scenario_dict(scenario_data))
+                ingestion_logic(sc_id,
+                                models.scenario_dict(scenario),
+                                eoid_strs,
+                                extras_list)
+
             if None == dar_id:
                 raise IngestionError("No DAR generated")
 
@@ -160,7 +179,7 @@ class Worker(threading.Thread):
             i = 1
             for d in dir_list:
                 mf_name = create_manifest(
-                    os.path.join(dl_dir, d), scenario_data.ncn_id, self._logger)
+                    os.path.join(dl_dir, d), scenario.ncn_id, self._logger)
                 if not mf_name:
                     nerrors += 1
                     continue
@@ -190,9 +209,7 @@ class Worker(threading.Thread):
             self._logger.error("Error while ingesting: " + `e`)
             self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
             if IE_DEBUG > 0:
-                traceback.print_exc(4,sys.stdout)
-                raise
-
+                traceback.print_exc(5,sys.stdout)
 
 
 #**************************************************

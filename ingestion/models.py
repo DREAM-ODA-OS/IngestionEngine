@@ -39,8 +39,8 @@ AOI_SHPFILE_CHOICE = 'SH'
 
 AOI_CHOICES = (
     (AOI_BBOX_CHOICE,    'Bounding Box'),
-    (AOI_POLY_CHOICE,    'Polygon'),
-    (AOI_SHPFILE_CHOICE, 'Shapefile'),
+#    (AOI_POLY_CHOICE,    'Polygon'),
+#    (AOI_SHPFILE_CHOICE, 'Shapefile'),
 )
 
 # Data Source
@@ -49,7 +49,7 @@ DSRC_OSCAT_CHOICE  = 'OC'    # OpenSearch Catalogue
 
 DSRC_CHOICES = (
     (DSRC_EOWCS_CHOICE,  'EO-WCS'),
-    (DSRC_OSCAT_CHOICE,  'OpenSearch Catalogue'),
+#    (DSRC_OSCAT_CHOICE,  'OpenSearch Catalogue'),
 )
 
 
@@ -97,10 +97,22 @@ def scenario_dict(db_model):
 
 # ------------  scenario model definition  --------------------------
 class Scenario(models.Model):
+    #
+    #  Caution:  the editScenario form relies on the order of the
+    #   fields - rearranging the order will break the rendering of
+    #   the table
+    #
     id                   = models.AutoField(primary_key=True)
     ncn_id               = models.CharField(max_length=NCN_ID_LEN)
     scenario_name        = models.CharField(max_length=SC_NAME_LEN)
     scenario_description = models.CharField(max_length=SC_DESCRIPTION_LEN)
+    dsrc                 = models.CharField(max_length=1024)
+    dsrc_type            = models.CharField(
+        max_length=2,
+        choices=DSRC_CHOICES,
+        default=DSRC_EOWCS_CHOICE)
+    dsrc_login           = models.CharField(max_length=64)
+    dsrc_password        = models.CharField(max_length=64)
     aoi_type             = models.CharField(
         max_length=2,
         choices=AOI_CHOICES,
@@ -117,20 +129,37 @@ class Scenario(models.Model):
     cloud_cover          = models.FloatField()
     view_angle           = models.FloatField()
     sensor_type          = models.CharField(max_length=96)
-    dsrc                 = models.CharField(max_length=1024)
-    dsrc_type            = models.CharField(
-        max_length=2,
-        choices=DSRC_CHOICES,
-        default=DSRC_EOWCS_CHOICE)
-    dsrc_login           = models.CharField(max_length=64)
-    dsrc_password        = models.CharField(max_length=64)
-    preprocessing        = models.IntegerField()
-    default_script       = models.IntegerField()
+    preprocessing        = models.BooleanField()
+    cat_registration     = models.BooleanField()
+    default_script       = models.BooleanField()
     default_priority     = models.IntegerField()
-    starting_date        = models.DateTimeField()
     repeat_interval      = models.IntegerField()
+    starting_date        = models.DateTimeField()
     user                 = models.ForeignKey(User)
     
+#**************************************************
+#                   Eoid                          *
+#  List of EOIDS for a scenario settable by       *
+#  the user, used to restrict product selection   *
+#**************************************************   
+class Eoid(models.Model):
+    id       = models.AutoField(primary_key=True)
+    scenario = models.ForeignKey(Scenario)
+    eoid_val = models.CharField(max_length=2048)
+
+
+#**************************************************
+#                   ExtraConditions               *
+#  List of Extra conditions used to select        *
+#  product urls from the metadata                 *
+#**************************************************   
+class ExtraConditions(models.Model):
+    id        = models.AutoField(primary_key=True)
+    scenario  = models.ForeignKey(Scenario)
+    xpath     = models.CharField(max_length=2048)
+    value     = models.CharField(max_length=2048)
+
+
 #**************************************************
 #                   Script                        *
 #**************************************************   

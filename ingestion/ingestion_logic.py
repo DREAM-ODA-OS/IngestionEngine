@@ -47,8 +47,8 @@ from models import \
 DEBUG_MAX_DEOCS_URLS  = 0
 DEBUG_MAX_GETCOV_URLS = 0
 if IE_DEBUG>0:
-    DEBUG_MAX_DEOCS_URLS  = 2
-    DEBUG_MAX_GETCOV_URLS = 3
+    DEBUG_MAX_DEOCS_URLS  = 0
+    DEBUG_MAX_GETCOV_URLS = 0
 
 # namespaces
 wcs_vers = '2.0'
@@ -353,7 +353,7 @@ def getXmlTree(url, expected_tag):
         return ( resp, parse_file(resp, expected_tag, resp.geturl()) )
 
 def getDssList(eo_dss_list, aoi_toi):
-    # get list of datasets that overlap bbox
+    # get list of datasets that overlap bbox and timeperiod
     id_list = []
     req_bb, req_time = aoi_toi
     for dss in eo_dss_list:
@@ -495,10 +495,10 @@ def getMD_urls(params, service_version, id_list):
         md_urls.append( base_url + "&EOId=" + dss_id )
     return md_urls
     
-def urls_from_OSCAT(params):
+def urls_from_OSCAT(params, eoids, extras):
     raise IngestionError("Catalogues are not yet implemented")
 
-def urls_from_EOWCS(params):
+def urls_from_EOWCS(params, eoids, extras):
     base_url = params['dsrc'] + "?" + SERVICE_WCS
     url_GetCapabilities = base_url + "&" + WCS_GET_CAPS
     (fp, caps) = getXmlTree(url_GetCapabilities, CAPABILITIES_TAG)
@@ -516,6 +516,19 @@ def urls_from_EOWCS(params):
     aoi_toi = extract_aoi_toi(params)
     id_list = getDssList(wcseo_dss, aoi_toi)
 
+    if IE_DEBUG>1:
+        logger.debug(" id list before culling:" + `id_list`)
+    
+    # cull id list according to eoids specified by user
+    if len(eoids) >  0:
+        culled_list = []
+        for e in eoids:
+            if e in id_list:
+                culled_list.append(e)
+        id_list = culled_list
+        if IE_DEBUG>1:
+            logger.debug(" id list after culling:" + `id_list`)
+
     md_urls = getMD_urls(params, service_version, id_list)
     if IE_DEBUG>1:
         logger.debug("Qualified "+`len(md_urls)`+" md_urls")
@@ -524,9 +537,9 @@ def urls_from_EOWCS(params):
     return gc_requests
 
     
-def getCoverageURLs(params):
+def get_coverage_URLs(params, eoids, extras):
     if IE_DEBUG > 1:
-        print "   getCoverageURLs: params=" + `params`
+        print "   get_coverage_URLs: params=" + `params`
     
     url_parts = params['dsrc'].split(":", 1)
     if len(url_parts) < 2:
@@ -540,9 +553,9 @@ def getCoverageURLs(params):
         return None
 
     if params['dsrc_type'] == DSRC_EOWCS_CHOICE:
-        return urls_from_EOWCS(params)
+        return urls_from_EOWCS(params, eoids, extras)
     elif params['dsrc_type'] == DSRC_OSCAT_CHOICE:
-        return urls_from_OSCAT(params)
+        return urls_from_OSCAT(params, eoids, extras)
     else:
         raise IngestionError("bad dsrc_type:" + params['dsrc_type'])
 
@@ -638,7 +651,10 @@ def wait_for_download(sc_id, dar_url):
     
 
 # ----- the main entrypoint  --------------------------
-def ingestion_logic(sc_id, scenario_data):
+def ingestion_logic(sc_id,
+                    scenario_data,
+                    eoids,
+                    extras):
 
     root_dl_dir = DownloadManagerController.Instance()._download_dir
 
@@ -654,12 +670,12 @@ def ingestion_logic(sc_id, scenario_data):
     retval = (None, None, None)
     
     scenario_data["sc_id"] = sc_id
-    gc_requests = getCoverageURLs(scenario_data)
-    if None==gc_requests:
+    gc_requests = get_coverage_URLs(scenario_data, eoids, extras)
+    if 0 == len(gc_requests):
         logger.warning(" no GetCoverage requests generated")
     else:
         nreqs = len(gc_requests)
-        logger.info("Sending "+`nreqs`+" URLs to the Download Manager")
+        logger.info("Submitting "+`nreqs`+" URLs to the Download Manager")
         dl_dir, dar_url, dar_id = \
             request_download(scenario_data["ncn_id"], gc_requests)
         wait_for_download(sc_id, dar_url)

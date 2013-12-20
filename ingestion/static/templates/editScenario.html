@@ -5,10 +5,31 @@
 
 	<script>
 	var script_objects = -1;
+    var show_eoids = 0;
+    var show_extras = 0;
 
-var input_status = "{{status}}";
-if (status !== "") { alert(""+status) }
-	
+    var input_status = "{{status}}";
+    if (status !== "") { alert(""+status) }
+
+    var eoids = 
+        {% for eoid in eoid_in %}
+        "{{ eoid.eoid_val }}," + 
+    	{% endfor %}
+        '' ;
+      eoids = eoids.slice(0, -1);
+
+    function show_hide_eoids()
+    {
+        eoidsPara = document.getElementById('id_eoids');
+        if (show_extras) {
+            eoidsPara.style.display="none";
+            show_extras = 0;
+        } else {
+            eoidsPara.style.display="block";
+            show_extras = 1;
+        }
+    }
+
 	function load_scripts() 
 	{
 		script_objects = load_scripts_from_data().slice();
@@ -238,51 +259,99 @@ Editor</FONT></FONT></P>
 
 
 <form method="post" action="" enctype="multipart/form-data">{% csrf_token %}
+       {% for i in form.errors %}
+     <p>
+        Error in field(s):   {{i}}
+     </p>
+       {% endfor %}
     <table>
-        <!-- form.as_table -->
+        <!-- Relies on the table items (fields) being in a certain order,
+             as defined in the models. -->
       {% for b in form %}
-        {% if "id_starting_date" in b.id_for_label %}
-        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
-        <tr><td></td> <th>{{ b.label_tag }}</th> <td> {{ b }} </td><td></td></tr>
+        {% if "id_repeat_interval" in b.id_for_label %}
+    </table>
+    <p>
+    <!--  show/hide eoids button -->
+    <INPUT TYPE="BUTTON" class="ShowHideEoids"
+               id="id_but_shh_eoids"
+               name="vvv" title="Show or Hide EOIDS"
+               onClick="show_hide_eoids()"
+               value="Show / Hide Extras"/>
+    <div class="cl_eoids" id="id_eoids" style="display:none">
+     <table>
+	<tr id="tr_eoids">
+            <td> Restrict Products to EO-IDs: &nbsp; </td>
+		<td> 
+                <script>
+                document.writeln('<input type="text" size=60 id="id_eoid_input" name="eoid_val" value="'+eoids+'">');
+                </script>
+        </td> 
+    </tr>
+     </table>
+    </div>
+    </p> <p>
+    <!--  show/hide extras
+    <INPUT TYPE="BUTTON" class="ShowHideExtras"
+               id="id_but_shh_extras"
+               name="vvv" title="Show or hide extra conditions"
+               onClick="show_hide_extras()"/>
+    <div class="cl_extras" id="id_extras" style="display:none">
+     <table>
+	{% for extra in extras %}
+	<tr id="tr_{{extra.id_extra}}">
+		<td><input type="text" name="extra_val" value="{{ extra.value }}"  disabled></td>
+    </tr>
+	{% endfor %}
+     </table>
+    </div>
+    </p> -->
+     <table>
+        <tr>
+          <th>{{ b.label_tag }}</th> <td colspan=3> {{ b }} </td>
+        </tr>
          {% elif "id_aoi_type" in b.id_for_label %}
-        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
-        <tr><td></td> <th>{{ b.label_tag }}</th> <td> {{ b }} </td><td></td></tr>
-       {% elif "id_bb_" in b.id_for_label%}
-
+        <tr><td>&nbsp;</td><td colspan=3></td></tr>
+        <tr>
+          <th>{{ b.label_tag }}</th> <td colspan=3> {{ b }} </td>
+        </tr>
+        {% elif "id_bb_" in b.id_for_label%}
           {% if "id_bb_lc_long" in b.id_for_label %}
           <tr>
-            <td></td>
             <th align="right">BBOX:&nbsp;</th> 
-            <td align="left">Lower corner long,lat:
+            <td align="left" colspan=3>Lower corner long,lat:
                  {{ b }}
           {% elif "id_bb_lc_lat" in b.id_for_label%}
                   {{ b }}
             </td>
-            <td>  </td> 
           </tr>
           {% elif "id_bb_uc_long" in b.id_for_label%}
           <tr>
             <td></td>
-            <td></td>
-            <td align="left">Upper corner long,lat:
+            <td align="left" colspan=3>Upper corner long,lat:
                   {{ b }}  
           {% elif "id_bb_uc_lat" in b.id_for_label%}
                   {{ b }} 
             </td>
-             <td>  </td>
           </tr>
           <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
-
           {% endif %}
-           
+        {% elif "id_cloud_cover" in b.id_for_label%}
+        <tr><td>&nbsp;</td><td colspan=3></td></tr>
+          <tr>
+            <th> {{ b.label_tag }}</th><td> {{ b }} </td>
+        {% elif "id_view_angle" in b.id_for_label%}
+            <th> {{ b.label_tag }}</th><td> {{ b }} </td>
+          </tr>
+        <tr><td>&nbsp;</td><td colspan=3></td></tr>
         {% else %}
-        <tr><td> </td> <th> {{ b.label_tag }}</th><td> {{ b }} </td><td></td></tr>
+        <tr>
+          <th> {{ b.label_tag }}</th><td colspan=3> {{ b }} </td>
+        </tr>
         {% endif %}
 	  {% endfor %}
     </table>
 
 	<p> </p>
- 
     <table id="table_scripts" data-ids={{sequence}}>
 		
 	{% for script in scripts %}

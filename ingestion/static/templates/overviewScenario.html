@@ -74,27 +74,27 @@
         // update status of scenario
         sync_scenarios();
         for (var i=0; i<jscenarios.length; i++) {
-            if (id_scenario==jscenarios[i].id && jscenarios[i].st_isav!=0) {
-                if(confirm('Ingest scenario ' + jscenarios[i].ncn_id+'?')) {
-                    // send ajax request to Work-Flow-Manager to ingest scenario
-                    Dajaxice.ingestion.ingest_scenario_wfm(
-                        function(data){
-                            if(data.status !== undefined) {
-                                if (data.status != 0) {
-                                    alert(data.message);
+            if (id_scenario==jscenarios[i].id) {
+                if (jscenarios[i].st_isav==0) {
+                    alert('Scenario '+jscenarios[i].ncn_id+
+                          'is locked - operation in progress');
+                } else {
+                    if(confirm('Ingest scenario '+jscenarios[i].ncn_id+'?')) {
+                        // send ajax request to Work-Flow-Manager to ingest scenario
+                        Dajaxice.ingestion.ingest_scenario_wfm(
+                            function(data){
+                                if(data.status !== undefined) {
+                                    if (data.status != 0) { alert(data.message); }
                                 }
-                            }
-                        },
-                        {"scenario_id":id_scenario});
-                    // ensure updates of the page via sychronize_scenario
-                    operation_pending = true;
-                    sync_scenarios();
-                }
-            } else {
-                alert('Scenario '+jscenarios[i].ncn_id+
-                      'is locked - operation in progress');
+                            },
+                            {"scenario_id":id_scenario});
+                        // ensure updates of the page via sychronize_scenario
+                        operation_pending = true;
+                        sync_scenarios();
+                    }
+                } // closes else
             }
-        }
+        }  // closes for
     }
 
     function stop_ingestion(s)
@@ -318,7 +318,7 @@
       </TD>
     </TR>
 </TABLE>
-
+<P></P>
 </div>
 {% endfor %}
 

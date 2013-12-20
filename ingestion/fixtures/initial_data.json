@@ -1,457 +1,224 @@
 [
-    {
-        "pk": 4, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "contenttype", 
-            "name": "content type", 
-            "app_label": "contenttypes"
-        }
+    { "pk": 1, "model": "sites.site", 
+        "fields": { "domain": "example.com", "name": "example.com"  }
     }, 
-    {
-        "pk": 2, 
-        "model": "contenttypes.contenttype", 
+    { "pk": 19, "model": "auth.permission", 
         "fields": {
-            "model": "group", 
-            "name": "group", 
-            "app_label": "auth"
-        }
-    }, 
-    {
-        "pk": 7, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "logentry", 
-            "name": "log entry", 
-            "app_label": "admin"
-        }
-    }, 
-    {
-        "pk": 1, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "permission", 
-            "name": "permission", 
-            "app_label": "auth"
-        }
-    }, 
-    {
-        "pk": 10, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "productinfo", 
-            "name": "product info", 
-            "app_label": "ingestion"
-        }
-    }, 
-    {
-        "pk": 8, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "scenario", 
-            "name": "scenario", 
-            "app_label": "ingestion"
-        }
-    }, 
-    {
-        "pk": 12, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "scenariostatus", 
-            "name": "scenario status", 
-            "app_label": "ingestion"
-        }
-    }, 
-    {
-        "pk": 9, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "script", 
-            "name": "script", 
-            "app_label": "ingestion"
-        }
-    }, 
-    {
-        "pk": 5, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "session", 
-            "name": "session", 
-            "app_label": "sessions"
-        }
-    }, 
-    {
-        "pk": 6, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "site", 
-            "name": "site", 
-            "app_label": "sites"
-        }
-    }, 
-    {
-        "pk": 3, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "user", 
-            "name": "user", 
-            "app_label": "auth"
-        }
-    }, 
-    {
-        "pk": 11, 
-        "model": "contenttypes.contenttype", 
-        "fields": {
-            "model": "userscript", 
-            "name": "user script", 
-            "app_label": "ingestion"
-        }
-    }, 
-    {
-        "pk": 1, 
-        "model": "sites.site", 
-        "fields": {
-            "domain": "example.com", 
-            "name": "example.com"
-        }
-    }, 
-    {
-        "pk": 1, 
-        "model": "ingestion.scenariostatus", 
-        "fields": {
-            "status": "INGEST ERROR", 
-            "is_available": 1, 
-            "done": 0.0, 
-            "scenario": 1
-        }
-    }, 
-    {
-        "pk": 19, 
-        "model": "auth.permission", 
-        "fields": {
-            "codename": "add_logentry", 
-            "name": "Can add log entry", 
+            "codename": "add_logentry", "name": "Can add log entry", 
             "content_type": 7
         }
     }, 
-    {
-        "pk": 20, 
-        "model": "auth.permission", 
+    { "pk": 20, "model": "auth.permission", 
         "fields": {
-            "codename": "change_logentry", 
-            "name": "Can change log entry", 
+            "codename": "change_logentry", "name": "Can change log entry", 
             "content_type": 7
         }
     }, 
-    {
-        "pk": 21, 
-        "model": "auth.permission", 
+    { "pk": 21, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_logentry", 
-            "name": "Can delete log entry", 
+            "codename": "delete_logentry", "name": "Can delete log entry", 
             "content_type": 7
         }
     }, 
-    {
-        "pk": 4, 
-        "model": "auth.permission", 
+    { "pk": 4, "model": "auth.permission", 
         "fields": {
-            "codename": "add_group", 
-            "name": "Can add group", 
+            "codename": "add_group", "name": "Can add group", 
             "content_type": 2
         }
     }, 
-    {
-        "pk": 5, 
-        "model": "auth.permission", 
+    { "pk": 5, "model": "auth.permission", 
         "fields": {
-            "codename": "change_group", 
-            "name": "Can change group", 
+            "codename": "change_group", "name": "Can change group", 
             "content_type": 2
         }
     }, 
-    {
-        "pk": 6, 
-        "model": "auth.permission", 
+    { "pk": 6, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_group", 
-            "name": "Can delete group", 
+            "codename": "delete_group", "name": "Can delete group", 
             "content_type": 2
         }
     }, 
-    {
-        "pk": 1, 
-        "model": "auth.permission", 
+    { "pk": 1, "model": "auth.permission", 
         "fields": {
-            "codename": "add_permission", 
-            "name": "Can add permission", 
+            "codename": "add_permission", "name": "Can add permission", 
             "content_type": 1
         }
     }, 
-    {
-        "pk": 2, 
-        "model": "auth.permission", 
+    { "pk": 2, "model": "auth.permission", 
         "fields": {
-            "codename": "change_permission", 
-            "name": "Can change permission", 
+            "codename": "change_permission", "name": "Can change permission", 
             "content_type": 1
         }
     }, 
-    {
-        "pk": 3, 
-        "model": "auth.permission", 
+    { "pk": 3, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_permission", 
-            "name": "Can delete permission", 
+            "codename": "delete_permission", "name": "Can delete permission", 
             "content_type": 1
         }
     }, 
-    {
-        "pk": 7, 
-        "model": "auth.permission", 
+    { "pk": 7, "model": "auth.permission", 
         "fields": {
-            "codename": "add_user", 
-            "name": "Can add user", 
+            "codename": "add_user", "name": "Can add user", 
             "content_type": 3
         }
     }, 
-    {
-        "pk": 8, 
-        "model": "auth.permission", 
+    { "pk": 8, "model": "auth.permission", 
         "fields": {
-            "codename": "change_user", 
-            "name": "Can change user", 
+            "codename": "change_user", "name": "Can change user", 
             "content_type": 3
         }
     }, 
-    {
-        "pk": 9, 
-        "model": "auth.permission", 
+    { "pk": 9, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_user", 
-            "name": "Can delete user", 
+            "codename": "delete_user", "name": "Can delete user", 
             "content_type": 3
         }
     }, 
-    {
-        "pk": 10, 
-        "model": "auth.permission", 
+    { "pk": 10, "model": "auth.permission", 
         "fields": {
-            "codename": "add_contenttype", 
-            "name": "Can add content type", 
+            "codename": "add_contenttype", "name": "Can add content type", 
             "content_type": 4
         }
     }, 
-    {
-        "pk": 11, 
-        "model": "auth.permission", 
+    { "pk": 11, "model": "auth.permission", 
         "fields": {
-            "codename": "change_contenttype", 
-            "name": "Can change content type", 
+            "codename": "change_contenttype", "name": "Can change content type", 
             "content_type": 4
         }
     }, 
-    {
-        "pk": 12, 
-        "model": "auth.permission", 
+    { "pk": 12, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_contenttype", 
-            "name": "Can delete content type", 
+            "codename": "delete_contenttype", "name": "Can delete content type", 
             "content_type": 4
         }
     }, 
-    {
-        "pk": 28, 
-        "model": "auth.permission", 
+    { "pk": 28, "model": "auth.permission", 
         "fields": {
-            "codename": "add_productinfo", 
-            "name": "Can add product info", 
+            "codename": "add_productinfo", "name": "Can add product info", 
             "content_type": 10
         }
     }, 
-    {
-        "pk": 29, 
-        "model": "auth.permission", 
+    { "pk": 29, "model": "auth.permission", 
         "fields": {
-            "codename": "change_productinfo", 
-            "name": "Can change product info", 
+            "codename": "change_productinfo", "name": "Can change product info", 
             "content_type": 10
         }
     }, 
-    {
-        "pk": 30, 
-        "model": "auth.permission", 
+    { "pk": 30, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_productinfo", 
-            "name": "Can delete product info", 
+            "codename": "delete_productinfo", "name": "Can delete product info", 
             "content_type": 10
         }
     }, 
-    {
-        "pk": 22, 
-        "model": "auth.permission", 
+    { "pk": 22, "model": "auth.permission", 
         "fields": {
-            "codename": "add_scenario", 
-            "name": "Can add scenario", 
+            "codename": "add_scenario", "name": "Can add scenario", 
             "content_type": 8
         }
     }, 
-    {
-        "pk": 23, 
-        "model": "auth.permission", 
+    { "pk": 23, "model": "auth.permission", 
         "fields": {
-            "codename": "change_scenario", 
-            "name": "Can change scenario", 
+            "codename": "change_scenario", "name": "Can change scenario", 
             "content_type": 8
         }
     }, 
-    {
-        "pk": 24, 
-        "model": "auth.permission", 
+    { "pk": 24, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_scenario", 
-            "name": "Can delete scenario", 
+            "codename": "delete_scenario", "name": "Can delete scenario", 
             "content_type": 8
         }
     }, 
-    {
-        "pk": 34, 
-        "model": "auth.permission", 
+    { "pk": 34, "model": "auth.permission", 
         "fields": {
-            "codename": "add_scenariostatus", 
-            "name": "Can add scenario status", 
+            "codename": "add_scenariostatus", "name": "Can add scenario status", 
             "content_type": 12
         }
     }, 
-    {
-        "pk": 35, 
-        "model": "auth.permission", 
+    { "pk": 35, "model": "auth.permission", 
         "fields": {
-            "codename": "change_scenariostatus", 
-            "name": "Can change scenario status", 
+            "codename": "change_scenariostatus", "name": "Can change scenario status", 
             "content_type": 12
         }
     }, 
-    {
-        "pk": 36, 
-        "model": "auth.permission", 
+    { "pk": 36, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_scenariostatus", 
-            "name": "Can delete scenario status", 
+            "codename": "delete_scenariostatus", "name": "Can delete scenario status", 
             "content_type": 12
         }
     }, 
-    {
-        "pk": 25, 
-        "model": "auth.permission", 
+    { "pk": 25, "model": "auth.permission", 
         "fields": {
-            "codename": "add_script", 
-            "name": "Can add script", 
+            "codename": "add_script", "name": "Can add script", 
             "content_type": 9
         }
     }, 
-    {
-        "pk": 26, 
-        "model": "auth.permission", 
+    { "pk": 26, "model": "auth.permission", 
         "fields": {
-            "codename": "change_script", 
-            "name": "Can change script", 
+            "codename": "change_script", "name": "Can change script", 
             "content_type": 9
         }
     }, 
-    {
-        "pk": 27, 
-        "model": "auth.permission", 
+    { "pk": 27, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_script", 
-            "name": "Can delete script", 
+            "codename": "delete_script", "name": "Can delete script", 
             "content_type": 9
         }
     }, 
-    {
-        "pk": 31, 
-        "model": "auth.permission", 
+    { "pk": 31, "model": "auth.permission", 
         "fields": {
-            "codename": "add_userscript", 
-            "name": "Can add user script", 
+            "codename": "add_userscript", "name": "Can add user script", 
             "content_type": 11
         }
     }, 
-    {
-        "pk": 32, 
-        "model": "auth.permission", 
+    { "pk": 32, "model": "auth.permission", 
         "fields": {
-            "codename": "change_userscript", 
-            "name": "Can change user script", 
+            "codename": "change_userscript", "name": "Can change user script", 
             "content_type": 11
         }
     }, 
-    {
-        "pk": 33, 
-        "model": "auth.permission", 
+    { "pk": 33, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_userscript", 
-            "name": "Can delete user script", 
+            "codename": "delete_userscript", "name": "Can delete user script", 
             "content_type": 11
         }
     }, 
-    {
-        "pk": 13, 
-        "model": "auth.permission", 
+    { "pk": 13, "model": "auth.permission", 
         "fields": {
-            "codename": "add_session", 
-            "name": "Can add session", 
+            "codename": "add_session", "name": "Can add session", 
             "content_type": 5
         }
     }, 
-    {
-        "pk": 14, 
-        "model": "auth.permission", 
+    { "pk": 14, "model": "auth.permission", 
         "fields": {
-            "codename": "change_session", 
-            "name": "Can change session", 
+            "codename": "change_session", "name": "Can change session", 
             "content_type": 5
         }
     }, 
-    {
-        "pk": 15, 
-        "model": "auth.permission", 
+    { "pk": 15, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_session", 
-            "name": "Can delete session", 
+            "codename": "delete_session", "name": "Can delete session", 
             "content_type": 5
         }
     }, 
-    {
-        "pk": 16, 
-        "model": "auth.permission", 
+    { "pk": 16, "model": "auth.permission", 
         "fields": {
-            "codename": "add_site", 
-            "name": "Can add site", 
+            "codename": "add_site", "name": "Can add site", 
             "content_type": 6
         }
     }, 
-    {
-        "pk": 17, 
-        "model": "auth.permission", 
+    { "pk": 17, "model": "auth.permission", 
         "fields": {
-            "codename": "change_site", 
-            "name": "Can change site", 
+            "codename": "change_site", "name": "Can change site", 
             "content_type": 6
         }
     }, 
-    {
-        "pk": 18, 
-        "model": "auth.permission", 
+    { "pk": 18, "model": "auth.permission", 
         "fields": {
-            "codename": "delete_site", 
-            "name": "Can delete site", 
+            "codename": "delete_site", "name": "Can delete site", 
             "content_type": 6
         }
     }, 
-    {
-        "pk": 1, 
-        "model": "auth.user", 
+    { "pk": 1, "model": "auth.user", 
         "fields": {
             "username": "stefka", 
             "first_name": "", 
@@ -467,9 +234,7 @@
             "date_joined": "2013-08-22T09:37:43.876"
         }
     }, 
-    {
-        "pk": 2, 
-        "model": "auth.user", 
+    { "pk": 2, "model": "auth.user", 
         "fields": {
             "username": "dreamer", 
             "first_name": "", 
@@ -485,9 +250,7 @@
             "date_joined": "2013-08-23T09:30:02"
         }
     }, 
-    {
-        "pk": 3, 
-        "model": "auth.user", 
+    { "pk": 3, "model": "auth.user", 
         "fields": {
             "username": "dr.adm", 
             "first_name": "Dream", 
@@ -503,9 +266,7 @@
             "date_joined": "2013-10-31T11:12:23"
         }
     }, 
-    {
-        "pk": 4, 
-        "model": "auth.user", 
+    { "pk": 4, "model": "auth.user", 
         "fields": {
             "username": "drtest", 
             "first_name": "Dream", 
@@ -521,33 +282,74 @@
             "date_joined": "2013-10-31T11:13:59"
         }
     }, 
-    {
-        "pk": 1, 
-        "model": "ingestion.scenario", 
+    { "pk": 1, "model": "ingestion.scenariostatus", 
         "fields": {
+            "status": "IDLE", 
+            "is_available": 1, 
+            "done": 0.0, 
+            "scenario": 1
+        }
+    }, 
+    { "pk": 1, "model": "ingestion.scenario", 
+        "fields": {
+            "ncn_id": "scid0", 
             "aoi_file": "", 
-            "aoi_type": "BB", 
-            "default_script": 1, 
-            "bb_lc_long": 5.5140000000000002, 
+            "aoi_type": "BB",
+            "aoi_poly_lat": "",
+            "aoi_poly_long": "",
             "sensor_type": "1", 
-            "scenario_description": "Use this scenario to test the Ingestion Engine work-flow.", 
+            "scenario_description": "Use this scenario to test the Ingestion Engine work-flow with the simulated EO-WCS production facility at EOX.", 
             "repeat_interval": 0, 
             "cloud_cover": 50.0, 
-            "dsrc": "http://data.eox.at/instance00/ows", 
+            "view_angle": 50.0, 
+            "dsrc": "http://data.eox.at/instance00/ows",
+            "dsrc_type": "EO",
             "dsrc_password": "", 
-            "from_date": "2009-01-01T08:00:00", 
             "scenario_name": "Test Scenario 1", 
             "preprocessing": 1, 
+            "default_script": 1, 
+            "cat_registration": 0, 
             "user": 2, 
-            "bb_uc_lat": 42.862400000000001, 
-            "view_angle": 50.0, 
+            "bb_uc_lat": 42.8624, 
             "bb_uc_long": 5.524, 
             "bb_lc_lat": 42.8504, 
+            "bb_lc_long": 5.514, 
             "dsrc_login": "", 
-            "ncn_id": "scid0", 
             "starting_date": "2013-11-11T11:22:33", 
             "default_priority": 100, 
+            "from_date": "2009-01-01T08:00:00", 
             "to_date": "2020-03-15T21:00:00"
+        }
+    },
+    { "pk": 2, "model": "ingestion.scenario", 
+        "fields": {
+            "ncn_id": "scid1", 
+            "scenario_name": "Test Scenario 2 - Sentinel 2 Sim", 
+            "scenario_description": "Test of Sentinel 2 data: simulated S2 from Landsat, converted by Gisat and hosted at EOX.", 
+            "aoi_file": "", 
+            "aoi_type": "BB",
+            "aoi_poly_lat": "",
+            "aoi_poly_long": "",
+            "sensor_type": "1", 
+            "repeat_interval": 0, 
+            "cloud_cover": 50.0, 
+            "view_angle": 50.0, 
+            "dsrc": "http://data.eox.at/instance00/ows",
+            "dsrc_type": "EO",
+            "dsrc_password": "", 
+            "default_script": 1, 
+            "preprocessing": 1, 
+            "cat_registration": 0, 
+            "user": 2, 
+            "bb_lc_long": 13.6, 
+            "bb_uc_long": 15.0, 
+            "bb_lc_lat": 49.8504, 
+            "bb_uc_lat": 50.36, 
+            "dsrc_login": "", 
+            "starting_date": "2013-11-11T11:22:33", 
+            "default_priority": 100, 
+            "from_date": "1999-01-01T08:00:00", 
+            "to_date": "2000-03-15T21:00:00"
         }
     }
 ]

@@ -144,6 +144,48 @@ def delete_scripts(scripts):
             logger = logging.getLogger('dream.file_logger')
             logger.error("Deletion error: " + `e`, extra={'user':"drtest"})
 
+def delete_all_eoids(scenario):
+    existing = scenario.eoid_set.all()
+    for e in existing:
+        e.delete()
+
+def delete_eoids(scenario, del_list):
+    for e in del_list:
+        try:
+            eoid = models.Eoid.objects.get(eoid_val=e)
+            eoid.delete()
+        except Exception as e:
+            logger = logging.getLogger('dream.file_logger')
+            logger.error("Internal error housekeeping for EOIDS," + `e`)
+        
+def handle_eoids(request,scenario):
+
+    if not 'eoid_val' in request.POST:
+        return
+
+    old_objs = scenario.eoid_set.all()
+
+    if len(request.POST['eoid_val']) == 0:
+        delete_all_eoids(scenario)
+        return
+
+    new_eoids = request.POST['eoid_val'].split('.')
+
+    old_list = []
+    for e in old_objs:
+        old_list.append(e.eoid_val)
+        
+    del_list = []
+    for e in old_list:
+        if not e in new_eoids:
+            del_list.append(e)
+    delete_eoids(scenario, del_list)
+
+    for e in new_eoids:
+        if not e in old_list:
+            models.Eoid( scenario=scenario,eoid_val=e ).save()
+
+
 def handle_uploaded_scripts(request,scenario):
     if len(request.FILES)==0:
         return
@@ -239,6 +281,7 @@ def editScenario(request,scenario_id):
             if IE_DEBUG > 1:
                 print "Scenario: %s %s" % (str(scenario.id),scenario.scenario_name)
             handle_uploaded_scripts(request,scenario)
+            handle_eoids(request,scenario)
             port = request.META['SERVER_PORT']
             return HttpResponseRedirect(
                 'http://127.0.0.1:' + port + '/scenario/overview/')
@@ -251,10 +294,13 @@ def editScenario(request,scenario_id):
             form.fields[field].initial = getattr(scenario,field)   
     # load scripts
     scripts = scenario.script_set.all()
+    # load eoids
+    eoid_in = scenario.eoid_set.all()
     variables = RequestContext(
         request,
         {'form':form,
          'scripts':scripts,
+         'eoid_in':eoid_in,
          'sequence':"",
          'home_page':IE_HOME_PAGE})
     return render_to_response('editScenario.html',variables)

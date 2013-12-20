@@ -38,8 +38,9 @@ class ScenarioForm(forms.ModelForm):
    
     class Meta:
        model = models.Scenario
-       exclude = ['id','user','aoi_file', 'sensor_type', 'dsrc_type',
-                   'aoi_poly_lat', 'aoi_poly_long']
+       exclude = ['id','user','aoi_file', 'sensor_type',
+                  'dsrc_type', 'dsrc_password', 'dsrc_login',
+                  'aoi_poly_lat', 'aoi_poly_long']
 
     def clean_cloud_cover(self):
        data = self.cleaned_data['cloud_cover']
@@ -111,9 +112,10 @@ class ScenarioForm(forms.ModelForm):
             forms.TextInput(attrs={'size':60})
         self.fields['dsrc'            ].widget = \
             forms.TextInput(attrs={'size':60})
-        self.fields['dsrc_password'   ].widget = forms.PasswordInput()
-        self.fields['preprocessing'   ].widget = forms.CheckboxInput()
-        self.fields['default_script'  ].widget = forms.CheckboxInput()
+#        self.fields['dsrc_password'   ].widget = forms.PasswordInput()
+#        self.fields['preprocessing'   ].widget = forms.CheckboxInput()
+#        self.fields['default_script'  ].widget = forms.CheckboxInput()
+#        self.fields['cat_registration'].widget = forms.CheckboxInput()
         self.fields['from_date'       ].widget = forms.SplitDateTimeWidget(attrs={'size':11})
         self.fields['to_date'         ].widget = forms.SplitDateTimeWidget(attrs={'size':11})
         self.fields['starting_date'   ].widget = forms.SplitDateTimeWidget(attrs={'size':11})
@@ -121,12 +123,16 @@ class ScenarioForm(forms.ModelForm):
         self.fields['bb_lc_lat'       ].widget = forms.TextInput(attrs={'size':11})
         self.fields['bb_uc_long'      ].widget = forms.TextInput(attrs={'size':11})
         self.fields['bb_uc_lat'       ].widget = forms.TextInput(attrs={'size':11})
-        
+        self.fields['cloud_cover'     ].widget = forms.TextInput(attrs={'size':8})
+        self.fields['view_angle'      ].widget = forms.TextInput(attrs={'size':8})
+        self.fields['repeat_interval' ].widget = forms.TextInput(attrs={'size':8})
+        self.fields['default_priority'].widget = forms.TextInput(attrs={'size':8})
+
         # widget labels
         #self.fields['id'].label = "ID Scenario"
         self.fields['ncn_id'          ].label = 'Unique Id'
-        self.fields['scenario_name'   ].label = 'Scenario Name'
-        self.fields['scenario_description'].label = 'Scenario Description'
+        self.fields['scenario_name'   ].label = 'Name'
+        self.fields['scenario_description'].label = 'Description'
 #        self.fields['aoi'             ].label = 'AOI'
         self.fields['bb_lc_long'      ].label = 'BBox Lower long'
         self.fields['bb_lc_lat'       ].label = 'BBox Lower lat'
@@ -139,12 +145,12 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['sensor_type'     ].label = 'Sensor Type'
         self.fields['dsrc'            ].label = 'Data Source'
 #        self.fields['dsrc_type'       ].label = 'Data Src Type'
-        self.fields['dsrc_login'      ].label = 'Data Src login'
-        self.fields['dsrc_password'   ].label = 'Data Src password'
+#        self.fields['dsrc_login'      ].label = 'Data Src login'
+#        self.fields['dsrc_password'   ].label = 'Data Src password'
         self.fields['preprocessing'   ].label = 'S2 atmos. pre-process' 
         self.fields['default_priority'].label = 'Default priority'
         self.fields['starting_date'   ].label = 'Repeat Starting Date'
-        self.fields['repeat_interval' ].label = 'Repeat Interval(seconds)'
+        self.fields['repeat_interval' ].label = 'Repeat Interval(secs)'
 
         # initial values
         # for time-zone aware dates use this one instead:
@@ -173,12 +179,13 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['sensor_type'         ].required = False
         self.fields['dsrc'                ].required = False
 #        self.fields['dsrc_type'           ].required = False
-        self.fields['dsrc_login'          ].required = False
-        self.fields['dsrc_password'       ].required = False
+#        self.fields['dsrc_login'          ].required = False
+#        self.fields['dsrc_password'       ].required = False
         self.fields['preprocessing'       ].required = False
         self.fields['default_script'      ].required = False
         self.fields['default_priority'    ].required = False
         self.fields['repeat_interval'     ].required = False
+        self.fields['cat_registration'    ].required = False
 
 '''
     https://docs.djangoproject.com/en/dev/topics/forms/
