@@ -38,14 +38,14 @@ class ScenarioForm(forms.ModelForm):
    
     class Meta:
        model = models.Scenario
-       exclude = ['id','user','aoi_file', 'sensor_type',
+       exclude = ['user','aoi_file',
                   'dsrc_type', 'dsrc_password', 'dsrc_login',
                   'aoi_poly_lat', 'aoi_poly_long']
 
     def clean_cloud_cover(self):
        data = self.cleaned_data['cloud_cover']
-       if not data>=0 and data<100:
-          raise forms.ValidationError(
+       if data<0 or data>100:
+           raise forms.ValidationError(
                "Max Cloud Cover must be in the interval from 0 to 100.")
        return data
 
@@ -90,23 +90,23 @@ class ScenarioForm(forms.ModelForm):
         if t2<t1:
             raise forms.ValidationError(
                "Starting date - %s is bigger then final date - %s." % (t1,t2))
+        if 'ncn_id' in self._errors:
+            del self._errors['ncn_id']
         return cleaned_data
 
+    def full_clean(self):
+        # Disable auto-validation of ncn-id - it is not smart enough to
+        #  realise that an existing scenario can keep its own old ncn_id.
+        super(ScenarioForm, self).full_clean()
+        if 'ncn_id' in self._errors:
+            del self._errors['ncn_id']
    
     def __init__(self, *args, **kwargs):
         super(ScenarioForm, self).__init__(*args, **kwargs)
         
-        # widgets
-        SENSOR_CHOICES = (
-                          ('1','Sentinel 2'),
-                          ('2','SPOT 5'),
-                          ('3','KOMPAS 2'),
-                          ('4','Pleiades'),
-                          )
-        
         self.fields['scenario_description'].widget = \
             forms.Textarea(attrs={'cols':70,'rows':6})
-#        self.fields['sensor_type'].widget = forms.RadioSelect(choices=SENSOR_CHOICES)
+        self.fields['sensor_type'].widget = forms.TextInput(attrs={'size':18})
         
         self.fields['scenario_name'   ].widget = \
             forms.TextInput(attrs={'size':60})
@@ -129,7 +129,6 @@ class ScenarioForm(forms.ModelForm):
         self.fields['default_priority'].widget = forms.TextInput(attrs={'size':8})
 
         # widget labels
-        #self.fields['id'].label = "ID Scenario"
         self.fields['ncn_id'          ].label = 'Unique Id'
         self.fields['scenario_name'   ].label = 'Name'
         self.fields['scenario_description'].label = 'Description'
@@ -142,13 +141,13 @@ class ScenarioForm(forms.ModelForm):
         self.fields['to_date'         ].label = 'To'
         self.fields['cloud_cover'     ].label = 'Max Cloud Cover'
         self.fields['view_angle'      ].label = 'Max View Angle'
-#        self.fields['sensor_type'     ].label = 'Sensor Type'
+        self.fields['sensor_type'     ].label = 'Sensor Type'
         self.fields['dsrc'            ].label = 'Data Source'
 #        self.fields['dsrc_type'       ].label = 'Data Src Type'
 #        self.fields['dsrc_login'      ].label = 'Data Src login'
 #        self.fields['dsrc_password'   ].label = 'Data Src password'
         self.fields['preprocessing'   ].label = 'S2 atmos. pre-process' 
-        self.fields['default_priority'].label = 'Default priority'
+        self.fields['default_priority'].label = 'Ingestion priority'
         self.fields['starting_date'   ].label = 'Repeat Starting Date'
         self.fields['repeat_interval' ].label = 'Repeat Interval(secs)'
 
@@ -176,8 +175,7 @@ class ScenarioForm(forms.ModelForm):
         self.fields['to_date'             ].required = False
         self.fields['cloud_cover'         ].required = False
         self.fields['view_angle'          ].required = False
-#        self.fields['sensor_type'         ].required = False
-        self.fields['dsrc'                ].required = False
+        self.fields['sensor_type'         ].required = False
 #        self.fields['dsrc_type'           ].required = False
 #        self.fields['dsrc_login'          ].required = False
 #        self.fields['dsrc_password'       ].required = False
@@ -186,8 +184,3 @@ class ScenarioForm(forms.ModelForm):
         self.fields['default_priority'    ].required = False
         self.fields['repeat_interval'     ].required = False
         self.fields['cat_registration'    ].required = False
-
-'''
-    https://docs.djangoproject.com/en/dev/topics/forms/
-    https://docs.djangoproject.com/en/dev/topics/forms/modelforms/
-'''

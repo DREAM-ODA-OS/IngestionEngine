@@ -76,6 +76,35 @@ EXCEPTION_TAG      = "ExceptionReport"
 CAPABILITIES_TAG   = "Capabilities"
 EOCS_DESCRIPTION_TAG = "EOCoverageSetDescription"
 
+# sensor type XML example:
+# <gmlcov:metadata>
+#   <gmlcov:Extension>
+#     <wcseo:EOMetadata>
+#       <eop:EarthObservation gml:id="some_id"
+#        xsi:schemaLocation="http://www.opengis.net/opt/2.0 ../xsd/opt.xsd">
+#         <om:procedure>
+#           <eop:EarthObservationEquipment gml:id="some_id">  
+#             <eop:sensor>
+#               <eop:Sensor>
+#                 <eop:sensorType>OPTICAL</eop:sensorType>
+#               </eop:Sensor>
+#             </eop:sensor>
+#           </eop:EarthObservationEquipment>
+#         </om:procedure>
+#
+SENSOR_XPATH = \
+    GMLCOV_NS + "metadata/" + \
+    GMLCOV_NS + "Extension/" + \
+    WCSEO_NS  + "EOMetadata/" + \
+    EOP_NS    + "EarthObservation/" + \
+    OM_NS     + "procedure/"        + \
+    EOP_NS    + "EarthObservationEquipment/" + \
+    EOP_NS    + "sensor/" + \
+    EOP_NS    + "Sensor/" + \
+    EOP_NS    + "sensorType"
+    
+
+
 logger = logging.getLogger('dream.file_logger')
 
 # ------------ osr Init  ------------
@@ -196,6 +225,15 @@ def parse_file(src_data, expected_root, url):
         return None
 
     return result
+
+
+def extract_path_text(cd, path):
+    ret = None
+    leaf_node = cd.find("./"+path)
+    if None == leaf_node:
+        logger.error("Path not found: "+ path)
+        return None
+    return leaf_node.text
 
 
 def extract_Id(dss):
@@ -325,6 +363,7 @@ def set_status(sc_id, st_text, percentage):
     work_flow_manager.WorkFlowManager.Instance().set_scenario_status(
         0, sc_id, 0, st_text, percentage)
 
+
 # ------------ processing --------------------------
 def getXmlTree(url, expected_tag):
     err  = None
@@ -384,9 +423,16 @@ def check_timePeriod(coverageDescription, req_tp, md_src):
         return False
     return timePeriod.overlaps(req_tp)
 
-def check_custom_conditions(req, cd):
+def check_custom_conditions(cd, req):
     # TODO
     return True
+
+def check_sensor_type(cd, req):
+    if not 'sensor_type' in req:
+        return True
+    req_sensor = req['sensor_type']
+    md_sensor  = extract_path_text(cd, SENSOR_XPATH)
+    return req_sensor == md_sensor
 
 def gen_getCov_params(params, aoi_toi, md_url):
     if IE_DEBUG > 0:
@@ -419,7 +465,8 @@ def gen_getCov_params(params, aoi_toi, md_url):
     for cd in cds:
         if not check_bbox(cd, aoi_toi[0]):               continue
         if not check_timePeriod(cd, aoi_toi[1], md_url): continue
-        if not check_custom_conditions(params, cd):      continue
+        if not check_sensor_type(cd, params):            continue
+        if not check_custom_conditions(cd, params):      continue
         passed = passed+1
         coverageId = extract_CoverageId(cd)
         if None == coverageId:
@@ -671,7 +718,7 @@ def ingestion_logic(sc_id,
     
     scenario_data["sc_id"] = sc_id
     gc_requests = get_coverage_URLs(scenario_data, eoids, extras)
-    if 0 == len(gc_requests):
+    if not gc_requests or 0 == len(gc_requests):
         logger.warning(" no GetCoverage requests generated")
     else:
         nreqs = len(gc_requests)

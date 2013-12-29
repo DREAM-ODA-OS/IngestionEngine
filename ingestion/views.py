@@ -22,6 +22,7 @@ from django.views.defaults import server_error
 from django.utils.timezone import utc
 from django.contrib.auth import authenticate, login
 from django.http import Http404
+from django.forms.util import ErrorList
 from urllib2 import URLError
 
 import os
@@ -267,9 +268,25 @@ def editScenario(request,scenario_id):
     logger = logging.getLogger('dream.file_logger')
     scenario = models.Scenario.objects.get(id=int(scenario_id))
     if request.method == 'POST':
+        # if POST, the user has now edited the form.
         form = forms.ScenarioForm(request.POST)
-        if form.is_valid():
-            # delete form and connection to related scripts and user
+
+        # make sure the ncn_id is unique
+        form_ncn_id = form.data['ncn_id']
+        ncn_ok = True
+        try:
+            ex_sc = models.Scenario.objects.get(ncn_id=form_ncn_id)
+            if ex_sc.id != int(scenario_id):
+                ncn_ok = False
+                if None == form._errors:
+                    form._errors = {}
+                form._errors['ncn_id'] = ErrorList()
+                form._errors['ncn_id'].append("Unique Id is not unique.")
+        except models.Scenario.DoesNotExist:
+            # all is well
+            pass
+
+        if form.is_valid() and ncn_ok:
             scenario = form.save(commit=False)
             scenario.id = int(scenario_id)
             scenario.user = request.user

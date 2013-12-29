@@ -209,7 +209,7 @@ class Worker(threading.Thread):
             self._logger.error("Error while ingesting: " + `e`)
             self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
             if IE_DEBUG > 0:
-                traceback.print_exc(5,sys.stdout)
+                traceback.print_exc(12,sys.stdout)
 
 
 #**************************************************

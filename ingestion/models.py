@@ -103,7 +103,8 @@ class Scenario(models.Model):
     #   the table
     #
     id                   = models.AutoField(primary_key=True)
-    ncn_id               = models.CharField(max_length=NCN_ID_LEN)
+    ncn_id               = models.CharField(max_length=NCN_ID_LEN, unique=True)
+#    ncn_id               = models.CharField(max_length=NCN_ID_LEN)
     scenario_name        = models.CharField(max_length=SC_NAME_LEN)
     scenario_description = models.CharField(max_length=SC_DESCRIPTION_LEN)
     dsrc                 = models.CharField(max_length=1024)
@@ -130,8 +131,8 @@ class Scenario(models.Model):
     view_angle           = models.FloatField()
     sensor_type          = models.CharField(max_length=96)
     preprocessing        = models.BooleanField()
-    cat_registration     = models.BooleanField()
     default_script       = models.BooleanField()
+    cat_registration     = models.BooleanField()
     default_priority     = models.IntegerField()
     repeat_interval      = models.IntegerField()
     starting_date        = models.DateTimeField()
