@@ -30,6 +30,10 @@ from settings import DM_CONF_FN, MAX_PORT_WAIT_SECS, IE_DEBUG
 DM_URL_TEMPLATE = "http://127.0.0.1:%s/download-manager/"
 DM_DOWNDLOAD_COMMAND  = "download"
 DM_DAR_STATUS_COMMAND = "dataAccessRequests"
+
+# the string is the uuid
+DM_PRODUCT_CANCEL_TEMPLATE = '/products/%s?action=cancel'
+
 IE_DAR_RESP_URL_TEMPLATE = "http://127.0.0.1:%s/ingest/darResponse"
 
 DEFAULT_PORT_WAIT_SECS = 25

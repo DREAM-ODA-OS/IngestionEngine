@@ -157,8 +157,8 @@ class Eoid(models.Model):
 class ExtraConditions(models.Model):
     id        = models.AutoField(primary_key=True)
     scenario  = models.ForeignKey(Scenario)
-    xpath     = models.CharField(max_length=2048)
-    value     = models.CharField(max_length=2048)
+    xpath     = models.CharField(max_length=3072)
+    text      = models.CharField(max_length=2500)
 
 
 #**************************************************
@@ -207,7 +207,9 @@ class UserScript(models.Model):
 class ScenarioStatus(models.Model):
     id = models.AutoField(primary_key=True)
     is_available = models.IntegerField() # 1 - available, 0 - not available
-    status = models.CharField(max_length=32) # e.g.: downloading, deleting, ...
+    status = models.CharField(max_length=32) # e.g.: IDLE, deleting, ...
     done = models.FloatField() # e.g.: 33.3%
     scenario = models.OneToOneField(Scenario)
+    active_dar = models.CharField(max_length=256)
+    ingestion_pid = models.IntegerField()
 

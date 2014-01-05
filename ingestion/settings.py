@@ -99,6 +99,8 @@ else:
 
 BASH_EXEC_PATH = "/bin/bash"
 
+STOP_REQUEST = 'STOPPING'
+
 # ------------------- Otional Off-line setting  -----------------------
 # Can be used to reduce web traffic during rapid development cycles, or
 # to develop / tune offline. Note for production it probably does not

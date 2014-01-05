@@ -25,7 +25,11 @@ import logging
 import os
 
 from settings import \
-    MEDIA_ROOT, LOGGING_DIR, IE_SCRIPTS_DIR, IE_DEFAULT_INGEST_SCRIPT
+    MEDIA_ROOT, \
+    LOGGING_DIR, \
+    IE_SCRIPTS_DIR, \
+    IE_DEFAULT_INGEST_SCRIPT
+
 from dm_control import DownloadManagerController
 
 dmcontroller = DownloadManagerController.Instance()
@@ -181,6 +185,6 @@ def stop_ingestion_wfm(request,scenario_id):
     logger = logging.getLogger('dream.file_logger')
     logger.info("stop_ingestion_wfm, id="+`scenario_id`)
     wfm = work_flow_manager.WorkFlowManager.Instance()
-    wfm.set_scenario_status(0, scenario_id, 1, "IDLE", 0)
+    wfm.set_stop_request(scenario_id)
     return simplejson.dumps({})
 

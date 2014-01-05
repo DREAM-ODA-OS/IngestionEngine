@@ -26,11 +26,25 @@ import sys
 
 import models
 import views
+
 from django.utils.timezone import utc
-from settings import IE_DEBUG
-from ingestion_logic import ingestion_logic
+
+from settings import \
+    IE_DEBUG, \
+    STOP_REQUEST
+
+from ingestion_logic import \
+    ingestion_logic, \
+    check_status_stopping, \
+    stop_active_dar_dl
+
 from add_product import add_product_wfunc
-from utils import UnsupportedBboxError, IngestionError, create_manifest
+
+from utils import \
+    UnsupportedBboxError, \
+    IngestionError, \
+    StopRequest, \
+    create_manifest
 
 worker_id = 0
 
@@ -149,19 +163,24 @@ class Worker(threading.Thread):
             eoids = scenario.eoid_set.all()
             eoid_strs = []
             for e in eoids:
-                eoid_strs.append(e.eoid_val)
+                eoid_strs.append(e.eoid_val.encode('ascii','ignore'))
 
-            #extraconditions = scenario.extraconditions_set.all()
+            extraconditions = scenario.extraconditions_set.all()
             extras_list = []
-            #for e in extraconditions:
-            #    extras_list.append( (e.xpath, e.value) )
+            for e in extraconditions:
+                extras_list.append( ( e.xpath.encode('ascii','ignore'),
+                                      e.text.encode('ascii','ignore')) )
 
             # ingestion_logic blocks until DM is finished downloading
+            self._wfm.set_ingestion_pid(sc_id, os.getpid())
             dl_dir, dar_url, dar_id = \
                 ingestion_logic(sc_id,
                                 models.scenario_dict(scenario),
                                 eoid_strs,
                                 extras_list)
+
+            if check_status_stopping(sc_id):
+                raise StopRequest("Stop Request")
 
             if None == dar_id:
                 raise IngestionError("No DAR generated")
@@ -186,6 +205,10 @@ class Worker(threading.Thread):
 
                 # run ingestion scripts
                 for script in scripts: # scripts absolute path
+
+                    if check_status_stopping(sc_id):
+                        raise StopRequest("Stop Request")
+
                     self._logger.info("Running script: %s" % script)
                     r = subprocess.call([script, mf_name])
                     if 0 != r:
@@ -205,11 +228,18 @@ class Worker(threading.Thread):
             self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
             self._logger.info("Ingestion completed.")
 
+        except StopRequest as e:
+            self._logger.info("Stop request from user: Ingestion Stopped")
+            self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
+
         except Exception as e:
             self._logger.error("Error while ingesting: " + `e`)
             self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
             if IE_DEBUG > 0:
                 traceback.print_exc(12,sys.stdout)
+
+        finally:
+            self._wfm.set_ingestion_pid(sc_id, 0)
 
 
 #**************************************************
@@ -285,6 +315,76 @@ class WorkFlowManager:
         else:
              self._logger.error ("Current_task is not a task.")
 
+    def set_ingestion_pid(self, scid, pid):
+        self._lock_db.acquire()
+        try:
+            ss = models.ScenarioStatus.objects.get(scenario_id=scid)
+            ss.ingestion_pid = pid
+            ss.save()
+        except Exception as e:
+            self._logger.error(`e`)
+        finally:
+            self._lock_db.release()
+        
+    def set_active_dar(self, scid, dar_id):
+        # Also used for concurrency control.  There should be only one
+        # active dar per scenario.  If it is not
+        # empty and we are trying to set another one, we return False.
+        # If it was empty there is no active dar underway, so
+        # if we are trying to clear it again we also return false.
+        #
+        self._lock_db.acquire()
+        try:
+            ss = models.ScenarioStatus.objects.get(scenario_id=scid)
+            old_dar = ss.active_dar
+            if dar_id and old_dar:
+                raise IngestionError(
+                    "A DAR is already ative for scenario "+`scid`)
+            if not dar_id and not old_dar:
+                raise StopRequest('')
+            ss.active_dar = dar_id
+            ss.save()
+
+        except StopRequest as e:
+            return False
+
+        except IngestionError as e:
+            self._logger.error(`e`)
+            return False
+
+        except Exception as e:
+            self._logger.error(`e`)
+
+        finally:
+            self._lock_db.release()
+        return True
+
+    def set_stop_request(self, scenario_id):
+        self._lock_db.acquire()
+        try:
+            scenario_status = models.ScenarioStatus.objects.get(
+                scenario_id=scenario_id)
+            # set stop request only if ingestion is active,
+            # otherwise set to IDLE
+            active_dar = scenario_status.active_dar
+            pid = scenario_status.ingestion_pid
+            if pid != os.getpid():
+                pid = 0
+            if active_dar or pid!=0:
+                scenario_status.status = STOP_REQUEST
+                scenario_status.is_available = 1
+                scenario_status.active_dar = ''
+            else:
+                scenario_status.status = 'IDLE'
+                scenario_status.is_available = 1
+                scenario_status.done = 0
+            scenario_status.save()
+        except Exception as e:
+            self._logger.error(`e`)
+        finally:
+            self._lock_db.release()
+        if active_dar:
+            stop_active_dar_dl(active_dar)
 
     def set_scenario_status(
         self,

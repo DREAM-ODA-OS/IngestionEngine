@@ -183,9 +183,33 @@ def handle_eoids(request,scenario):
     delete_eoids(scenario, del_list)
 
     for e in new_eoids:
+        new_eoid = e.encode('ascii','ignore')
         if not e in old_list:
             models.Eoid( scenario=scenario,eoid_val=e ).save()
 
+
+def handle_extras(request,scenario):
+    xpaths = request.POST.getlist('extra_xpath')
+
+    if len(xpaths) == 0:
+        return
+
+    texts  = request.POST.getlist('extra_text')
+    
+    extras = scenario.extraconditions_set.all()
+    for e in extras:
+        e.delete()
+    extras = None
+
+    i = 0
+    for x in xpaths:
+        if not x: continue
+        models.ExtraConditions(
+            scenario=scenario,
+            xpath=x.encode('ascii','ignore'),
+            text=texts[i].encode('ascii','ignore'),
+            ).save()
+        i += 1
 
 def handle_uploaded_scripts(request,scenario):
     if len(request.FILES)==0:
@@ -217,19 +241,43 @@ def handle_uploaded_scripts(request,scenario):
         script.save()
         i = i + 1   
 
+def ncn_is_valid(form, scid):
+    # make sure the ncn_id is unique
+    form_ncn_id = form.data['ncn_id']
+    is_ncn_ok = True
+    try:
+        ex_sc = models.Scenario.objects.get(ncn_id=form_ncn_id)
+        if scid and ex_sc.id != int(scid):
+            is_ncn_ok = False
+            if None == form._errors:
+                form._errors = {}
+            form._errors['ncn_id'] = ErrorList()
+            form._errors['ncn_id'].append(
+                "Unique Id is not unique, please choose a different one.")
+    except models.Scenario.DoesNotExist:
+        # all is well
+        return True
+    return is_ncn_ok
+
 def addScenario(request):
     # add scenario and related scripts 
     logger = logging.getLogger('dream.file_logger')
     if request.method == 'POST':
+
         form = forms.ScenarioForm(request.POST)
-        if form.is_valid():
+
+        if form.is_valid() and ncn_is_valid(form, None):
             if IE_DEBUG > 2:
                 logger.debug( "Scenario form is valid")
             scenario = form.save(commit=False)
             scenario.user = request.user
             scenario.save()
-            # scenario scripts
+
+            # scenario scripts, eoids, and extras
             handle_uploaded_scripts(request,scenario)
+            handle_eoids(request,scenario)
+            handle_extras(request,scenario)
+
             # scenario status
             scenario_status = models.ScenarioStatus()
             scenario_status.scenario = scenario
@@ -256,9 +304,11 @@ def addScenario(request):
     else:
         form = forms.ScenarioForm()
     variables = RequestContext(request,
-                               {'form':form,
-                                'scripts':[],
-                                'sequence':"",
+                               {'form'     :form,
+                                'scripts'  :[],
+                                'eoid_in'  :[],
+                                'extras_in':[],
+                                'sequence' :"",
                                 'home_page':IE_HOME_PAGE})
     return render_to_response('editScenario.html',variables)
 
@@ -271,34 +321,21 @@ def editScenario(request,scenario_id):
         # if POST, the user has now edited the form.
         form = forms.ScenarioForm(request.POST)
 
-        # make sure the ncn_id is unique
-        form_ncn_id = form.data['ncn_id']
-        ncn_ok = True
-        try:
-            ex_sc = models.Scenario.objects.get(ncn_id=form_ncn_id)
-            if ex_sc.id != int(scenario_id):
-                ncn_ok = False
-                if None == form._errors:
-                    form._errors = {}
-                form._errors['ncn_id'] = ErrorList()
-                form._errors['ncn_id'].append("Unique Id is not unique.")
-        except models.Scenario.DoesNotExist:
-            # all is well
-            pass
-
-        if form.is_valid() and ncn_ok:
+        if form.is_valid() and ncn_is_valid(form, scenario_id):
             scenario = form.save(commit=False)
             scenario.id = int(scenario_id)
             scenario.user = request.user
             scenario.save()
+
+            # scenario scripts, eoids, and extras
+            handle_uploaded_scripts(request,scenario)
+            handle_eoids(request,scenario)
+            handle_extras(request,scenario)
+
             logger.info('Operation: edit scenario: id=%d name=%s' \
                             % (scenario.id,scenario.scenario_name),
                         extra={'user':request.user})
 
-            if IE_DEBUG > 1:
-                print "Scenario: %s %s" % (str(scenario.id),scenario.scenario_name)
-            handle_uploaded_scripts(request,scenario)
-            handle_eoids(request,scenario)
             port = request.META['SERVER_PORT']
             return HttpResponseRedirect(
                 'http://127.0.0.1:' + port + '/scenario/overview/')
@@ -309,15 +346,18 @@ def editScenario(request,scenario_id):
         # initialize values of form
         for field in form.fields:
             form.fields[field].initial = getattr(scenario,field)   
-    # load scripts
+
+    # load scripts, eoids, and extras
     scripts = scenario.script_set.all()
-    # load eoids
     eoid_in = scenario.eoid_set.all()
+    extras  = scenario.extraconditions_set.all()
+
     variables = RequestContext(
         request,
         {'form':form,
          'scripts':scripts,
          'eoid_in':eoid_in,
+         'extras_in':extras,
          'sequence':"",
          'home_page':IE_HOME_PAGE})
     return render_to_response('editScenario.html',variables)

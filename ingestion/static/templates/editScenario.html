@@ -18,18 +18,57 @@
         '' ;
       eoids = eoids.slice(0, -1);
 
+    var extras = new Array();
+        {% for e in extras_in %}
+            extras.push (new Array(
+                '{{ e.xpath }}', '{{ e.text }}'
+            ));
+    	{% endfor %}
+
+    window.onload=function(){
+        write_extras_lines()
+    };
+
+    function append_more_extras()
+    {
+        add_extras_line('','');
+    };
+
+    function add_extras_line(xp, xt)
+    {
+        $('#id_extras_line').append(
+            '\n<tr>' +
+            '<td>Xpath:</td> <td colspan=3><input type="text" size=80 name="extra_xpath" value="'+xp+'"></td></tr></td><tr>\n' +
+            '<td>Text:</td> <td> <input type="text" size=50 name=extra_text value="'+ xt + '"></td>' +
+            '</tr>' +
+            '<tr><td colspan=4>&nbsp;</td></tr>');
+        
+    };
+
+    function write_extras_lines(){
+        $('#id_extras_line').append("\n<tr><td colspan=3>Additional conditions:</td></tr>");
+		for (var i=0;i<extras.length;i++)
+        {
+            x = extras[i];
+            add_extras_line(x[0], x[1]);
+        }
+    };
+
     function show_hide_extras()
     {
-        eoidsPara = document.getElementById('id_eoids');
-        eoidsBtn  = document.getElementById('id_but_shh_eoids');
+        eoidsPara  = document.getElementById('id_eoids');
+        extrasPara = document.getElementById('id_extra');
+        extrasBtn  = document.getElementById('id_but_shh_extras');
         if (show_extras) {
             eoidsPara.style.display="none";
-            eoidsBtn.value =  "Show Extras";
+            extrasPara.style.display="none";
+            extrasBtn.value =  "Show Extras";
             show_extras = 0;
         } else {
             eoidsPara.style.display="block";
+            extrasPara.style.display="block";
             show_extras = 1;
-            eoidsBtn.value =  "Hide Extras";
+            extrasBtn.value =  "Hide Extras";
         }
     }
 
@@ -288,10 +327,10 @@ Editor</FONT></FONT></P>
         {% if "id_repeat_interval" in b.id_for_label %}
     </table>
     <p>
-    <!--  show/hide eoids button -->
-    <INPUT TYPE="BUTTON" class="ShowHideEoids"
-               id="id_but_shh_eoids"
-               name="vvv" title="Show or Hide EOIDS"
+    <!--  show/hide extras button -->
+    <INPUT TYPE="BUTTON" class="ShowHideExtras"
+               id="id_but_shh_extras"
+               title="Show or Hide EXTRAS"
                onClick="show_hide_extras()"
                value="Show Extras"/>
     <div class="cl_eoids" id="id_eoids" style="display:none">
@@ -307,21 +346,18 @@ Editor</FONT></FONT></P>
      </table>
     </div>
     </p> <p>
-    <!--  show/hide extras
-    <INPUT TYPE="BUTTON" class="ShowHideExtras"
-               id="id_but_shh_extras"
-               name="vvv" title="Show or hide extra conditions"
-               onClick="show_hide_extras()"/>
-    <div class="cl_extras" id="id_extras" style="display:none">
+    <div class="cl_extra" id="id_extra" style="display:none">
      <table>
-	{% for extra in extras %}
-	<tr id="tr_{{extra.id_extra}}">
-		<td><input type="text" name="extra_val" value="{{ extra.value }}"  disabled></td>
-    </tr>
-	{% endfor %}
+       <div class="cl_extras_line" id="id_extras_line">
+       </div>
      </table>
+    <INPUT TYPE="BUTTON" class="AddExtrasBtn"
+               id="id_but_add_extras"
+               title="Add additional conditions"
+               onClick="append_more_extras()"
+               value="Add additional conditions"/>
     </div>
-    </p> -->
+    </p>
      <table>
         <tr>
           <th>{{ b.label_tag }}</th> <td colspan=3> {{ b }} </td>

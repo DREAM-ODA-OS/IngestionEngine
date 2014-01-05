@@ -24,15 +24,24 @@ import time
 from osgeo import osr
 
 import work_flow_manager
-from utils import Bbox, bbox_from_strings, TimePeriod, mkFname, DMError, \
-    NoEPSGCodeError, IngestionError, read_from_url, check_or_make_dir, make_new_dir
+
+from utils import \
+    Bbox, bbox_from_strings, TimePeriod, mkFname, DMError, \
+    NoEPSGCodeError, IngestionError, StopRequest, \
+    read_from_url, check_or_make_dir, make_new_dir
+
 from settings import \
     IE_DEBUG, \
-    DAR_STATUS_INTERVAL
+    DAR_STATUS_INTERVAL,\
+    STOP_REQUEST
+
 from dm_control import \
     DownloadManagerController, \
-    DM_DAR_STATUS_COMMAND
+    DM_DAR_STATUS_COMMAND, \
+    DM_PRODUCT_CANCEL_TEMPLATE
+
 from models import \
+    ScenarioStatus, \
     DSRC_EOWCS_CHOICE, \
     DSRC_OSCAT_CHOICE, \
     AOI_BBOX_CHOICE,   \
@@ -128,7 +137,18 @@ def get_spatialReference(epsg):
         spatial_refs[epsg] = ref
     return ref
 
+
 # ------------ utilities --------------------------
+
+def check_status_stopping(scid):
+    status = ScenarioStatus.objects.get(scenario_id=scid).status
+    return status == STOP_REQUEST
+
+def wfm_set_dar(scid, darid):
+    work_flow_manager.WorkFlowManager.Instance().set_active_dar(scid, darid)
+
+def wfm_clear_dar(scid):
+    work_flow_manager.WorkFlowManager.Instance().set_active_dar(scid, '')
 
 def srsName_to_Number(srsName):
     if not srsName.startswith("http://www.opengis.net/def/crs/EPSG"):
@@ -231,7 +251,6 @@ def extract_path_text(cd, path):
     ret = None
     leaf_node = cd.find("./"+path)
     if None == leaf_node:
-        logger.error("Path not found: "+ path)
         return None
     return leaf_node.text
 
@@ -391,11 +410,14 @@ def getXmlTree(url, expected_tag):
     else:
         return ( resp, parse_file(resp, expected_tag, resp.geturl()) )
 
-def getDssList(eo_dss_list, aoi_toi):
+def getDssList(scid, eo_dss_list, aoi_toi):
     # get list of datasets that overlap bbox and timeperiod
     id_list = []
     req_bb, req_time = aoi_toi
     for dss in eo_dss_list:
+        if check_status_stopping(scid):
+            raise StopRequest("Stop Request")
+
         bb1 = extract_WGS84bbox(dss)
         if None == bb1:
             logger.warning("Failed to extract bb from " + `dss`)
@@ -424,8 +446,42 @@ def check_timePeriod(coverageDescription, req_tp, md_src):
     return timePeriod.overlaps(req_tp)
 
 def check_custom_conditions(cd, req):
-    # TODO
+    # implements AND between all custom conditions
+    custom = None
+    if 'custom' in req:
+        custom = req['custom']
+    
+    if not custom:
+        return True
+
+    leaf_nodes = None
+    for c in custom:
+        if not c[0]: continue
+        searchtext = ".//"+c[0]
+        try:
+            leaf_nodes = cd.findall(searchtext)
+        except Exception as e:
+            logger.error("Error in custom condition, cond:\n" + \
+                             `c[0]` + ", error:\n" + `e`)
+            return False
+
+        if not leaf_nodes:
+            return False
+
+        if c[1]:
+            found = False
+            for l in leaf_nodes:
+                if l.text == c[1]:
+                    found =  True
+                    break
+            if not found:
+                return False
+        # else there is a node but no text to match, so
+        # we consider it to be true, e.g. if attributes
+        # match
+
     return True
+
 
 def check_sensor_type(cd, req):
     if not 'sensor_type' in req:
@@ -441,6 +497,8 @@ def gen_getCov_params(params, aoi_toi, md_url):
     ret = []
 
     (fp, cd_tree) = getXmlTree(md_url, EOCS_DESCRIPTION_TAG)
+    if check_status_stopping(params['sc_id']):
+        raise StopRequest("Stop Request")
 
     if None==cd_tree:
         if None != fp: fp.close()
@@ -463,15 +521,33 @@ def gen_getCov_params(params, aoi_toi, md_url):
 
     passed = 0
     for cd in cds:
-        if not check_bbox(cd, aoi_toi[0]):               continue
-        if not check_timePeriod(cd, aoi_toi[1], md_url): continue
-        if not check_sensor_type(cd, params):            continue
-        if not check_custom_conditions(cd, params):      continue
+
+        if check_status_stopping(params["sc_id"]):
+            raise StopRequest("Stop Request")
+
+        if not check_bbox(cd, aoi_toi[0]):
+            print "BBOX failed"
+            if IE_DEBUG > 2: logger.info("  bbox check failed.")
+            continue
+        
+        if not check_timePeriod(cd, aoi_toi[1], md_url):
+            if IE_DEBUG > 2: logger.info("  TimePeriod check failed.")
+            continue
+
+        if not check_sensor_type(cd, params): 
+            if IE_DEBUG > 2: logger.info("  sensor type check failed.")
+            continue
+
+        if not check_custom_conditions(cd, params):
+            if IE_DEBUG > 2: logger.info("  custom conds check failed.")
+            continue
+
         passed = passed+1
         coverageId = extract_CoverageId(cd)
         if None == coverageId:
             logger.error("Cannot find CoverageId in '"+md_url+"'")
             continue
+        if IE_DEBUG > 2: logger.info("  coverageId="+coverageId)
         ret.append("CoverageId="+coverageId)
 
     if None != fp: fp.close()
@@ -496,7 +572,11 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
     ndeocs = 1    # number of DescribeEOCOverageSet urls processed
     ngc    = 1
     toteocs = float(len(md_urls))
+
     for md_url in md_urls:
+        if check_status_stopping(params["sc_id"]):
+            raise StopRequest("Stop Request")
+
         set_status(params["sc_id"],
                    "Create DAR: get MD",
                    (float(ndeocs)/toteocs)*100.0)
@@ -542,26 +622,31 @@ def getMD_urls(params, service_version, id_list):
         md_urls.append( base_url + "&EOId=" + dss_id )
     return md_urls
     
-def urls_from_OSCAT(params, eoids, extras):
+def urls_from_OSCAT(params, eoids):
     raise IngestionError("Catalogues are not yet implemented")
 
-def urls_from_EOWCS(params, eoids, extras):
+def urls_from_EOWCS(params, eoids):
     base_url = params['dsrc'] + "?" + SERVICE_WCS
     url_GetCapabilities = base_url + "&" + WCS_GET_CAPS
     (fp, caps) = getXmlTree(url_GetCapabilities, CAPABILITIES_TAG)
     if None == caps:
         logger.error("Cannot parse getCap file. Url="+url_GetCapabilities)
         if None != fp: fp.close()
+        if check_status_stopping(params["sc_id"]):
+            raise StopRequest("Stop Request")
         return None
-        
+
     service_version = extract_ServiceTypeVersion(caps).strip()
     wcseo_dss = extract_DatasetSeriesSummary(caps)
 
     caps = None  # no longer needed
     fp.close()
 
+    if check_status_stopping(params["sc_id"]):
+        raise StopRequest("Stop Request")
+
     aoi_toi = extract_aoi_toi(params)
-    id_list = getDssList(wcseo_dss, aoi_toi)
+    id_list = getDssList(params["sc_id"], wcseo_dss, aoi_toi)
 
     if IE_DEBUG>1:
         logger.debug(" id list before culling:" + `id_list`)
@@ -584,7 +669,7 @@ def urls_from_EOWCS(params, eoids, extras):
     return gc_requests
 
     
-def get_coverage_URLs(params, eoids, extras):
+def get_coverage_URLs(params, eoids):
     if IE_DEBUG > 1:
         print "   get_coverage_URLs: params=" + `params`
     
@@ -600,13 +685,13 @@ def get_coverage_URLs(params, eoids, extras):
         return None
 
     if params['dsrc_type'] == DSRC_EOWCS_CHOICE:
-        return urls_from_EOWCS(params, eoids, extras)
+        return urls_from_EOWCS(params, eoids)
     elif params['dsrc_type'] == DSRC_OSCAT_CHOICE:
-        return urls_from_OSCAT(params, eoids, extras)
+        return urls_from_OSCAT(params, eoids)
     else:
         raise IngestionError("bad dsrc_type:" + params['dsrc_type'])
 
-def request_download(sc_ncn_id, urls):
+def request_download(sc_ncn_id, scid, urls):
 
     #create tmp dir for downloads
     full_path, rel_path = create_dl_dir(sc_ncn_id+"_")
@@ -630,10 +715,28 @@ def request_download(sc_ncn_id, urls):
     status, dar_url, dm_dar_id = dmcontroller.submit_dar(dar)
     if status != "OK":
         raise DMError("DAR submit problem, status:" + status)
+    wfm_set_dar(scid, dm_dar_id)
 
     return full_path, dar_url, dm_dar_id
 
-def get_dar_status(dar_url):
+def stop_products_dl(product_list):
+    dmcontroller = DownloadManagerController.Instance()
+    dm_url = dmcontroller._dm_url
+
+    for p in product_list:
+        if "productProgress" in product:
+            progress = product["productProgress"]
+            if progress["status"] == "COMPLETED":
+                # no point cancelling this one
+                continue
+        uuid = p['uuid']
+        url = dm_url + DM_PRODUCT_CANCEL_TEMPLATE % uuid
+        try:
+            dm_response = json.loads(read_from_url(url))
+        except urllib2.URLError as e:
+            logger.warning("Error from DM while cancelling download: " + `e`)
+
+def get_dar_list():
     dmcontroller = DownloadManagerController.Instance()
     dm_url = dmcontroller._dm_url
     url = dm_url+DM_DAR_STATUS_COMMAND
@@ -644,7 +747,42 @@ def get_dar_status(dar_url):
     if not "dataAccessRequests" in dar_status:
         raise DMError(
             "Bad DAR status from DM; no 'dataAccessRequests' found.")
-    dar = dar_status["dataAccessRequests"]
+    return dar_status["dataAccessRequests"]
+
+def stop_active_dar_dl(active_dar_uuid):
+    dar = get_dar_list()
+    request = None
+    for r in dar:
+        if not "uuid" in r:
+            continue
+        uuid = r["uuid"]
+        if uuid == active_dar_uuid:
+            request = r
+            break
+    if not "productList" in request:
+        return 
+    stop_products_dl(request["productList"])
+    
+def stop_download(scid, request):
+    # nothing to do if no request
+    if None==request:
+        return
+
+    # do this first, in case someone else wants to also
+    # cancel the dar.
+    if not wfm_clear_dar(scid):
+        # dar request has already been cleared before we got there
+        return
+        
+    # The DM does not have an interface to cancel an entire
+    # DAR in one go, so we cancel all individual product
+    # downloads in the DAR.
+    if not "productList" in request:
+        return 
+    stop_products_dl(request["productList"])
+
+def get_dar_status(dar_url):
+    dar = get_dar_list()
     request = None
     for r in dar:
         if not "darURL" in r:
@@ -654,11 +792,12 @@ def get_dar_status(dar_url):
             break
     return request
 
-def wait_for_download(sc_id, dar_url):
+def wait_for_download(scid, dar_url, dar_id):
     """ blocks until the DM reports that the DAR with this dar_url
         has completed all constituent individual product downloads
     """
-    set_status(sc_id, "Downloading", 1)
+    set_status(scid, "Downloading", 1)
+
     request = get_dar_status(dar_url)
     if None == request:
         # wait and try again
@@ -668,41 +807,65 @@ def wait_for_download(sc_id, dar_url):
             time.sleep(1)
             request = get_dar_status(dar_url)
         if None == request:
+            time.sleep(1)
+            request = get_dar_status(dar_url)
+        if None == request:
+            wfm_clear_dar(scid)
             raise DMError(
                 "Bad DAR status from DM; no 'dataAccessRequests' found.")
+
+    if check_status_stopping(scid):
+        stop_download(scid, request)
+        raise StopRequest("Stop Request")
+
     product_list = request["productList"]
     n_products = len(product_list)
     total_percent = n_products * 100
     all_done = False
-    while not all_done:
-        all_done = True
-        part_percent = 0
-        for product in product_list:
-            if "productProgress" not in product:
-                continue
-            progress = product["productProgress"]
-            if progress["status"] != "COMPLETED":
-                all_done = False
-            if "progressPercentage" not in progress:
-                part_percent += 100
+    try:
+        while not all_done:
+            all_done = True
+            part_percent = 0
+            for product in product_list:
+                if "productProgress" not in product:
+                    continue
+                progress = product["productProgress"]
+                if progress["status"] != "COMPLETED":
+                    all_done = False
+                if "progressPercentage" not in progress:
+                    part_percent += 100
+                else:
+                    part_percent += progress["progressPercentage"]
+        
+            percent_done = int( (float(part_percent)/float(total_percent))*100 )
+            if percent_done < 1: percent_done = 1
+            if all_done:
+                set_status(scid, "Done ("+`n_products`+")", percent_done)
+                break
+            elif check_status_stopping(scid):
+                stop_download(scid, request)
+                raise StopRequest("Stop Request")
             else:
-                part_percent += progress["progressPercentage"]
-        percent_done = int( (float(part_percent)/float(total_percent))*100 )
-        if percent_done < 1: percent_done = 1
-        set_status(sc_id, "Downloading ("+`n_products`+")", percent_done)
-        if all_done:
-            break
-        time.sleep(DAR_STATUS_INTERVAL)
-        request = get_dar_status(dar_url)
-        product_list = request["productList"]
-    
+                set_status(scid, "Downloading ("+`n_products`+")", percent_done)
+            time.sleep(DAR_STATUS_INTERVAL)
+            request = get_dar_status(dar_url)
+            if check_status_stopping(scid):
+                stop_download(scid, request)
+                raise StopRequest("Stop Request")
+            
+            product_list = request["productList"]
+    except Exception as e:
+        logger.warning("Unexpected exception in wait_for_download: "+`e`)
+        if IE_DEBUG > 0:
+            traceback.print_exc(12,sys.stdout)
+    finally:
+        wfm_clear_dar(scid)
 
 # ----- the main entrypoint  --------------------------
-def ingestion_logic(sc_id,
+def ingestion_logic(scid,
                     scenario_data,
                     eoids,
-                    extras):
-
+                    custom):
     root_dl_dir = DownloadManagerController.Instance()._download_dir
 
     if not os.access(root_dl_dir, os.R_OK|os.W_OK):
@@ -716,16 +879,20 @@ def ingestion_logic(sc_id,
     nreqs = 0
     retval = (None, None, None)
     
-    scenario_data["sc_id"] = sc_id
-    gc_requests = get_coverage_URLs(scenario_data, eoids, extras)
+    scenario_data["sc_id"]  = scid
+    scenario_data["custom"] = custom
+    gc_requests = get_coverage_URLs(scenario_data, eoids)
     if not gc_requests or 0 == len(gc_requests):
         logger.warning(" no GetCoverage requests generated")
     else:
+        if check_status_stopping(scid):
+            raise StopRequest("Stop Request")
+
         nreqs = len(gc_requests)
         logger.info("Submitting "+`nreqs`+" URLs to the Download Manager")
         dl_dir, dar_url, dar_id = \
-            request_download(scenario_data["ncn_id"], gc_requests)
-        wait_for_download(sc_id, dar_url)
+            request_download(scenario_data["ncn_id"], scid, gc_requests)
+        wait_for_download(scid, dar_url, dar_id)
         logger.info("Products for scenario " + scenario_data["ncn_id"]+
                     " downloaded to " + dl_dir)
         retval = (dl_dir, dar_url, dar_id)
