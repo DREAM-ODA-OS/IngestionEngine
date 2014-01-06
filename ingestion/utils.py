@@ -44,6 +44,9 @@ class StopRequest(Exception):
 class DMError(Exception):
     pass
 
+class ConfigError(Exception):
+    pass
+
 class UnsupportedBboxError(Exception):
     pass
 
@@ -391,8 +394,18 @@ def split_wcs_tmp(path, f, logger):
             delete_orig = False
         elif "Content-Disposition" in hdrs \
                 and "filename=" in hdrs["Content-Disposition"]:
-            cd = hdrs["Content-Disposition"].split("filename=")
-            if cd.startswith('/') or '../' in cd:
+            cd = hdrs["Content-Disposition"].split(";")
+            data_fname = None
+            fnstring = None
+            for s in cd:
+                if "filename=" in s:
+                    fnstring = s.split("filename=")[1].strip()
+                    break
+            if not fnstring:
+                raise IngestionError(
+                    "'filename=' not found in 'Content-Disposition' header"+ \
+                        "headers: "+`hdrs`)
+            if fnstring.startswith('/') or '../' in fnstring:
                 raise IngestionError("Bad filename="+cd)
             if len(cd) == 2:
                 data_fname = os.path.join(path, cd[1])
@@ -514,7 +527,7 @@ def make_new_dir(dir_path, logger):
     except OSError as e:
         msg = "Failed to create "+dir_path+": "+`e`
         logger.error(msg)
-        raise  DMError(msg)
+        raise  IngestionError(msg)
 
 def check_or_make_dir(dir_path, logger):
     if not os.access(dir_path, os.R_OK|os.W_OK):
@@ -528,7 +541,7 @@ def check_or_make_dir(dir_path, logger):
             msg = "Failed to create "+dir_path+": "+`e`
             if logger:
                 logger.error(msg)
-            raise  DMError(msg)
+            raise  IngestionError(msg)
 
 def get_base_fname(orig_full_path):
     return  os.path.basename(orig_full_path)

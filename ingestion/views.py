@@ -116,7 +116,6 @@ def overviewScenario(request):
         try:
             scenario_status.append(s.scenariostatus)
         except models.ScenarioStatus.DoesNotExist:
-            print 'adding '+`s.ncn_id`
             sstat = models.ScenarioStatus(
                 scenario=s,
                 is_available=1,
@@ -579,6 +578,7 @@ def getAddStatus_operation(request, op_id):
 
 @csrf_exempt
 def darResponse(request,seq_id):
+    seq_id = seq_id.encode('ascii','ignore')
     logger = logging.getLogger('dream.file_logger')
     if request.method == 'GET':
         logger.info("Request to retrieve DAR from" + \

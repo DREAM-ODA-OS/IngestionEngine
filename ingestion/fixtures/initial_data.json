@@ -302,8 +302,7 @@
             "scenario": 2
         }
     }, 
-    { "pk": 1, "model": "ingestion.scenario", 
-        "fields": {
+    { "pk": 1, "model": "ingestion.scenario", "fields": {
             "ncn_id": "scid0", 
             "aoi_file": "", 
             "aoi_type": "BB",
@@ -331,10 +330,8 @@
             "default_priority": 100, 
             "from_date": "2009-01-01T08:00:00", 
             "to_date": "2020-03-15T21:00:00"
-        }
-    },
-    { "pk": 2, "model": "ingestion.scenario", 
-        "fields": {
+    }},
+    { "pk": 2, "model": "ingestion.scenario", "fields": {
             "ncn_id": "scid1", 
             "scenario_name": "Test Scenario 2 - Sentinel 2 Sim", 
             "scenario_description": "Test of Sentinel 2 data: simulated S2 from Landsat, converted by Gisat and hosted at EOX.", 
@@ -362,6 +359,15 @@
             "default_priority": 100, 
             "from_date": "1999-01-01T08:00:00", 
             "to_date": "2000-03-15T21:00:00"
-        }
-    }
+    }},
+    {"pk": 1, "model": "ingestion.eoid", "fields":  {
+       "scenario": 1,
+       "eoid_val":
+       "Landsat5_RGB_view"
+    }}, 
+    { "pk": 1, "model": "ingestion.extraconditions", "fields": {
+            "scenario": 1,
+            "xpath": "{http://www.opengis.net/eop/2.0}Platform/{http://www.opengis.net/eop/2.0}shortName",
+            "text": "LANDSAT5"
+    }}
 ]

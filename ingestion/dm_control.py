@@ -14,16 +14,19 @@
 
 from singleton_pattern import Singleton
 import logging
-import urllib2
 import json
 import os, os.path
 import time
 import sys
+import traceback
 import threading
 from collections import deque
 
+from urllib2 import HTTPError, URLError
+
 from utils import find_process_ids, pid_is_valid, get_dm_config, \
     read_from_url, DMError, mkIdBase, check_or_make_dir
+
 from settings import DM_CONF_FN, MAX_PORT_WAIT_SECS, IE_DEBUG
 
 # The %s will be replaced by the port where DM is listening
@@ -121,10 +124,10 @@ class DownloadManagerController:
                 raise
 
         if None == self._download_dir or '' == self._download_dir:
-            raise  DMError("No download directory")
+            raise  ConfigError("No download directory")
 
         if None == self._dm_port or '' == self._dm_port:
-            raise  DMError("No DM port")
+            raise  ConfigError("No DM port")
 
         check_or_make_dir(self._download_dir, self._logger)
         #now add this year's dir
@@ -145,9 +148,9 @@ class DownloadManagerController:
 
     def submit_dar(self, dar):
         if None == self._dm_port:
-            raise DMError("No port for DM")
+            raise ConfigError("No port for DM")
         if None == self._ie_port:
-            raise DMError("No IE port.")
+            raise ConfigError("No IE port.")
         if None == self._dar_resp_url:
             self._dar_resp_url = IE_DAR_RESP_URL_TEMPLATE % self._ie_port
 
@@ -168,8 +171,18 @@ class DownloadManagerController:
         post_data = "darUrl="+dar_url
         self._logger.info("Submitting request to DM to retieve DAR:\n" \
                            + post_data)
-        dm_resp = json.loads(read_from_url(dm_dl_url, post_data))
-        self._logger.debug("dm_response: " + `dm_resp`)
+        try:
+            dm_resp = json.loads(read_from_url(dm_dl_url, post_data))
+            self._logger.debug("dm_response: " + `dm_resp`)
+        except HTTPError as e:
+            self._logger.error("Download Manager Error: "+`e.code`+' '+`e`)
+            self._logger.error("  " + e.read())
+            raise DMError("HTTPError")
+        except URLError as e:
+            self._logger.error("Download Manager Error: " + `e`)
+            if e.reason:
+               self._logger.error("   reason: " + e.reason)
+            raise DMError("URLError")
         dm_dar_id = None
         if "success" in dm_resp and dm_resp["success"]:
             self._logger.info("DM accepted DAR. TODO: set DAR id.")
@@ -196,15 +209,23 @@ class DownloadManagerController:
             if self._dar_queue[0][0] == dar_seq_id:
                 dar = self._dar_queue.popleft()[1]
             else:
-                self._logger.warning("Out-of-sequence dar access, dar_seq_id:" + \
+                self._logger.warning("Out-of-sequence dar access, dar_seq_id: " + \
                                          `dar_seq_id`)
                 dar = self.find_dar(dar_seq_id)
+                if not dar:
+                    self._logger.warning("DAR '"+`dar_seq_id`+"' not found")
             return dar
     
-    def find_dar(dar_seq_id):
-        for d in self._dar_queue:
-            if d[0] == dar_seq_id:
-                return d[1]
+    def find_dar(self, dar_seq_id):
+        try:
+            for d in self._dar_queue:
+                if d[0] == dar_seq_id:
+                    return d[1]
+        except Exception as e:
+            self._logger.error("find_dar: exception: " + `e`)
+            if IE_DEBUG > 0:
+                traceback.print_exc(12,sys.stdout)
+            return None
         return None
 
     def set_ie_port(self, port):

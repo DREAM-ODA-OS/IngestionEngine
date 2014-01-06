@@ -17,12 +17,13 @@ import os
 import urllib2
 import xml.etree.ElementTree as ET
 import xml.parsers.expat
-import dar_builder
 import json
 import time
+import traceback
 
 from osgeo import osr
 
+import dar_builder
 import work_flow_manager
 
 from utils import \
@@ -526,7 +527,6 @@ def gen_getCov_params(params, aoi_toi, md_url):
             raise StopRequest("Stop Request")
 
         if not check_bbox(cd, aoi_toi[0]):
-            print "BBOX failed"
             if IE_DEBUG > 2: logger.info("  bbox check failed.")
             continue
         
@@ -720,6 +720,7 @@ def request_download(sc_ncn_id, scid, urls):
     return full_path, dar_url, dm_dar_id
 
 def stop_products_dl(product_list):
+    logger.info("Stopping products download")
     dmcontroller = DownloadManagerController.Instance()
     dm_url = dmcontroller._dm_url
 
@@ -750,6 +751,7 @@ def get_dar_list():
     return dar_status["dataAccessRequests"]
 
 def stop_active_dar_dl(active_dar_uuid):
+    logger.info("Stopping active download, dar uuid="+`active_dar_uuid`)
     dar = get_dar_list()
     request = None
     for r in dar:
@@ -759,6 +761,8 @@ def stop_active_dar_dl(active_dar_uuid):
         if uuid == active_dar_uuid:
             request = r
             break
+    if not request:
+        return
     if not "productList" in request:
         return 
     stop_products_dl(request["productList"])
@@ -766,18 +770,21 @@ def stop_active_dar_dl(active_dar_uuid):
 def stop_download(scid, request):
     # nothing to do if no request
     if None==request:
+        logger.warning("stop download: no dar request to process")
         return
 
     # do this first, in case someone else wants to also
     # cancel the dar.
     if not wfm_clear_dar(scid):
         # dar request has already been cleared before we got there
+        logger.warning("stop download: dar had been cleared.")
         return
         
     # The DM does not have an interface to cancel an entire
     # DAR in one go, so we cancel all individual product
     # downloads in the DAR.
     if not "productList" in request:
+        logger.warning("stop download: no productList in request")
         return 
     stop_products_dl(request["productList"])
 
@@ -854,12 +861,19 @@ def wait_for_download(scid, dar_url, dar_id):
                 raise StopRequest("Stop Request")
             
             product_list = request["productList"]
+
+    except StopRequest:
+        logger.info("StopRequest while waiting for download") 
+        raise
+
     except Exception as e:
         logger.warning("Unexpected exception in wait_for_download: "+`e`)
         if IE_DEBUG > 0:
             traceback.print_exc(12,sys.stdout)
+
     finally:
         wfm_clear_dar(scid)
+
 
 # ----- the main entrypoint  --------------------------
 def ingestion_logic(scid,

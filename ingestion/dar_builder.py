@@ -15,6 +15,8 @@
 import xml.etree.ElementTree as ET
 import sys
 
+LOCAL_DEBUG = 0
+
 DAR_PREAMBLE = '<?xml version="1.0" encoding="UTF-8"?>'
 TODO = """<ngeo:DataAccessMonitoring-Resp
     xmlns:ngeo="http://ngeo.eo.esa.int/iicd-d-ws/1.0"
@@ -62,5 +64,7 @@ def build_DAR(urls):
         ET.SubElement(pa, NGEO_NS+PRODACCESSSTATUS).text = "READY"
         ET.SubElement(pa, NGEO_NS+PRODDOWNLOADDIRECTORY).text =  url[0]
 
-    print "dAR:\n"+ DAR_PREAMBLE + ET.tostring(root)
+    if LOCAL_DEBUG > 0:
+        print "dAR:\n"+ DAR_PREAMBLE + ET.tostring(root)
+
     return DAR_PREAMBLE + ET.tostring(root)
