@@ -29,11 +29,27 @@ border:none;
 padding:0cm
 }
 
+p.ieTitle4 {
+font-family:Arial,Helvetica,sans-serif;
+font-weight:normal;
+font-size:14pt;
+text-align:left;
+background:#47b8b8;
+border:none;
+padding:0cm
+}
+
 .ieBareTblCell {
 border: none; 
 text-align:center;
 vertical-align:middle;
 padding:0cm
+}
+
+.ieTblShaded {
+font-family:Arial,Helvetica,sans-serif;
+font-size:11pt;
+background:#a7dfdf
 }
 
 .ieScTblHdrCell {

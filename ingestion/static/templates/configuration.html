@@ -5,22 +5,43 @@
 
 {% block head %}
 
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
-    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+    <!-- link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script -->
+
     {% dajaxice_js_import 'nocsrf' %}
 
 	<script>
 
-        $(document).ready(function() {
+        function create_userscript_submit_form(file_type,script_name,script_path) {
+            return '<table><tr><th><label for="id_script_name">Script name:</label></th><td><input id="id_script_name" type="text" name="script_name" value="'+ script_name + '" maxlength="50" disabled/></td><th><label for="id_script_file">Script file:</label></th><td><input type="' + file_type + '" name="script_file" id="id_script_file" value="' + script_path + '"/></td></tr></table>';
+        }
+
+        status = "show"
+
+         function get_cookie(cname){
+            var n = cname + "=";
+            var ca = document.cookie.split(';');
+            for(var i=0; i<ca.length; i++)
+            {
+                var c = ca[i].trim();
+                if (c.indexOf(n)==0) return c.substring(n.length,c.length);
+            }
+            return "";
+         }
+
+         function set_cookie(cname,val){
+             var d = new Date();
+             d.setTime(d.getTime()+(5*365*24*60*60*1000));  // 5 yrs
+             var expires = "expires="+d.toGMTString();
+             document.cookie = cname + "=" + val + "; " + expires;
+         }
+
+/*
+         $(document).ready(function() {
             $("#button_submit_2").hide();
             $("#button_submit_1").hide();
         });
 
-        status = "show"
-
-        function create_userscript_submit_form(file_type,script_name,script_path) {
-            return '<table><tr><th><label for="id_script_name">Script name:</label></th><td><input id="id_script_name" type="text" name="script_name" value="'+ script_name + '" maxlength="50" disabled/></td><th><label for="id_script_file">Script file:</label></th><td><input type="' + file_type + '" name="script_file" id="id_script_file" value="' + script_path + '"/></td></tr></table>';
-        }
 
         $(document).ready(function(){
             $(".ConfigButton").live('click',function(){
@@ -44,28 +65,61 @@
 				}
             });
 		});
-
-       function show_logging(data){
-           messages = data.message;
-           var html = '<table>'
-           for (var i=0; i<messages.length; i++) {
-               html = html + '<tr><td>' + messages[i] + '</td></tr>';
-           }
-           document.getElementById('div_logging').innerHTML = html;
-       }
+*/
 
         first_time = 1
+        log_message_type = 'INFO';
+        max_log_lines = 5;
 
-        $(document).ready(function() {
+        function show_logging(data){
+            messages = data.message;
+            var logtable = '<table class="ieTblShaded">'
+            for (var i=0; i<messages.length; i++) {
+                logtable = logtable +'<tr>' +
+                '<td>' + messages[i][0] + '&nbsp;</td>' +
+                '<td>' + messages[i][1] + '</td>' +
+                '<td>' + messages[i][2] + '&nbsp;</td>' +
+                '<td>' + messages[i][3] + '</td>' +
+                '</tr>';
+            }
+            logtable = logtable + '</table>';
+            document.getElementById('div_logging').innerHTML = logtable;
+        }
+
+        read_logging = function(){
+            inpt = document.getElementById('input_n_lines');
+            if (inpt) { maxll=$('#input_n_lines').val();}
+            if (maxll != max_log_lines) {
+                max_log_lines = maxll;
+                set_cookie("nloglines", maxll);
+            }
+            Dajaxice.ingestion.read_logging(
+                show_logging,
+                {'message_type' : log_message_type,
+                 'max_log_lines': maxll} );
+        }
+
+
+        function init_log_display() {
             if (first_time==1) {
-                Dajaxice.ingestion.read_logging(show_logging,{'message_type':'INFO'});
+                read_logging();
                 first_time = 0;
             }
-            window.setInterval(function(){Dajaxice.ingestion.read_logging(show_logging,{'message_type':'INFO'});},5000); // every 5000 milliseconds
-        });
+            window.setInterval(read_logging, 3000);  // every n milliseconds
+        }
 
+        window.onload=function(){
+            maxll = get_cookie("nloglines");
+            if (maxll != "") { max_log_lines = maxll; }
+            init_log_display()
+        };
 
-
+/*
+        $(document).ready(
+            function() {
+                init_log_display()
+            });
+*/
 	</script>
 
 
@@ -74,15 +128,16 @@
 
 
 {% block title %}
-<P ALIGN=CENTER STYLE="background: #47b8b8"><FONT FACE="UniversS 67 CondensedBold"><FONT SIZE=6 STYLE="font-size: 22pt">CONFIGURATION</FONT></FONT></P>
+
+<P class="ieTitle3">Configuration</P>
 {% endblock %}
 
 {% block content %}
 
 
-<p><a href="/account/logout/"> LOGOUT </a></p>
+<!-- p><a href="/account/logout/"> LOGOUT </a></p -->
 
-<form method="post" action="account/configuration/" enctype="multipart/form-data">{% csrf_token %}
+<!-- form method="post" action="account/configuration/" enctype="multipart/form-data">{% csrf_token %}
 <h1>Add Product Script</h1>
 
 
@@ -134,12 +189,16 @@
 <input type="submit" id="button_submit_2" name="button_submit_2" value="Save"/>
 
 
-</form>
+</form -->
 
-
-
-
-<h1> Logging </h1>
+    <P class="ieTitle4">Ingestion log file &nbsp;  &nbsp;
+    <script>
+    maxll = get_cookie("nloglines");
+    if (maxll != "") { max_log_lines = maxll; }
+    document.write('lines: <input style="border-style:none; background-color:#9fcfcf; font-size:12; margin: 0 0 4px"  id="input_n_lines" type="text" size=5 name="n_lines" value=' +
+                   max_log_lines + '>');
+    </script>
+</P>
 <div id="div_logging"></div>
 
 

@@ -26,7 +26,7 @@ import os
 
 from settings import \
     MEDIA_ROOT, \
-    LOGGING_DIR, \
+    LOGGING_FILE, \
     IE_SCRIPTS_DIR, \
     IE_DEFAULT_INGEST_SCRIPT
 
@@ -121,18 +121,25 @@ def delete_scenario_django(request,scenario_id):
         {'message':"Scenario %d is deleted." % int(scenario_id)})
 
 @dajaxice_register(method='POST')
-def read_logging(request,message_type):
-    user = request.user
+def read_logging(request, message_type, max_log_lines):
     messages = []
-    for file_name in os.listdir(LOGGING_DIR):
-        file_path = os.path.join(LOGGING_DIR,file_name)
-        f = open(file_path,'r')
+    maxll = int(max_log_lines)
+    mtype = message_type.encode('ascii','ignore')
+    try:
+        f = open(LOGGING_FILE,'r')
         for line in f:
-            if line.split(" ")[4]==user.username:
-                #if line.split(" ")[0]==message_type and line.split(" ")[4]==user.username:
-                messages.append(line)         # doTo: sort messages by date !!!
+            lstr = line.strip()
+            parts = lstr.split(' ',3)
+            messages.append(parts)
         f.close()
-    return simplejson.dumps({'message':messages})
+        if len(messages) > maxll:
+            messages = messages[-maxll:]
+        return simplejson.dumps({'message':messages})
+    except Exception as e:
+        logging.getLogger('dream.file_logger').error(
+            "read_logging error: " + `e`)
+        return simplejson.dumps(
+            {'message':[['','','Error accessing the log file.','']]})
 
 @dajaxice_register(method='POST')
 def ingest_scenario_wfm(request,scenario_id):
