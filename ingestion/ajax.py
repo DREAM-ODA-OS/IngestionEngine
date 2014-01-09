@@ -27,8 +27,10 @@ import os
 from settings import \
     MEDIA_ROOT, \
     LOGGING_FILE, \
+    BROWSER_N_LOGLINES, \
     IE_SCRIPTS_DIR, \
-    IE_DEFAULT_INGEST_SCRIPT
+    IE_DEFAULT_INGEST_SCRIPT, \
+    IE_DEFAULT_DEL_SCRIPT
 
 from dm_control import DownloadManagerController
 
@@ -36,34 +38,53 @@ dmcontroller = DownloadManagerController.Instance()
 
 @dajaxice_register(method='POST')
 def delete_scenario_wfm(request,scenario_id):
+    ret = {}
     logger = logging.getLogger('dream.file_logger')
-    print "Delete scenario WFM"
     # it runs deleting scripts
     scenario = models.Scenario.objects.get(id=int(scenario_id))
     scripts = scenario.script_set.all()
+    ncn_id = scenario.ncn_id
     #for s in scripts:
     #    print s.script_name
     # send request/task to work-flow-manager to run delete script
     wfm = work_flow_manager.WorkFlowManager.Instance()
-    user = request.user
 
-    del_scripts = models.UserScript.objects.filter(
-        script_name__startswith="deleteScenario-",user_id__exact=user.id)
-    if len(del_scripts)>0:
-        del_script = del_scripts[0]
-        current_task = work_flow_manager.WorkerTask(
-            {"scenario_id":scenario_id,
-             "task_type":"DELETE_SCENARIO",
-             "scripts":["%s/%s" % (MEDIA_ROOT,del_script.script_file)]})
-        wfm.put_task_to_queue(current_task)
+    if not wfm.lock_scenario(scenario_id):
+        msg = "Scenario '%s' name=%s is busy." % (scenario.ncn_id, scenario.scenario_name)
+        logger.warning("Delete Scenario refused: " + msg)
+        ret = {'status':1, 'message':"Error: "+msg}
     else:
-       # use logging
-       logger = logging.getLogger('dream.file_logger')
-       logger.warning(
-           'Scenario: id=%d name=%s does not have a delete script.' \
-               % (scenario.id,scenario.scenario_name),
-           extra={'user':request.user})
-    return simplejson.dumps({})
+
+        logger.info ("Deleting scenario ncn_id="+`ncn_id`)
+        del_scripts = []
+        default_delete_script = os.path.join(
+            IE_SCRIPTS_DIR, IE_DEFAULT_DEL_SCRIPT)
+        #del_scripts = models.UserScript.objects.filter(
+        #    script_name__startswith="deleteScenario-",user_id__exact=user.id)
+        if len(del_scripts)>0:
+            del_script = del_scripts[0]
+            current_task = work_flow_manager.WorkerTask(
+                {"scenario_id":scenario_id,
+                 "task_type":"DELETE_SCENARIO",
+                 "scripts":["%s/%s" % (MEDIA_ROOT,del_script.script_file)]})
+            wfm.put_task_to_queue(current_task)
+        
+        elif default_delete_script:
+            current_task = work_flow_manager.WorkerTask(
+                {"scenario_id":scenario_id,
+                 "task_type":"DELETE_SCENARIO",
+                 "scripts":[default_delete_script]
+                 })
+            wfm.put_task_to_queue(current_task)
+        
+        else:
+           logger.warning(
+               'Scenario: id=%d name=%s does not have a delete script.' \
+                   % (scenario.id,scenario.scenario_name),
+               extra={'user':request.user})
+        ret = {'status':0,}
+
+    return simplejson.dumps(ret)
 
 
 @dajaxice_register(method='GET')
@@ -123,7 +144,10 @@ def delete_scenario_django(request,scenario_id):
 @dajaxice_register(method='POST')
 def read_logging(request, message_type, max_log_lines):
     messages = []
-    maxll = int(max_log_lines)
+    if max_log_lines == '':
+        maxll = BROWSER_N_LOGLINES
+    else:
+        maxll = int(max_log_lines)
     mtype = message_type.encode('ascii','ignore')
     try:
         f = open(LOGGING_FILE,'r')
@@ -143,45 +167,39 @@ def read_logging(request, message_type, max_log_lines):
 
 @dajaxice_register(method='POST')
 def ingest_scenario_wfm(request,scenario_id):
+    ret = {}
     # ingest scenario - run all ing. scripts related to the scenario
     logger = logging.getLogger('dream.file_logger')
     # make sure the IE port is set-up
     pp = request.META['SERVER_PORT']
     dmcontroller.set_condIEport(pp)
     scenario = models.Scenario.objects.get(id=int(scenario_id))
-    scripts = scenario.script_set.all()
-
-    ret = {}
-
-    if scenario.default_script != 0 or len(scripts) > 0:
-
-        # get list of scripts
-        ingest_scripts = []
-        if scenario.default_script != 0:
-            ingest_scripts.append( os.path.join(
-                IE_SCRIPTS_DIR, IE_DEFAULT_INGEST_SCRIPT) )
-        for s in scripts:
-            ingest_scripts.append("%s" % s.script_path)
-
-        # send request/task to work-flow-manager to run script
-        current_task = work_flow_manager.WorkerTask(
-            {"scenario_id":scenario_id,
-             "task_type":"INGEST_SCENARIO",
-             "scripts":ingest_scripts})
-
-        wfm = work_flow_manager.WorkFlowManager.Instance()
-        wfm.put_task_to_queue(current_task)
-        logger.info(
-            'Operation: ingest scenario: id=%d name=%s' \
-                % (scenario.id,scenario.scenario_name),
-            extra={'user':request.user})
-        ret = {'status':0,
-               "message":"Ingestion Submitted to processing queue."}
+    wfm = work_flow_manager.WorkFlowManager.Instance()
+    if not wfm.lock_scenario(scenario_id):
+        msg = "Scenario '%s' name=%s is busy." % (scenario.ncn_id, scenario.scenario_name)
+        logger.warning("Ingest Scenario refused: " + msg)
+        ret = {'status':1, 'message':"Error: "+msg}
     else:
-        msg = 'Scenario: id=%d name=%s does not have scripts to ingest.' \
-                % (scenario.id,scenario.scenario_name)
-        logger.warning(msg)
-        ret = {'status':1, 'message':"Error"+msg}
+
+        scripts = models.get_scenario_script_paths(scenario)
+        if len(scripts) > 0:
+            # send request/task to work-flow-manager to run script
+            current_task = work_flow_manager.WorkerTask(
+                {"scenario_id":scenario_id,
+                 "task_type":"INGEST_SCENARIO",
+                 "scripts":scripts})
+
+            wfm.put_task_to_queue(current_task)
+            logger.info(
+                'Operation: ingest scenario: id=%d name=%s' \
+                    % (scenario.id,scenario.scenario_name))
+            ret = {'status':0,
+                   "message":"Ingestion Submitted to processing queue."}
+        else:
+            msg = "Scenario '%s' name=%s does not have scripts to ingest." \
+                    % (scenario.ncn_id,scenario.scenario_name)
+            logger.warning(msg)
+            ret = {'status':1, 'message':"Error"+msg}
 
     return simplejson.dumps(ret)
 

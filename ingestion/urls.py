@@ -79,6 +79,9 @@ urlpatterns = patterns('',
     # addScenario.html
     url(r'^scenario/add/$',views.addScenario),
     
+    # addLocalProduct.html
+    url(r'^ingest/addLocal/(?P<sc_id>.*)$',views.addLocalProduct),
+    
     # deleteScenario
     url(r'^scenario/delete/(?P<scenario_id>[1-9]{1,3})',views.deleteScenario),
     

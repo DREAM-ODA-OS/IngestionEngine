@@ -20,8 +20,13 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.dateformat import DateFormat
 
-from settings import NCN_ID_LEN, SC_NAME_LEN, SC_DESCRIPTION_LEN, PROD_ERROR_LEN
-
+from settings import \
+    NCN_ID_LEN, \
+    SC_NAME_LEN, \
+    SC_DESCRIPTION_LEN, \
+    PROD_ERROR_LEN, \
+    IE_SCRIPTS_DIR, \
+    IE_DEFAULT_INGEST_SCRIPT
 
 #**************************************************
 #                  Scenario                       *
@@ -57,6 +62,18 @@ DSRC_CHOICES = (
 def date_to_iso8601(src_date):
     return DateFormat(src_date).format("c")
 
+def get_scenario_script_paths(scenario):
+    # get list of scripts
+    scripts = scenario.script_set.all()
+    ingest_scripts = []
+    if scenario.default_script != 0:
+        ingest_scripts.append(os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_INGEST_SCRIPT) )
+    for s in scripts:
+        ingest_scripts.append("%s" % s.script_path)
+
+    return ingest_scripts
+
+
 def scenario_dict(db_model):
     """ creates a dictionary from a database model record,
         using selected fields. Converts some fields into
@@ -76,6 +93,7 @@ def scenario_dict(db_model):
         "default_priority",
         "default_script",
         "preprocessing",
+        "cat_registration",
         "ncn_id"):
         response_data[s] = str(getattr(db_model,s))
 
@@ -104,7 +122,6 @@ class Scenario(models.Model):
     #
     id                   = models.AutoField(primary_key=True)
     ncn_id               = models.CharField(max_length=NCN_ID_LEN, unique=True)
-#    ncn_id               = models.CharField(max_length=NCN_ID_LEN)
     scenario_name        = models.CharField(max_length=SC_NAME_LEN)
     scenario_description = models.CharField(max_length=SC_DESCRIPTION_LEN)
     dsrc                 = models.CharField(max_length=1024)

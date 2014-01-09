@@ -5,10 +5,14 @@
 #  to ingest a downloaded product into the ODA server.
 #
 # usage:
-# $0 <manifest-file>
+# $0 manifest-file [-catreg]
 #
 #  The script should exit with a 0 status to indicate
 # success; a non-zero status indicates failure.
+#
+# catreg is a flag to request registration in the local
+#        metadata catalogue.  If absent no registration
+#        should be done.
 #
 # The manifest file is further input to this script,
 # and contains KV pairs.  Values are strings enclosed
@@ -30,9 +34,13 @@ then
     exit 1
 fi
 
+if [[ $2 == '-catreg' ]]
+then
+    echo "Catalogue registration requested." 
+fi
+
 echo arg: $1
 echo "arg1 contains:"
 cat $1
-sleep 1
 echo "Default Ingestion script finishing with status 0."
 exit 0

@@ -44,7 +44,8 @@ from utils import \
     UnsupportedBboxError, \
     IngestionError, \
     StopRequest, \
-    create_manifest
+    create_manifest, \
+    split_and_create_mf
 
 worker_id = 0
 
@@ -81,9 +82,10 @@ class Worker(threading.Thread):
         self._wfm = work_flow_manager
         self._logger = logging.getLogger('dream.file_logger')
         self.task_functions = {
-            "DELETE_SCENARIO": self.delete_func,
-            "INGEST_SCENARIO": self.ingest_func,
-            "ADD_PRODUCT":     add_product_wfunc       # from add_product
+            "DELETE_SCENARIO"  : self.delete_func,
+            "INGEST_SCENARIO"  : self.ingest_func,
+            "INGEST_LOCAL_PROD": self.local_product_func,
+            "ADD_PRODUCT"      : add_product_wfunc       # from add_product
             }
 
     def run(self):
@@ -98,6 +100,19 @@ class Worker(threading.Thread):
             queue.task_done()
             if queue.empty():
                 time.sleep(1)
+
+    def run_scripts(self, sc_id, ncn_id, scripts_args):
+        nerrors = 0
+        for script_arg in scripts_args:
+            if check_status_stopping(sc_id):
+                raise StopRequest("Stop Request")
+
+            self._logger.info("Running script: %s" % script_arg[0])
+            r = subprocess.call(script_arg)
+            if 0 != r:
+                nerrors += 1
+                self._logger.error(`ncn_id`+": ingest script returned status:"+`r`)
+        return nerrors
 
     def do_task(self,current_task):
         # set scenario status (processing)
@@ -117,35 +132,128 @@ class Worker(threading.Thread):
                 "Worker do_task caught exception " + `e` +
                 "- Recovering from Internal Error")
 
-    def delete_func(self,parameters):
+    def delete_func(self, parameters):
+        scid = parameters["scenario_id"]
+        self._wfm._lock_db.acquire()
+
+        try:
+            scenario = models.Scenario.objects.get(id=int(scid))
+            ncn_id = scenario.ncn_id
+            
+            scenario_status = models.ScenarioStatus.objects.get(scenario_id=int(scid))
+            status = scenario_status.status
+            avail  = scenario_status.is_available
+            dar    = scenario_status.active_dar
+            if dar != '':
+                self._logger.error(
+                    `ncn_id`+ 
+                    ": Cannot delete, scenario has an active DAR," +
+                    " must be stopped first.")
+                if IE_DEBUG > 0:
+                    self._logger.debug("  dar="+`dar`)
+                    scenario_status.status = "NOT DELETED - ERROR."
+                    scenario_status.is_available = 1
+                    scenario_status.done = 0
+                    scenario_status.save()
+                return
+
+            scenario_status.is_available = 0
+            scenario_status.status = "DELETE: De-reg products."
+            scenario_status.done = 1
+            scenario_status.save()
+
+            #this may run for a long time, and the db is locked, but
+            #there is nothing to be done here..
+            nerrors = 0
+            try:
+                for script in parameters["scripts"]: # scripts absolute path
+                    self._logger.info(`ncn_id`+" del running script "+`script`)
+                    r = subprocess.call([script, ncn_id])
+                    if 0 != r:
+                        nerrors += 1
+                        self._logger.error(
+                            `ncn_id`+": delete script returned status:"+`r`)
+            except Exception as e:
+                nerrors += 1
+                self._logger.error(`ncn_id`+": Exception while deleting: "+`e`)
+
+            if nerrors > 0:
+                scenario_status.status = "NOT DELETED - ERROR."
+                scenario_status.is_available = 1
+                scenario_status.done = 0
+                scenario_status.save()
+                return
+                
+            scenario_status.status = "DELETING"
+            scenario_status.save()
+
+            # delete scenario and all associated data from the db 
+            scripts = scenario.script_set.all()
+            views.delete_scripts(scripts)
+
+            eoids = scenario.eoid_set.all()
+            for e in eoids:
+                e.delete()
+
+            extras = scenario.extraconditions_set.all()
+            for e in extras:
+                e.delete()
+
+            scenario.delete()
+            scenario_status.delete()
+
+        except Exception as e:
+            self._logger.error(`e`)
+        finally:
+            self._wfm._lock_db.release()
+
+    def local_product_func(self,parameters):
+        if IE_DEBUG > 0:
+            self._logger.info(
+                "wfm: executing INGEST LOCAL PRODUCT, id=" +\
+                    `parameters["scenario_id"]`)
+
+        percent = 1
+        ncn_id = None
+        nerrors = 0
+        try:
+            sc_id = parameters["scenario_id"]
             self._wfm.set_scenario_status(
-                self._id,parameters["scenario_id"],0,"DELETING",1)
+                self._id, sc_id, 0, "LOCAL FILE INGESTION", percent)
+            self._wfm.set_ingestion_pid(sc_id, os.getpid())
+            ncn_id = parameters["ncn_id"]
+            mf_name = create_manifest(
+                parameters["dir_path"],
+                ncn_id,
+                parameters["metadata"],
+                parameters["data"],
+                self._logger)
+            scripts = parameters["scripts"]
+            scripts_args = []
+            for s in scripts:
+                if parameters["cat_reg"] != 0:
+                    scripts_args.append([s, mf_name, "-catreg"])
+                else:
+                    scripts_args.append([s, mf_name])
+            nerrors += self.run_scripts(sc_id, ncn_id, scripts_args)
+            if nerrors > 0:
+                raise IngestionError("Number of errors " +`nerrors`)
+            self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
 
-            # TODO XXX TMP FOR DEVELOPMENT DELETE FOR PRODUCTION XXX
-            time.sleep(2)
-            self._wfm.set_scenario_status(
-                self._id,parameters["scenario_id"],0,"DELETING",50)
-            time.sleep(2)
+        except StopRequest as e:
+            self._logger.info(`ncn_id`+
+                              ": Stop request from user: Local Ingestion Stopped")
+            self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
 
-            # TODO XXX TMP FIX THIS
-            # do deleting scenario
-            for script in parameters["scripts"]: # scripts absolute path
-                os.system(script)
-            self._wfm.set_scenario_status(
-                self._id,parameters["scenario_id"],0,"DELETING",100)
+        except Exception as e:
+            self._logger.error(`ncn_id`+"Error while ingesting local product: " + `e`)
+            self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
+            if IE_DEBUG > 0:
+                traceback.print_exc(12,sys.stdout)
 
-            # delete scenario from the db using django commands
-            #scenario_id = parameters["scenario_id"]
-            #scenario = models.Scenario.objects.get(id=int(scenario_id))
-            #scripts = scenario.script_set.all()
-            #views.delete_scripts(scripts)
-            #scenario.delete()
+        finally:
+            self._wfm.set_ingestion_pid(sc_id, 0)
 
-            # TODO XXX END OF TMP / FIX THIS XXX
-
-            # jquery should not count on this scenario any more
-            self._wfm.set_scenario_status(
-                self._id,parameters["scenario_id"],0,"DELETED",100) 
 
     def ingest_func(self,parameters):
         if IE_DEBUG > 0:
@@ -155,10 +263,12 @@ class Worker(threading.Thread):
 
         percent = 1
         sc_id = parameters["scenario_id"]
+        ncn_id = None
         self._wfm.set_scenario_status(
             self._id, sc_id, 0, "GENERATING URLS", percent)
         try:
             scenario = models.Scenario.objects.get(id=sc_id)
+            ncn_id = scenario.ncn_id
 
             eoids = scenario.eoid_set.all()
             eoid_strs = []
@@ -197,43 +307,40 @@ class Worker(threading.Thread):
             nerrors = 0
             i = 1
             for d in dir_list:
-                mf_name = create_manifest(
-                    os.path.join(dl_dir, d), scenario.ncn_id, self._logger)
+                mf_name = split_and_create_mf(
+                    os.path.join(dl_dir, d), ncn_id, self._logger)
                 if not mf_name:
                     nerrors += 1
                     continue
 
-                # run ingestion scripts
-                for script in scripts: # scripts absolute path
+                scripts_args = []
+                for s in scripts:
+                    if scenario.cat_registration != 0:
+                        scripts_args.append([s, mf_name, "-catreg"])
+                    else:
+                        scripts_args.append([s, mf_name])
+                nerrors += self.run_scripts(sc_id, ncn_id, scripts_args)
 
-                    if check_status_stopping(sc_id):
-                        raise StopRequest("Stop Request")
-
-                    self._logger.info("Running script: %s" % script)
-                    r = subprocess.call([script, mf_name])
-                    if 0 != r:
-                        nerrors += 1
-                        self._logger.error("Ingest script returned status:"+`r`)
-                    percent  = 100 * (float(i) / float(n_dirs))
-                    # keep percent > 0 to ensure webpage updates
-                    if percent < 1.0: percent = 1
-                    self._wfm.set_scenario_status(
-                        self._id, sc_id, 0, "INGESTING", percent)
+                percent  = 100 * (float(i) / float(n_dirs))
+                # keep percent > 0 to ensure webpage updates
+                if percent < 1.0: percent = 1
+                self._wfm.set_scenario_status(
+                    self._id, sc_id, 0, "INGESTING", percent)
                 i += 1
 
             if nerrors>0:
-                raise IngestionError("Ingestion encountered "+ `nerrors` +" errors")
+                raise IngestionError(`ncn_id`+": ingestion encountered "+ `nerrors` +" errors")
 
             # Finished
             self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
-            self._logger.info("Ingestion completed.")
+            self._logger.info(`ncn_id`+": ingestion completed.")
 
         except StopRequest as e:
-            self._logger.info("Stop request from user: Ingestion Stopped")
+            self._logger.info(`ncn_id`+": Stop request from user: Ingestion Stopped")
             self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
 
         except Exception as e:
-            self._logger.error("Error while ingesting: " + `e`)
+            self._logger.error(`ncn_id`+"Error while ingesting: " + `e`)
             self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
             if IE_DEBUG > 0:
                 traceback.print_exc(12,sys.stdout)
@@ -411,15 +518,23 @@ class WorkFlowManager:
             if IE_DEBUG > 3:
                 self._logger.debug( "Worker-%d stops using db." % worker_id)
 
-
-    def delete_scenario(self):
-        # delete scenario, scripts and scenario-status from db print
-        #  (scenario-status is bounded to scenario)
-        pass
+    def lock_scenario(self, scenario_id):
+        self._lock_db.acquire()
+        try:
+            # set scenario status
+            scenario_status = models.ScenarioStatus.objects.get(
+                scenario_id=scenario_id)
+            if scenario_status.is_available != 1:
+                return False
+            scenario_status.is_available = 0
+            scenario_status.save()
+        except Exception as e:
+            self._logger.error(`e`)
+        finally:
+            self._lock_db.release()
+        return True
 
     def start(self):
         for w in self._workers:
             w.setDaemon(True)
             w.start()
-
-

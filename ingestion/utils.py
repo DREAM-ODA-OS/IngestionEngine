@@ -467,13 +467,50 @@ def split_wcs_tmp(path, f, logger):
         logger.debug(traceback.format_exc(4))
         return None
 
+def write_manifest_file(dir_path, manif_str):
+    mf_name = os.path.join(dir_path, MANIFEST_FN)
+    if os.path.exists(mf_name):
+        logger.warning("MANIFEST file already exists in "+dir_path+", " +
+                   "Creating another one")
+        i = 0
+        while os.path.exists(mf_name):
+            i += 1
+            mm = "MANIFEST_" + `i`
+            mf_name = os.path.join(dir_path, mm)
+            if i > MAX_MANIF_FILES:
+                raise IngestionError(
+                    "Too many manifest files (>"+`MAX_MANIF_FILES`+")")
+
+    mf_fp = open(mf_name,"w")
+    mf_fp.write(manif_str)
+    mf_fp.close()
+    return mf_name
+
+def create_manifest(dir_path, ncn_id, metadata, data, logger):
+    # the manifest should contain lines according to the following example:
+    #    SCENARIO_NCN_ID="ncn_id"
+    #    DOWNLOAD_DIR="/path/p_scid0_001"
+    #    METADATA="/path/p_scid0_001/ows.meta"
+    #    DATA="/path/p_scid0_001/p1.tif"
+    #
+
+    full_data     = os.path.join(dir_path, data);
+    full_metadata = os.path.join(dir_path, metadata);
+    manif_str = \
+        'SCENARIO_NCN_ID="'+ ncn_id        + '"\n' + \
+        'DOWNLOAD_DIR="'   + dir_path      + '"\n' + \
+        'METADATA="'       + full_metadata + '"\n' + \
+        'DATA="'           + full_data     + '"\n'
+    mf_name = write_manifest_file(dir_path, manif_str)
+    return mf_name
+
 # ------------ product handling  --------------------------
 # Split each downloaded product into its parts and generate
 #  a product manifest for the ODA server
 # TODO: the splitting should be done by the EO-WCS DM plugin
 #       instead of doing it here
 #
-def create_manifest(dir_path, ncn_id, logger):
+def split_and_create_mf(dir_path, ncn_id, logger):
 
     manif_str = ''
     files = os.listdir(dir_path)
@@ -496,23 +533,7 @@ def create_manifest(dir_path, ncn_id, logger):
             'SCENARIO_NCN_ID="'+ncn_id + '"\n' + \
             'DOWNLOAD_DIR="'+ dir_path + '"\n' + \
             manif_str
-        mf_name = os.path.join(dir_path, MANIFEST_FN)
-        if os.path.exists(mf_name):
-            logger.warning("MANIFEST file already exists in "+dir_path+", " +
-                       "Creating another one")
-            i = 0
-            while os.path.exists(mf_name):
-                i += 1
-                mm = "MANIFEST_" + `i`
-                mf_name = os.path.join(dir_path, mm)
-                if i > MAX_MANIF_FILES:
-                    raise IngestionError(
-                        "Too many manifest files (>"+`MAX_MANIF_FILES`+")")
-
-        mf_fp = open(mf_name,"w")
-        mf_fp.write(manif_str)
-        mf_fp.close()
-
+        mf_name = write_manifest_file(dir_path, manif_str)
         return mf_name
 
     else:

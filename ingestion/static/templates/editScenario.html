@@ -299,7 +299,8 @@
 {% block content %}
 
 
-<form method="post" action="" enctype="multipart/form-data">{% csrf_token %}
+<form method="post" action="" enctype="multipart/form-data">
+{% csrf_token %}
      <p>
        {% for i in form.errors %}
          Error in field  {{i}}: {{ form.i.errors.as_text }}

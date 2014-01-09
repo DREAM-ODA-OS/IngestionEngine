@@ -33,6 +33,11 @@ class ScriptsForm(forms.ModelForm):
         model = models.Script
         #exclude = ['id_script']
 
+class AddLocalProductForm(forms.Form):
+    metadataFile = forms.FileField()
+    metadataFile.label = 'Metadata file'
+    rasterFile = forms.FileField()
+    rasterFile.label = 'Raster file'
 
 class ScenarioForm(forms.ModelForm):
    

@@ -38,6 +38,7 @@ PROD_ERROR_LEN     = 2048
 IE_DEFAULT_INGEST_SCRIPT  = 'def_ingest.sh'
 IE_DEFAULT_UQMD_SCRIPT    = 'def_uqmd.sh'
 IE_DEFAULT_ADDPROD_SCRIPT = 'def_addProduct.sh'
+IE_DEFAULT_DEL_SCRIPT     = 'def_delete.sh'
 
 UQMD_SUBDIR = 'uqmd_metadata'
 ADDPRODUCT_SUBDIR = 'added_products'
@@ -270,6 +271,10 @@ INSTALLED_APPS = (
 # See http://docs.djangoproject.com/en/dev/topics/logging for
 # more details on how to customize the configuration.
 
+# How many lines worth of log file to show in the browser initially.
+# Settable by the user in the browser, then saved by the
+# browser locally as cookie.
+BROWSER_N_LOGLINES = 35
 LOGGING_DIR = os.path.join(os.getcwd(), "logs")
 LOGGING_FILE = os.path.join(LOGGING_DIR,"log")
 LOGGING = {

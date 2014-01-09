@@ -829,31 +829,44 @@ def wait_for_download(scid, dar_url, dar_id):
     n_products = len(product_list)
     total_percent = n_products * 100
     all_done = False
+    n_done = 0
+    total_size = 0
     try:
         while not all_done:
             all_done = True
             part_percent = 0
+            n_done = 0
             for product in product_list:
                 if "productProgress" not in product:
                     continue
                 progress = product["productProgress"]
-                if progress["status"] != "COMPLETED":
+                if progress["status"] == "COMPLETED":
+                    n_done += 1
+                else:
                     all_done = False
                 if "progressPercentage" not in progress:
                     part_percent += 100
                 else:
                     part_percent += progress["progressPercentage"]
+                if "downloadedSize" in progress:
+                    total_size += progress["downloadedSize"]
         
             percent_done = int( (float(part_percent)/float(total_percent))*100 )
             if percent_done < 1: percent_done = 1
             if all_done:
-                set_status(scid, "Done ("+`n_products`+")", percent_done)
+                set_status(scid, "Finished Dl. ("+`n_products`+")", percent_done)
+                if total_size < 102400:
+                    ts = `total_size`+' bytes'
+                else:
+                    ts = `total_size/1024`+' kb'
+                logger.info("Dl Manager reports downloaded "+ts+\
+                                " in " + `n_products`+ ' products')
                 break
             elif check_status_stopping(scid):
                 stop_download(scid, request)
                 raise StopRequest("Stop Request")
             else:
-                set_status(scid, "Downloading ("+`n_products`+")", percent_done)
+                set_status(scid, "Downloading ("+`n_done`+'/'+`n_products`+")", percent_done)
             time.sleep(DAR_STATUS_INTERVAL)
             request = get_dar_status(dar_url)
             if check_status_stopping(scid):
@@ -895,19 +908,20 @@ def ingestion_logic(scid,
     
     scenario_data["sc_id"]  = scid
     scenario_data["custom"] = custom
+    ncn_id = scenario_data["ncn_id"]
     gc_requests = get_coverage_URLs(scenario_data, eoids)
     if not gc_requests or 0 == len(gc_requests):
-        logger.warning(" no GetCoverage requests generated")
+        logger.warning(`ncn_id`+": no GetCoverage requests generated")
     else:
         if check_status_stopping(scid):
             raise StopRequest("Stop Request")
 
         nreqs = len(gc_requests)
-        logger.info("Submitting "+`nreqs`+" URLs to the Download Manager")
+        logger.info(`ncn_id`+": Submitting "+`nreqs`+" URLs to the Download Manager")
         dl_dir, dar_url, dar_id = \
             request_download(scenario_data["ncn_id"], scid, gc_requests)
         wait_for_download(scid, dar_url, dar_id)
-        logger.info("Products for scenario " + scenario_data["ncn_id"]+
+        logger.info("Products for scenario " + ncn_id +
                     " downloaded to " + dl_dir)
         retval = (dl_dir, dar_url, dar_id)
 

@@ -24,6 +24,7 @@ from django.contrib.auth import authenticate, login
 from django.http import Http404
 from django.forms.util import ErrorList
 from urllib2 import URLError
+from ingestion_logic import create_dl_dir
 
 import os
 import logging
@@ -283,6 +284,8 @@ def addScenario(request):
             scenario_status.is_available = 1
             scenario_status.status = "IDLE"
             scenario_status.done = 0
+            scenario_status.ingestion_pid = 0
+            scenario_status.active_dar = ''
             scenario_status.save()
 
             logger.info('Operation: add scenario: id=%d name=%s' % \
@@ -295,11 +298,11 @@ def addScenario(request):
         else:
             if IE_DEBUG > 0:
                 logger.debug( "Scenario form is not valid",extra={'user':"drtest"})
-            return render_to_response(
-                'editScenario.html',
-                {'form':form,
+            variables = RequestContext(request,
+                {'form'     :form,
                  'home_page':IE_HOME_PAGE,
-                 'status':"Error on form."})
+                 'status'   :"Error on form."})
+            return render_to_response('editScenario.html',variables)
     else:
         form = forms.ScenarioForm()
     variables = RequestContext(request,
@@ -310,6 +313,91 @@ def addScenario(request):
                                 'sequence' :"",
                                 'home_page':IE_HOME_PAGE})
     return render_to_response('editScenario.html',variables)
+
+def addLocalProduct(request, sc_id):
+    # add local product to the related scenario
+    logger = logging.getLogger('dream.file_logger')
+    port = request.META['SERVER_PORT']
+
+    msg = "The new product has been successfully added"
+    if request.method == 'POST':
+
+        wfm = work_flow_manager.WorkFlowManager.Instance()
+        scenario = models.Scenario.objects.get(id=int(sc_id))
+
+        if not wfm.lock_scenario(sc_id):
+            logger.warning("Ingest Scenario refused: "
+                + "Scenario '%s' name=%s is busy." % (scenario.ncn_id, scenario.scenario_name))
+            return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+
+        form = forms.AddLocalProductForm(request.POST, request.FILES)
+        if form.is_valid() and form.is_multipart():
+            try:
+                sc_ncn_id = scenario.ncn_id
+                full_directory_name, directory_name = create_dl_dir(sc_ncn_id+"_")
+                full_directory_name = full_directory_name.encode('ascii','ignore')
+                logger.info("Product directory name:" + full_directory_name)
+            except:
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+                logger.error("Failed to generate a new product directory name")
+                return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+            try:
+                saveFile(request.FILES['metadataFile'], full_directory_name)
+            except IOError, e:
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+                logger.error("Failed to save product's metadata file")
+                return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+            try:
+                saveFile(request.FILES['rasterFile'], full_directory_name)
+            except IOError, e:
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+                logger.error("Failed to save product's raster file")
+                return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+
+            scripts = models.get_scenario_script_paths(scenario)
+            if len(scripts) > 0:
+                # send request/task to work-flow-manager to run script
+                current_task = work_flow_manager.WorkerTask(
+                    {"scenario_id": sc_id,
+                    "ncn_id"   : sc_ncn_id,
+                    "task_type": "INGEST_LOCAL_PROD",
+                    "scripts"  : scripts,
+                    "cat_reg"  : scenario.cat_registration,
+                    "dir_path" : full_directory_name,
+                    "metadata" : request.FILES['metadataFile']._get_name(),
+                    "data"     : request.FILES['rasterFile']._get_name(),
+                    })
+
+                wfm.put_task_to_queue(current_task)
+                logger.info('Operation: ingest scenario: id=%d name=%s' \
+                        % (scenario.id,scenario.scenario_name))
+            else:
+                logger.warning("Scenario '%s' name=%s does not have scripts to ingest." \
+                        % (scenario.ncn_id,scenario.scenario_name))
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+
+            return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+        else:
+            wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+            logger.warning('The add product form has not been fully/correctly filled')
+            return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+    else:
+        form = forms.AddLocalProductForm()
+        variables = RequestContext(request, {
+                'form'     :form,
+                'home_page':IE_HOME_PAGE})
+        return render_to_response('addLocalProduct.html', variables)
+
+def saveFile(upload_file, path):
+    # saves a file
+    logger = logging.getLogger('dream.file_logger')
+    filename = upload_file._get_name()
+    path_file_name = os.path.join(path, filename)
+    logger.info('Saving file: ' + path_file_name)
+    fd = open(path_file_name, 'wb')
+    for chunk in upload_file.chunks():
+        fd.write(chunk)
+    fd.close()
 
 def editScenario(request,scenario_id):
     # edit scenario and its relationship to user and scripts 

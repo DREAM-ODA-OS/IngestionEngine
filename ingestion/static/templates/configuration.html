@@ -69,18 +69,34 @@
 
         first_time = 1
         log_message_type = 'INFO';
-        max_log_lines = 5;
+        max_log_lines = '';
 
         function show_logging(data){
             messages = data.message;
-            var logtable = '<table class="ieTblShaded">'
+            var logtable = '<table class="ieTblShaded">';
             for (var i=0; i<messages.length; i++) {
-                logtable = logtable +'<tr>' +
-                '<td>' + messages[i][0] + '&nbsp;</td>' +
-                '<td>' + messages[i][1] + '</td>' +
-                '<td>' + messages[i][2] + '&nbsp;</td>' +
-                '<td>' + messages[i][3] + '</td>' +
-                '</tr>';
+                logtable += '<tr>' 
+                switch (messages[i].length) {
+                case 0:
+                    break;
+                case 1:
+                    logtable +=
+                        '<td>&nbsp;</td>' +
+                        '<td colspan=3>' + messages[i][0] + '</td>';
+                    break;
+                case 2:
+                    logtable +=
+                        '<td>' + messages[i][0] + '&nbsp;</td>' +
+                        '<td>' + messages[i][1] + '</td>';
+                    break;
+                default:
+                    logtable +=
+                        '<td>' + messages[i][0] + '&nbsp;</td>' +
+                        '<td>' + messages[i][1] + '</td>' +
+                        '<td>' + messages[i][2] + '&nbsp;</td>' +
+                        '<td>' + messages[i][3] + '</td>';
+                }
+                logtable += '</tr>';
             }
             logtable = logtable + '</table>';
             document.getElementById('div_logging').innerHTML = logtable;
@@ -104,8 +120,8 @@
             if (first_time==1) {
                 read_logging();
                 first_time = 0;
+                window.setInterval(read_logging, 3000);  // every n milliseconds
             }
-            window.setInterval(read_logging, 3000);  // every n milliseconds
         }
 
         window.onload=function(){
