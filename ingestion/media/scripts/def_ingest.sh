@@ -34,13 +34,29 @@ then
     exit 1
 fi
 
-if [[ $2 == '-catreg' ]]
-then
-    echo "Catalogue registration requested." 
-fi
+ex_status=0
 
 echo arg: $1
 echo "arg1 contains:"
 cat $1
-echo "Default Ingestion script finishing with status 0."
-exit 0
+
+if [[ $2 == -catreg=* ]]
+then
+    echo $2
+    echo "Ing. script: Catalogue registration requested."
+    catregscript=${2:8}
+    echo "catregscript: " $catregscript
+    if [[ -f $catregscript ]] ; then
+        echo "Ing. script: Running catalogue registration script."
+        $catregscript $1
+        cat_reg_status=$?
+        echo 'cat. reg. script exited with ' $cat_reg_status
+        if [ $cat_reg_status != 0 ] ; then ex_status=$cat_reg_status; fi
+    else
+        echo "Ing. script: did not find an executable cat. reg. script ."
+        ex_status=3
+    fi
+fi
+
+echo "Default Ingestion script finishing with status " $ex_status
+exit $ex_status

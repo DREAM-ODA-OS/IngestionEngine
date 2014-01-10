@@ -31,7 +31,9 @@ from django.utils.timezone import utc
 
 from settings import \
     IE_DEBUG, \
-    STOP_REQUEST
+    STOP_REQUEST, \
+    IE_SCRIPTS_DIR, \
+    IE_DEFAULT_CATREG_SCRIPT 
 
 from ingestion_logic import \
     ingestion_logic, \
@@ -100,6 +102,18 @@ class Worker(threading.Thread):
             queue.task_done()
             if queue.empty():
                 time.sleep(1)
+
+    def mk_scripts_args(self, scripts, mf_name, cat_reg):
+        scripts_args = []
+        if cat_reg:
+            cat_reg_str = "-catreg=" + \
+                os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_CATREG_SCRIPT)
+        for s in scripts:
+            if cat_reg:
+                scripts_args.append([s, mf_name, cat_reg_str])
+            else:
+                scripts_args.append([s, mf_name])
+        return scripts_args
 
     def run_scripts(self, sc_id, ncn_id, scripts_args):
         nerrors = 0
@@ -228,13 +242,8 @@ class Worker(threading.Thread):
                 parameters["metadata"],
                 parameters["data"],
                 self._logger)
-            scripts = parameters["scripts"]
-            scripts_args = []
-            for s in scripts:
-                if parameters["cat_reg"] != 0:
-                    scripts_args.append([s, mf_name, "-catreg"])
-                else:
-                    scripts_args.append([s, mf_name])
+            scripts_args = self.mk_scripts_args(
+                parameters["scripts"], mf_name, parameters["cat_reg"])
             nerrors += self.run_scripts(sc_id, ncn_id, scripts_args)
             if nerrors > 0:
                 raise IngestionError("Number of errors " +`nerrors`)
@@ -313,12 +322,8 @@ class Worker(threading.Thread):
                     nerrors += 1
                     continue
 
-                scripts_args = []
-                for s in scripts:
-                    if scenario.cat_registration != 0:
-                        scripts_args.append([s, mf_name, "-catreg"])
-                    else:
-                        scripts_args.append([s, mf_name])
+                scripts_args = self.mk_scripts_args(
+                    parameters["scripts"], mf_name, parameters["cat_reg"])
                 nerrors += self.run_scripts(sc_id, ncn_id, scripts_args)
 
                 percent  = 100 * (float(i) / float(n_dirs))
