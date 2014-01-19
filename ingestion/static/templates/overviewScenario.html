@@ -57,7 +57,8 @@
             1250); // every so often, in milliceconds
         });
 
-    function localtest1(){}
+    function localtest1(){
+    }
 
 </script>
  
@@ -79,7 +80,7 @@
 {% endblock %}
 {% block content %}
 
-<!-- for debugging>
+<!--for debugging 
 <INPUT TYPE=BUTTON class="button" name="Button" VALUE="TEST1" title="for debugging"
   onClick="localtest1()" -->
 <!--  onClick="Dajaxice.ingestion.test1(update_scenario)" -->
@@ -105,19 +106,19 @@
              <INPUT TYPE="BUTTON" class="IngestButton"
                id="ingest_scenario_button_{{scenario.ncn_id}}"
                name="IngestButton" title="Ingest"
-               onClick="run_ingestion({{scenario.id}})"/>
+               onClick="run_ingestion('{{scenario.ncn_id}}')"/>
              <INPUT TYPE="BUTTON" class="LocalIngestButton"
                id="ingest_local_product_button_{{scenario.ncn_id}}"
                name="LocalIngestButton" title="Ingest a product from local file."
-               onClick="goToLocation('ingest/addLocal/{{scenario.id}}')"/>
+               onClick="goToLocation('ingest/addLocal/{{scenario.ncn_id}}')"/>
              <INPUT TYPE="BUTTON" class="EditButton"
               id="edit_scenario_button_{{scenario.ncn_id}}"
               name="EditScenarioButton" title="Edit ..."
-              onClick="goToLocation('scenario/edit/{{scenario.id}}')"/>
+              onClick="goToLocation('scenario/edit/{{scenario.ncn_id}}')"/>
              <INPUT TYPE="BUTTON" class="DeleteButton"
               id="delete_scenario_button_{{scenario.ncn_id}}"
               title="Delete"
-              onClick="run_delete({{scenario.id}})"
+              onClick="run_delete('{{scenario.ncn_id}}')"
               />
       </TD>
       <TD WIDTH=10% class="ieScTblHdrCell" title="Unique Id">{{scenario.ncn_id}}</TD>

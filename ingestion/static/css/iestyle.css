@@ -1,137 +1,152 @@
-
-#dreamTitle {
-font-family:Arial,Helvetica,sans-serif;
-font-style:italic;
-font-weight:bold;
-font-size:36pt;
-background:transparent;
-border:none;
-padding:0cm
+#dreamTitle,
+p.ieTitle2,
+p.ieTitle3,
+p.ieTitle4,
+.ieBareTblCell
+.ieScTblHdrCell,
+.ieDescCell,
+{
+    border:none;
+    padding:0cm
 }
 
-p.ieTitle2 {
-font-family:Arial,Helvetica,sans-serif;
-font-weight:normal;
-font-size:24pt;
-text-align:center;
-background:transparent;
-border:none;
-padding:0cm
+#dreamTitle,
+p.ieTitle2,
+p.ieTitle3,
+p.ieTitle4,
+.ieTblShaded,
+.ieScTblHdrCell,
+.ieDescCell
+{
+    font-family:Arial,Helvetica,sans-serif;
 }
 
-p.ieTitle3 {
-font-family:Arial,Helvetica,sans-serif;
-font-weight:normal;
-font-size:18pt;
-text-align:center;
-background:#47b8b8;
-border:none;
-padding:0cm
+#dreamTitle,
+p.ieTitle2,
+p.ieTitle3,
+p.ieTitle4
+{
+    text-align:center;
+    background:transparent;
 }
 
-p.ieTitle4 {
-font-family:Arial,Helvetica,sans-serif;
-font-weight:normal;
-font-size:14pt;
-text-align:left;
-background:#47b8b8;
-border:none;
-padding:0cm
+#dreamTitle
+{
+    font-style:italic;
+    font-weight:bold;
+    font-size:36pt;
 }
 
-.ieBareTblCell {
-border: none; 
-text-align:center;
-vertical-align:middle;
-padding:0cm
+p.ieTitle2
+{
+    font-size:24pt;
 }
 
-.ieTblShaded {
-font-family:Arial,Helvetica,sans-serif;
-font-size:11pt;
-background:#a7dfdf
+p.ieTitle3
+{
+    font-size:18pt;
 }
 
-.ieScTblHdrCell {
-font-family:Arial,Helvetica,sans-serif;
-border: none; 
-text-align:left;
-vertical-align:middle;
-height:24pt;
-padding: 0cm
+p.ieTitle4
+{
+    font-size:14pt;
+    text-align:left;
 }
 
-.ieDescCell {
-font-family:Arial,Helvetica,sans-serif;
-border: none; 
-text-align:left;
-vertical-align:middle;
-height:24pt;
-font-size:12pt;
-padding: 0cm
+p.ieTitle3,
+p.ieTitle4
+{
+    background:#47b8b8;
 }
 
-input.StopButton {
+.ieBareTblCell
+{
+    text-align:center;
+    vertical-align:middle;
+}
+
+.ieTblShaded
+{
+    font-size:11pt;
+    background:#a7dfdf
+}
+
+.ieScTblHdrCell
+.ieDescCell
+{
+    text-align:left;
+    vertical-align:middle;
+}
+
+.ieScTblHdrCell
+{
+    height:24pt;
+}
+
+.ieDescCell
+{
+    height:24pt;
+    font-size:12pt;
+}
+
+input.StopButton,
+input.IngestButton,
+input.LocalIngestButton,
+input.EditButton,
+input.DeleteButton
+{
+    background-color: transparent; /* make the button transparent */
+    background-repeat: no-repeat;  /* make the background image appear only once */
+    background-position: 0px 0px;  /* equivalent to 'top left' */
+    border: none;           /* assuming we don't want any borders */
+    cursor: pointer;        /* make the cursor like hovering over an <a> element */
+    height:32px;            /* make this the size of your image */
+    width:32px;             /* make this the size of your image */
+    padding-left: 0px;      /* make text start to the right of the image */
+    vertical-align: middle; /* align the text vertically centered */
+}
+
+input.StopButton
+{
     background-image: url("/static/images/StopIcon.png"); /* 64px x 64px */
-    background-color: transparent; /* make the button transparent */
-    background-repeat: no-repeat;  /* make the background image appear only once */
-    background-position: 0px 0px;  /* equivalent to 'top left' */
-    border: none;           /* assuming we don't want any borders */
-    cursor: pointer;        /* make the cursor like hovering over an <a> element */
-    height:32px;            /* make this the size of your image */
-    width:32px;             /* make this the size of your image */
-    padding-left: 0px;      /* make text start to the right of the image */
-    vertical-align: middle; /* align the text vertically centered */
 }
 
-input.IngestButton {
+input.IngestButton
+{
     background-image: url("/static/images/IngestIcon.png");
-    background-color: transparent; /* make the button transparent */
-    background-repeat: no-repeat;  /* make the background image appear only once */
-    background-position: 0px 0px;  /* equivalent to 'top left' */
-    border: none;           /* assuming we don't want any borders */
-    cursor: pointer;        /* make the cursor like hovering over an <a> element */
-    height:32px;            /* make this the size of your image */
-    width:32px;             /* make this the size of your image */
-    padding-left: 0px;      /* make text start to the right of the image */
-    vertical-align: middle; /* align the text vertically centered */
 }
 
-input.LocalIngestButton {
+input.LocalIngestButton
+{
     background-image: url("/static/images/LocalIngestIcon.png");
-    background-color: transparent; /* make the button transparent */
-    background-repeat: no-repeat;  /* make the background image appear only once */
-    background-position: 0px 0px;  /* equivalent to 'top left' */
-    border: none;           /* assuming we don't want any borders */
-    cursor: pointer;        /* make the cursor like hovering over an <a> element */
-    height:32px;            /* make this the size of your image */
-    width:32px;             /* make this the size of your image */
-    padding-left: 0px;      /* make text start to the right of the image */
-    vertical-align: middle; /* align the text vertically centered */
 }
 
-input.EditButton {
+input.EditButton
+{
     background-image: url("/static/images/EditIcon.png");
-    background-color: transparent; /* make the button transparent */
-    background-repeat: no-repeat;  /* make the background image appear only once */
-    background-position: 0px 0px;  /* equivalent to 'top left' */
-    border: none;           /* assuming we don't want any borders */
-    cursor: pointer;        /* make the cursor like hovering over an <a> element */
-    height:32px;            /* make this the size of your image */
-    width:32px;             /* make this the size of your image */
-    padding-left: 0px;      /* make text start to the right of the image */
-    vertical-align: middle; /* align the text vertically centered */
 }
 
-input.DeleteButton {
+input.DeleteButton
+{
     background-image: url("/static/images/DeleteIcon.png");
-    background-color: transparent; /* make the button transparent */
-    background-repeat: no-repeat;  /* make the background image appear only once */
-    background-position: 0px 0px;  /* equivalent to 'top left' */
-    border: none;           /* assuming we don't want any borders */
-    cursor: pointer;        /* make the cursor like hovering over an <a> element */
-    height:32px;            /* make this the size of your image */
-    width:32px;             /* make this the size of your image */
-    padding-left: 0px;      /* make text start to the right of the image */
-    vertical-align: middle; /* align the text vertically centered */
+}
+
+input.IngestButton:disabled
+{
+    background-image: url("/static/images/IngestIconDisabled.png");
+}
+
+input.LocalIngestButton:disabled
+{
+    background-image: url("/static/images/LocalIngestIconDisabled.png");
+}
+
+input.EditButton:disabled
+{
+    background-image: url("/static/images/EditIconDisabled.png");
+}
+
+input.DeleteButton:disabled
+{
+    background-image: url("/static/images/DeleteIconDisabled.png");
 }

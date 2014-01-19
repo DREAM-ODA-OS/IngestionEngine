@@ -27,7 +27,11 @@ from urllib2 import HTTPError, URLError
 from utils import find_process_ids, pid_is_valid, get_dm_config, \
     read_from_url, DMError, mkIdBase, check_or_make_dir
 
-from settings import DM_CONF_FN, MAX_PORT_WAIT_SECS, IE_DEBUG
+from settings import \
+    DM_CONF_FN, \
+    MAX_PORT_WAIT_SECS, \
+    IE_SERVER_PORT, \
+    IE_DEBUG
 
 # The %s will be replaced by the port where DM is listening
 DM_URL_TEMPLATE = "http://127.0.0.1:%s/download-manager/"
@@ -52,7 +56,7 @@ class DownloadManagerController:
         self._logger = logging.getLogger('dream.file_logger')
         self._dm_port = None   # string
         self._dm_url  = None
-        self._ie_port = None   # string, ingestion engine port
+        self._ie_port = IE_SERVER_PORT  # string, ingestion engine port
         self._download_dir = None
         self._dar_resp_url = None
         self._dar_queue = deque()

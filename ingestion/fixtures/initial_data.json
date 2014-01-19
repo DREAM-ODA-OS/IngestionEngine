@@ -1,6 +1,6 @@
 [
     { "pk": 1, "model": "sites.site", 
-        "fields": { "domain": "example.com", "name": "example.com"  }
+        "fields": { "domain": "esa.int", "name": "esa.int"  }
     }, 
     { "pk": 19, "model": "auth.permission", 
         "fields": {
@@ -320,6 +320,7 @@
             "preprocessing": 1, 
             "default_script": 1, 
             "cat_registration": 0, 
+            "coastline_check": 0,
             "user": 2, 
             "bb_uc_lat": 44.15,
             "bb_uc_long": 0.9, 
@@ -348,7 +349,8 @@
             "dsrc_password": "", 
             "default_script": 1, 
             "preprocessing": 1, 
-            "cat_registration": 0, 
+            "cat_registration": 0,
+            "coastline_check": 0,
             "user": 2, 
             "bb_lc_long": 13.6, 
             "bb_uc_long": 15.0, 

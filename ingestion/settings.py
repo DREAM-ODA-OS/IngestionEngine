@@ -13,6 +13,7 @@
 ############################################################
 
 import os
+import sys
 import logging
 import json
 
@@ -68,6 +69,22 @@ except Exception as e:
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
 )
+
+# IE_SERVER_PORT: 
+# String: used in dmcontroller for ingestion.
+# Should be set according to where the ingestion
+# engine is listening.  
+# Please use a string ('8000'), not a number (8000).
+# Once the ie is running and the user accesses some pages
+# of the Ingestion Admin, the port will be set to
+# request['SERVER_PORT'] when certain requests are processed.
+# To disable re-setting according to the request SERVER_PORT,
+#  it would be necessary to disable the method set_ie_port() in
+#  dm_control.py
+if "ie_server_port" in config:
+    IE_SERVER_PORT = `config["ie_server_port"]`
+else:
+    IE_SERVER_PORT = '8000'
 
 MANAGERS = ADMINS
 

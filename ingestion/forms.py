@@ -35,9 +35,7 @@ class ScriptsForm(forms.ModelForm):
 
 class AddLocalProductForm(forms.Form):
     metadataFile = forms.FileField()
-    metadataFile.label = 'Metadata file'
     rasterFile = forms.FileField()
-    rasterFile.label = 'Raster file'
 
 class ScenarioForm(forms.ModelForm):
    
@@ -168,10 +166,13 @@ class ScenarioForm(forms.ModelForm):
         self.fields['starting_date'   ].initial = d2
         self.fields['cloud_cover'     ].initial = 50
         self.fields['view_angle'      ].initial = 50
-        self.fields['default_priority'].initial = 100
-        self.fields['repeat_interval' ].initial = 0
+        self.fields['sensor_type'     ].initial = ""
         self.fields['preprocessing'   ].initial = 1
         self.fields['default_script'  ].initial = 1
+        self.fields['default_priority'].initial = 100
+        self.fields['repeat_interval' ].initial = 0
+        self.fields['cat_registration'].initial = 0
+        self.fields['coastline_check' ].initial = 0
 
         # not required fields
         self.fields['scenario_description'].required = False
@@ -189,3 +190,4 @@ class ScenarioForm(forms.ModelForm):
         self.fields['default_priority'    ].required = False
         self.fields['repeat_interval'     ].required = False
         self.fields['cat_registration'    ].required = False
+        self.fields['coastline_check'     ].required = False

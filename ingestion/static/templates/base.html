@@ -29,13 +29,13 @@
   </TR>
   <TR BGCOLOR="#90a0ff">
     <td><a href="/{{home_page}}"> SCENARIO OVERVIEW </a></td>
-    <td class="ieBareTblCell" ALIGN=CENTER ><a href="/account/configuration/"> CONFIGURATION </a></td>
+    <td class="ieBareTblCell" ALIGN=CENTER ><a href="/account/configuration/"> View Log </a></td>
     <td class="ieBareTblCell" ALIGN=RIGHT ><a href="/ingest/dmDARStatus"> Dl Mgr DAR status</a></td>
   </TR>
   <TR BGCOLOR="#90a0ff">
     {% if user.is_authenticated %}
     <!--td class="ieBareTblCell"> <p><I>Logged in as: </I> {{user.username}} </p> </td -->
-    <td class="ieBareTblCell" COLSPAN=2> </td>
+    <td class="ieBareTblCell" COLSPAN=3> </td>
     <!-- td class="ieBareTblCell" ALIGN=RIGHT ><a href="account/logout/"> LOGOUT </a></td -->
     {% else %}
     <td colspan=3><a href="account/login/"> LOGIN </a></td>
@@ -44,8 +44,7 @@
   
 </TABLE>
 
-<p> This is a development version.
-Some of the functions here are not fully implemented at this time.
+<p> This is the stand-alone T5 Ingestion Admin Client used for development.
 </p>
 <!-- table>
     <tr><td><a href="/{{home_page}}"> HOME </a></td></tr>

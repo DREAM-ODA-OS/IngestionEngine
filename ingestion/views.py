@@ -35,9 +35,18 @@ import models
 import forms
 import work_flow_manager
 
-from settings import set_autoLogin, \
-    IE_DEBUG, IE_HOME_PAGE, IE_AUTO_LOGIN, \
-    MEDIA_ROOT, JQUERYUI_OFFLINEURL, AUTHENTICATION_BACKENDS
+from settings import \
+    set_autoLogin, \
+    IE_DEBUG, \
+    IE_HOME_PAGE, \
+    IE_AUTO_LOGIN, \
+    MEDIA_ROOT, \
+    IE_SCRIPTS_DIR, \
+    IE_DEFAULT_INGEST_SCRIPT, \
+    IE_DEFAULT_DEL_SCRIPT, \
+    JQUERYUI_OFFLINEURL, \
+    AUTHENTICATION_BACKENDS
+
 from utils import read_from_url
 from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
 from uqmd import updateMetaData
@@ -47,6 +56,115 @@ IE_DEFAULT_USER = r'dreamer'
 IE_DEFAULT_PASS = r'1234'
 
 dmcontroller = DownloadManagerController.Instance()
+
+def get_scenario_id(ncn_id):
+    return models.Scenario.objects.get(ncn_id=ncn_id).id
+
+def get_scenario_ncn_id(scenario_id):
+    return models.Scenario.objects.get(id=int(scenario_id)).ncn_id
+
+def stop_ingestion_core(scenario_id):
+    wfm = work_flow_manager.WorkFlowManager.Instance()
+    wfm.set_stop_request(scenario_id)
+
+def delete_scenario_core(scenario_id=None, ncn_id=None):
+    ret = {}
+    logger = logging.getLogger('dream.file_logger')
+
+    if ncn_id:
+        ncn_id = ncn_id.encode('ascii','ignore')
+        scenario = models.Scenario.objects.get(ncn_id=ncn_id)
+        scenario_id = scenario.id
+    else:
+        scenario = models.Scenario.objects.get(id=int(scenario_id))
+        ncn_id   = scenario.ncn_id
+
+    scripts = scenario.script_set.all()
+    #for s in scripts:
+    #    print s.script_name
+    # send request/task to work-flow-manager to run delete script
+    wfm = work_flow_manager.WorkFlowManager.Instance()
+
+    if not wfm.lock_scenario(scenario_id):
+        msg = "Scenario '%s' name=%s is busy." % (ncn_id, scenario.scenario_name)
+        logger.warning("Delete Scenario refused: " + msg)
+        ret = {'status':1, 'message':"Error: "+msg}
+    else:
+
+        logger.info ("Deleting scenario ncn_id="+`ncn_id`)
+        del_scripts = []
+        default_delete_script = os.path.join(
+            IE_SCRIPTS_DIR, IE_DEFAULT_DEL_SCRIPT)
+        #del_scripts = models.UserScript.objects.filter(
+        #    script_name__startswith="deleteScenario-",user_id__exact=user.id)
+        if len(del_scripts)>0:
+            del_script = del_scripts[0]
+            current_task = work_flow_manager.WorkerTask(
+                {"scenario_id":scenario_id,
+                 "task_type":"DELETE_SCENARIO",
+                 "scripts":["%s/%s" % (MEDIA_ROOT,del_script.script_file)]})
+            wfm.put_task_to_queue(current_task)
+        
+        elif default_delete_script:
+            current_task = work_flow_manager.WorkerTask(
+                {"scenario_id":scenario_id,
+                 "task_type":"DELETE_SCENARIO",
+                 "scripts":[default_delete_script]
+                 })
+            wfm.put_task_to_queue(current_task)
+        
+        else:
+           logger.warning(
+               'Scenario: id=%d name=%s does not have a delete script.' \
+                   % (scenario.id,scenario.scenario_name))
+        ret = {'status':0,}
+
+    return ret
+
+
+def ingest_scenario_core(scenario_id=None, ncn_id=None):
+    # ingest scenario - run all ing. scripts related to the scenario
+    logger = logging.getLogger('dream.file_logger')
+    logger.info("Submitting ingest request to Ingestion Engine Worker queue")
+    ret = {}
+
+    if ncn_id:
+        scenario = models.Scenario.objects.get(ncn_id=ncn_id)
+        scenario_id = scenario.id
+    else:
+        scenario = models.Scenario.objects.get(id=int(scenario_id))
+        ncn_id   = scenario.ncn_id
+
+
+    wfm = work_flow_manager.WorkFlowManager.Instance()
+    if not wfm.lock_scenario(scenario_id):
+        msg = "Scenario '%s' name=%s is busy." % (scenario.ncn_id, scenario.scenario_name)
+        logger.warning("Ingest Scenario refused: " + msg)
+        ret = {'status':1, 'message':"Error: "+msg}
+    else:
+
+        scripts = models.get_scenario_script_paths(scenario)
+        if len(scripts) > 0:
+            # send request/task to work-flow-manager to run script
+            current_task = work_flow_manager.WorkerTask(
+                {"scenario_id":scenario_id,
+                 "task_type":"INGEST_SCENARIO",
+                 "scripts":scripts})
+
+            wfm.put_task_to_queue(current_task)
+            logger.info(
+                'Operation: ingest scenario: id=%d name=%s' \
+                    % (scenario.id,scenario.scenario_name))
+            ret = {'status':0,
+                   "message":"Ingestion Submitted to processing queue."}
+        else:
+            msg = "Scenario '%s' name=%s does not have scripts to ingest." \
+                    % (scenario.ncn_id,scenario.scenario_name)
+            logger.warning(msg)
+            ret = {'status':1, 'message':"Error"+msg}
+
+    return ret
+
 
 def do_post_operation(op, request):
     # must be a POST request
@@ -79,6 +197,12 @@ def auto_login(request):
         logger.info('Auto-logged-in ' + IE_DEFAULT_USER+".")
     return new_user
     
+def oda_init(request):
+    port = request.META['SERVER_PORT']
+    dmcontroller.set_ie_port(port)
+    #user = request.user
+    #if user.username != IE_DEFAULT_USER:
+    #    user = auto_login(request)
 
 def main_page(request):
     dmcontroller.set_ie_port(request.META['SERVER_PORT'])
@@ -183,9 +307,9 @@ def handle_eoids(request,scenario):
     delete_eoids(scenario, del_list)
 
     for e in new_eoids:
-        new_eoid = e.encode('ascii','ignore')
-        if not e in old_list:
-            models.Eoid( scenario=scenario,eoid_val=e ).save()
+        ne = e.encode('ascii','ignore')
+        if not ne in old_list:
+            models.Eoid( scenario=scenario,eoid_val=ne ).save()
 
 
 def handle_extras(request,scenario):
@@ -239,7 +363,7 @@ def handle_uploaded_scripts(request,scenario):
         script.script_path = file_path
         script.scenario = scenario
         script.save()
-        i = i + 1   
+        i = i + 1
 
 def ncn_is_valid(form, scid):
     # make sure the ncn_id is unique
@@ -247,7 +371,7 @@ def ncn_is_valid(form, scid):
     is_ncn_ok = True
     try:
         ex_sc = models.Scenario.objects.get(ncn_id=form_ncn_id)
-        if scid and ex_sc.id != int(scid):
+        if (scid and ex_sc.id != int(scid)) or not scid:
             is_ncn_ok = False
             if None == form._errors:
                 form._errors = {}
@@ -259,62 +383,18 @@ def ncn_is_valid(form, scid):
         return True
     return is_ncn_ok
 
-def addScenario(request):
-    # add scenario and related scripts 
-    logger = logging.getLogger('dream.file_logger')
-    if request.method == 'POST':
+def init_status(scenario):
+    scenario_status = models.ScenarioStatus()
+    scenario_status.scenario = scenario
+    scenario_status.is_available = 1
+    scenario_status.status = "IDLE"
+    scenario_status.done = 0
+    scenario_status.ingestion_pid = 0
+    scenario_status.active_dar = ''
+    scenario_status.save()
 
-        form = forms.ScenarioForm(request.POST)
 
-        if form.is_valid() and ncn_is_valid(form, None):
-            if IE_DEBUG > 2:
-                logger.debug( "Scenario form is valid")
-            scenario = form.save(commit=False)
-            scenario.user = request.user
-            scenario.save()
-
-            # scenario scripts, eoids, and extras
-            handle_uploaded_scripts(request,scenario)
-            handle_eoids(request,scenario)
-            handle_extras(request,scenario)
-
-            # scenario status
-            scenario_status = models.ScenarioStatus()
-            scenario_status.scenario = scenario
-            scenario_status.is_available = 1
-            scenario_status.status = "IDLE"
-            scenario_status.done = 0
-            scenario_status.ingestion_pid = 0
-            scenario_status.active_dar = ''
-            scenario_status.save()
-
-            logger.info('Operation: add scenario: id=%d name=%s' % \
-                            (scenario.id,scenario.scenario_name),
-                        extra={'user':request.user})
-
-            port = request.META['SERVER_PORT']
-            return HttpResponseRedirect(
-                'http://127.0.0.1:'+port+'/scenario/overview/')
-        else:
-            if IE_DEBUG > 0:
-                logger.debug( "Scenario form is not valid",extra={'user':"drtest"})
-            variables = RequestContext(request,
-                {'form'     :form,
-                 'home_page':IE_HOME_PAGE,
-                 'status'   :"Error on form."})
-            return render_to_response('editScenario.html',variables)
-    else:
-        form = forms.ScenarioForm()
-    variables = RequestContext(request,
-                               {'form'     :form,
-                                'scripts'  :[],
-                                'eoid_in'  :[],
-                                'extras_in':[],
-                                'sequence' :"",
-                                'home_page':IE_HOME_PAGE})
-    return render_to_response('editScenario.html',variables)
-
-def addLocalProduct(request, sc_id):
+def addLocalProductOld(request, sc_id):
     # add local product to the related scenario
     logger = logging.getLogger('dream.file_logger')
     port = request.META['SERVER_PORT']
@@ -399,18 +479,215 @@ def saveFile(upload_file, path):
         fd.write(chunk)
     fd.close()
 
-def editScenario(request,scenario_id):
-    # edit scenario and its relationship to user and scripts 
-    # first, scenario and relationship are deleted and then added as in 
+def odaAddLocalProductOld(request, ncn_id):
+    oda_init(request)
+    # add local product to the related scenario
     logger = logging.getLogger('dream.file_logger')
-    scenario = models.Scenario.objects.get(id=int(scenario_id))
+    logger.info("addLocalProduct to ncn_id "+ncn_id)
+
+    msg = "The new product has been successfully added"
+    if request.method == 'POST':
+
+        wfm = work_flow_manager.WorkFlowManager.Instance()
+        scenario = models.Scenario.objects.get(ncn_id)
+        sc_id  = scenario.id
+
+        #if not wfm.lock_scenario(sc_id):
+        #    return getAddProductResult(request, sc_id, msg)
+        if not wfm.lock_scenario(sc_id):
+            logger.warning("Ingest Scenario refused: "
+                + "Scenario '%s' name=%s is busy." % (scenario.ncn_id, scenario.scenario_name))
+            return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+
+        form = forms.AddLocalProductForm(request.POST, request.FILES)
+        if form.is_valid() and form.is_multipart():
+            try:
+                sc_ncn_id = scenario.ncn_id
+                full_directory_name, directory_name = create_dl_dir(sc_ncn_id+"_")
+                full_directory_name = full_directory_name.encode('ascii','ignore')
+                logger.info("Product directory name:" + full_directory_name)
+            except:
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+                logger.error("Failed to generate a new product directory name")
+                return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+            try:
+                saveFile(request.FILES['metadataFile'], full_directory_name)
+            except IOError, e:
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+                logger.error("Failed to save product's metadata file")
+                return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+            try:
+                saveFile(request.FILES['rasterFile'], full_directory_name)
+            except IOError, e:
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+                logger.error("Failed to save product's raster file")
+                return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+
+            scripts = models.get_scenario_script_paths(scenario)
+            if len(scripts) > 0:
+                # send request/task to work-flow-manager to run script
+                current_task = work_flow_manager.WorkerTask(
+                    {"scenario_id": sc_id,
+                    "ncn_id"   : sc_ncn_id,
+                    "task_type": "INGEST_LOCAL_PROD",
+                    "scripts"  : scripts,
+                    "cat_reg"  : scenario.cat_registration,
+                    "dir_path" : full_directory_name,
+                    "metadata" : request.FILES['metadataFile']._get_name(),
+                    "data"     : request.FILES['rasterFile']._get_name(),
+                    })
+
+                wfm.put_task_to_queue(current_task)
+                logger.info('Operation: ingest scenario: id=%d name=%s' \
+                        % (scenario.id,scenario.scenario_name))
+            else:
+                logger.warning("Scenario '%s' name=%s does not have scripts to ingest." \
+                        % (scenario.ncn_id,scenario.scenario_name))
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+
+            return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+        else:
+            wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+            logger.warning('The add product form has not been fully/correctly filled')
+            return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
+    else:
+        form = forms.AddLocalProductForm()
+        variables = RequestContext(request, {
+                'form'     :form,
+                'home_page':IE_HOME_PAGE})
+        return render_to_response('addLocalProduct.html', variables)
+
+def getAddProductResult(request, sc_id, error):
+    print 'start getAddProductResult()'
+    #print `request`
+    response_data = []
+    response_data.append({'sc_id'          :'%s' % sc_id})
+#       'metadata_file'  :'%s' % request.FILES['metadataFile']._get_name(),
+#       'raster_file'    :'%s' % request.FILES['rasterFile']._get_name()
+    print 'mid getAddProductResult()'
+    if error != None:
+        response_data.append({'status': 1, 'error' : '%s' % error })
+    else :
+        response_data.append({'status': 0 })
+
+    print 'end getAddProductResult()'
+    return "addLocalProductResult", response_data
+
+def add_local_product_core(request, ncn_id, template, aftersave=None):
+    # add local product to the related scenario
+    logger = logging.getLogger('dream.file_logger')
+
+    msg = "The new product has been successfully added"
+    if request.method == 'POST':
+
+        wfm = work_flow_manager.WorkFlowManager.Instance()
+        scenario = models.Scenario.objects.get(ncn_id=ncn_id)
+        sc_id  = scenario.id
+
+        if wfm.lock_scenario(sc_id):
+
+            try:
+
+              form = forms.AddLocalProductForm(request.POST, request.FILES)
+              if form.is_valid() and form.is_multipart():
+
+                  full_directory_name, directory_name = create_dl_dir(ncn_id+"_")
+                  full_directory_name = full_directory_name.encode('ascii','ignore')
+                  logger.info("Product directory name:" + full_directory_name)
+
+                  saveFile(request.FILES['metadataFile'], full_directory_name)
+                  saveFile(request.FILES['rasterFile'], full_directory_name)
+
+                  scripts = models.get_scenario_script_paths(scenario)
+                  if len(scripts) > 0:
+                      # send request/task to work-flow-manager to run script
+                      current_task = work_flow_manager.WorkerTask(
+                          {"scenario_id": sc_id,
+                           "ncn_id"   : ncn_id,
+                           "task_type": "INGEST_LOCAL_PROD",
+                           "scripts"  : scripts,
+                           "cat_reg"  : scenario.cat_registration,
+                           "dir_path" : full_directory_name,
+                           "metadata" : request.FILES['metadataFile']._get_name(),
+                           "data"     : request.FILES['rasterFile']._get_name(),
+                           })
+
+                      wfm.put_task_to_queue(current_task)
+                      logger.info('Operation: ingest scenario: id=%d ncn_id=%s name=%s' \
+                            % (sc_id, ncn_id, scenario.scenario_name))
+                  else:
+                      logger.warning("Scenario '%s' name=%s does not have scripts to ingest." \
+                          % (ncn_id,scenario.scenario_name))
+              else:
+                  logger.warning('The add product form has not been fully/correctly filled')
+
+            except Exception, e:
+                logger.error("Failed to add local product to Scenario '%s' name=%s is busy." \
+                                 % (ncn_id, scenario.scenario_name) + \
+                                 'exception = ' + e.message)
+            finally:
+                wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
+
+            if aftersave:
+                variables = RequestContext(request, {})
+                return render_to_response(aftersave,variables)
+            else:
+                port = request.META['SERVER_PORT']
+                return HttpResponseRedirect(
+                    'http://127.0.0.1:' + port + '/scenario/overview/')
+
+        else:
+            logger.warning("Ingest Scenario refused: " +
+                           "Scenario '%s' name=%s is busy." % \
+                               (ncn_id, scenario.scenario_name))
+    else:
+        form = forms.AddLocalProductForm()
+        variables = RequestContext(request, {
+                'form'     :form,
+                'home_page':IE_HOME_PAGE})
+        return render_to_response(template, variables)
+
+    variables = RequestContext(request, {
+            'form'     :form,
+            'home_page':IE_HOME_PAGE})
+    return render_to_response(template, variables)
+
+
+def addLocalProduct(request, ncn_id):
+    return add_local_product_core(
+        request,
+        ncn_id,
+        'addLocalProduct.html')
+
+def odaAddLocalProduct(request, ncn_id):
+    oda_init(request)
+    return add_local_product_core(
+        request,
+        ncn_id,
+        'odaAddLocalProduct.html',
+        'uploadedPage.html')
+
+
+def edit_scenario_core(request, scenario_id, template, aftersave):
+    """ used for both add_scneario and edit_scenario
+        for add_scenario the scenario_id is None
+    """
+    logger = logging.getLogger('dream.file_logger')
+
+    scenario = None
+    editing  = False
+    if scenario_id:
+        editing = True
+        scenario = models.Scenario.objects.get(id=int(scenario_id))
+
     if request.method == 'POST':
         # if POST, the user has now edited the form.
         form = forms.ScenarioForm(request.POST)
 
         if form.is_valid() and ncn_is_valid(form, scenario_id):
             scenario = form.save(commit=False)
-            scenario.id = int(scenario_id)
+            if editing:
+                scenario.id = int(scenario_id)
             scenario.user = request.user
             scenario.save()
 
@@ -419,25 +696,41 @@ def editScenario(request,scenario_id):
             handle_eoids(request,scenario)
             handle_extras(request,scenario)
 
-            logger.info('Operation: edit scenario: id=%d name=%s' \
-                            % (scenario.id,scenario.scenario_name),
+            if not editing:
+                init_status(scenario)
+
+            logger.info('Operation: add or edit scenario: id=%d name=%s' \
+                            % (scenario.id, scenario.scenario_name),
                         extra={'user':request.user})
 
-            port = request.META['SERVER_PORT']
-            return HttpResponseRedirect(
-                'http://127.0.0.1:' + port + '/scenario/overview/')
+            if aftersave:
+                variables = RequestContext(request, {})
+                return render_to_response(aftersave,variables)
+            else:
+                port = request.META['SERVER_PORT']
+                return HttpResponseRedirect(
+                    'http://127.0.0.1:' + port + '/scenario/overview/')
+
         else:
             logger.warn("Scenario form is not valid",extra={'user':request.user})
+            # fall through to display the form again,
+            # with errors showing automatically.
+
     else:
         form = forms.ScenarioForm()
         # initialize values of form
-        for field in form.fields:
-            form.fields[field].initial = getattr(scenario,field)   
+        if editing:
+            for field in form.fields:
+                form.fields[field].initial = getattr(scenario,field)   
 
-    # load scripts, eoids, and extras
-    scripts = scenario.script_set.all()
-    eoid_in = scenario.eoid_set.all()
-    extras  = scenario.extraconditions_set.all()
+    scripts = []
+    eoid_in = []
+    extras  = []
+    if editing:
+        # load scripts, eoids, and extras
+        scripts = scenario.script_set.all()
+        eoid_in = scenario.eoid_set.all()
+        extras  = scenario.extraconditions_set.all()
 
     variables = RequestContext(
         request,
@@ -447,12 +740,47 @@ def editScenario(request,scenario_id):
          'extras_in':extras,
          'sequence':"",
          'home_page':IE_HOME_PAGE})
-    return render_to_response('editScenario.html',variables)
+    return render_to_response(template, variables)
 
-def deleteScenario(request,scenario_id):
-    # delete form and connection to related scripts and user
-    # it deletes also whole scenario - if scenario is connected to other 
-    scenario = models.Scenario.objects.get(id=int(scenario_id))
+def addScenario(request):
+    return edit_scenario_core(
+        request,
+        None,
+        'editScenario.html',
+        None)
+
+
+def odaAddScenario(request):
+    oda_init(request)
+    return edit_scenario_core(
+        request,
+        None,
+        'odaEditScenario.html',
+        'savedPage.html')
+
+def editScenario(request, ncn_id):
+    
+    return edit_scenario_core(
+        request,
+        get_scenario_id(ncn_id),
+        'editScenario.html',
+        None)
+
+
+def odaEditScenario(request, ncn_id):
+    oda_init(request)
+    return edit_scenario_core(
+        request,
+        get_scenario_id(ncn_id),
+        'odaEditScenario.html',
+        'savedPage.html')
+
+
+def deleteScenario(request, ncn_id):
+    # delete form and connection to related scripts and user,
+    # and also deletes the whole scenario
+    scenario = models.Scenario.objects.get(ncn_id=ncn_id)
+    scenario_id = scenario.id
     scripts = scenario.script_set.all()
 
     # send request/task to work-flow-manager to run delete script
@@ -469,7 +797,6 @@ def deleteScenario(request,scenario_id):
 
     # TODO problem: wfm dele is running meanwhile django deletes scenario and
     #   scripts ... django should wait to delete them ...
-
 
     # delete scenario, scripts and scenario-status from db (scenario-status is bounded to scenario)
     delete_scripts(scripts)
@@ -546,7 +873,7 @@ def configuration_page(request):
 # Non-interactive intefaces
 
 
-def getListScnerios(request):
+def getListScenarios(request):
     response_data = []
     scenarios = models.Scenario.objects.all()
     for s in scenarios:
@@ -554,6 +881,26 @@ def getListScnerios(request):
             {'id':'%s' % s.ncn_id,
              'name': '%s' % s.scenario_name,
              'decription':'%s' % s.scenario_description})
+    return "scenarios", response_data
+
+def getAjaxScenariosList(request):
+    response_data = []
+    scenarios = models.Scenario.objects.all()
+    for s in scenarios:
+        auto_ingest = 0;
+        if s.repeat_interval > 0 : auto_ingest = 1;
+        ss = s.scenariostatus
+        response_data.append(
+            {
+                'id':'%s' % s.id,
+                'ncn_id':'%s' % s.ncn_id,
+                'auto_ingest' : auto_ingest,
+                'name': '%s' % s.scenario_name,
+                'decription':'%s' % s.scenario_description,
+                'st_isav': ss.is_available,
+                'st_st': ss.status,
+                'st_done': ss.done
+            })
     return "scenarios", response_data
 
 def getScenario(request,args):
@@ -593,8 +940,31 @@ def getAddStatus(request,args):
 
     return response_data
 
+@csrf_exempt
+def odaDel_core( request, args ):
+    oda_init(request)
+    ncn_id = args[0].encode('ascii','ignore')
+    return delete_scenario_core(ncn_id=ncn_id)
 
-def get_request_json(func, request,
+@csrf_exempt
+def odaStop_core( request, args ):
+    oda_init(request)
+    ncn_id = args[0].encode('ascii','ignore')
+    scenario = models.Scenario.objects.get(ncn_id=ncn_id)
+    stop_ingestion_core(scenario_id=scenario.id)
+    return {}
+
+
+@csrf_exempt
+def odaIngest_core( request, args ):
+    oda_init(request)
+    response_data = {}
+    ncn_id = args[0].encode('ascii','ignore')
+    return ingest_scenario_core(ncn_id=ncn_id)
+
+
+def get_request_json(func,
+                     request,
                      args=None,
                      string_error=False,
                      wrapper=True):
@@ -604,47 +974,62 @@ def get_request_json(func, request,
         sent to the requestor, and data is its value.
         The response will then be json structure like this:
           { "status" : 0 , key_string : data }
-        If wrapper is True, the response is returned without
+        If wrapper is False, the response is returned without
         the "status" json wrapper, and need not be tuple then.
         args is a tuple passed on to the func
     """
     response_data = {}
+    STATUS_KEY = 'status'
+    ERROR_KEY  = 'error'
 
     if string_error:
         failure_status = 'failed'
-        success_status = 'success'
+        success_status = 'errorString'
     else:
         failure_status = 1
         success_status = 0
 
-    if request.method == 'GET':
+    if request.method == 'GET' or request.method == 'POST':
         try:
             if args:
                 op_response = func(request, args=args)
             else:
                 op_response = func(request)
             if wrapper:
-                response_data['status'] = success_status
+                response_data[STATUS_KEY] = success_status
                 response_data[op_response[0]] = op_response[1]
             else:
                 response_data = op_response
         except Exception as e:
-            response_data['status'] = failure_status
-            response_data['errorString'] = "%s" % e
+            logger = logging.getLogger('dream.file_logger')
+            logger.error('Error in get_request_json(): ' +`e`)
+            response_data[STATUS_KEY] = failure_status
+            response_data[ERROR_KEY]  = "%s" % e
     else:
-        # method was POST
-        response_data['status'] = failure_status
-        response_data['errorString'] = "Request method is not GET."
-    return HttpResponse(
+        # method was not GET or POST
+        response_data[STATUS_KEY] = failure_status
+        response_data[ERROR_KEY]  = "Request method is not GET or POST."
+    ret = HttpResponse(
         json.dumps(response_data),
         content_type="application/json")
-
+    ret["Access-Control-Allow-Origin"] = "*"
+    return ret
 
 @csrf_exempt
 def getListScenarios_operation(request):
     # expect a GET request
-    return get_request_json(getListScnerios, request)
+    return get_request_json(getListScenarios, request)
 
+@csrf_exempt
+def addOdaLocalProduct_operation(request, ncn_id):
+    # expect a GET request
+    print `request.body`
+    return get_request_json(addOdaLocalProduct, request, (ncn_id,) )
+
+@csrf_exempt
+def getAjaxScenariosList_operation(request):
+    # expect a GET request
+    return get_request_json(getAjaxScenariosList, request)
 
 @csrf_exempt
 def getScenario_operation(request,ncn_id):
@@ -710,3 +1095,15 @@ def dmDARStatus(request):
 @csrf_exempt
 def updateMD_operation(request):
     return do_post_operation(updateMetaData, request)
+
+@csrf_exempt
+def odaDeleteScenario(request, ncn_id):
+    return get_request_json(odaDel_core, request, (ncn_id,), wrapper=False)
+
+@csrf_exempt
+def odaStopIngestion(request, ncn_id):
+    return get_request_json(odaStop_core, request, (ncn_id,), wrapper=False)
+
+@csrf_exempt
+def odaIngest(request, ncn_id):
+    return get_request_json(odaIngest_core, request, (ncn_id,), wrapper=False )

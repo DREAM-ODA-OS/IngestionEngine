@@ -1,7 +1,11 @@
-{% extends "base.html" %}
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+{% load staticfiles %}
 
-
+<head>
 {% block head %}	
+    <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
+    <script src = "{% static 'js/jquery.js' %}">
 
 	<script>
 	var script_objects = -1;
@@ -72,227 +76,25 @@
         }
     }
 
-	function load_scripts() 
-	{
-		script_objects = load_scripts_from_data().slice();
-		return script_objects;
-	}
-	
-	function save_scripts(objects)
-	{
-		script_objects = objects.slice();
-		save_scripts_to_data(objects);
-	}
-	
-	
-	function load_scripts_from_data()
-	{
-		var s = document.getElementById('table_scripts').getAttribute('data-ids');
-		var ids = s.split("_");		
-		var objects = new Array();
-		for (var i=0;i<ids.length;i++)
-		{	
-			if (ids[i]!='')
-			{
-				obj = new Object();
-				obj.id = ids[i];
-				var arguments = new Array();
-				arguments.push( document.getElementById("script_name_".concat(ids[i])).value );
-				arguments.push( document.getElementById("script_file_".concat(ids[i])).value );
-				obj.arguments = arguments.slice();
-				obj.line = create_line(obj);
-				objects[i] = obj;
-			}
-		}
-		return objects;
-	}
-
-	function save_scripts_to_data(objects)
-	{
-		var ids = new String();
-		for	(var i=0;i<objects.length;i++)
-		{
-			if (i!=0){ ids = ids + "_"; }
-			ids = ids + objects[i].id;
-		}
-		
-		document.getElementById("table_scripts").setAttribute("data-ids",ids);
-	}
-
-	function refresh_script_table()
-	{
-		objects = load_scripts();
-		$('#table_scripts').empty();
-		for (var i=0;i<objects.length;i++)
-		{
-			var line = "<tr id='tr_" + objects[i].id + "'>";
-			line = line + objects[i].line + "</tr>";
-			$("#table_scripts").append(line);
-		}
-	}
-
-	function create_line(obj) 
-	{
-	    new_id = obj.id;
-	    s_name = obj.arguments[0];
-	    s_file = obj.arguments[1];
-	    line_values =
-		'<td><input id="script_name_' + new_id.toString() +'" '+
-		'  type="text"'+
-		'  value="' + s_name +'" '
-		'  name="script_name"></td>' +
-		'<td><input id="script_file_' + new_id.toString() + '" type="file" name="script_file_' + new_id.toString() + '" value=""></td>';
-            line_buttons = '<td><input id="remove_button_' + new_id.toString() + '" class="RemoveButton" type="BUTTON" value="Remove" name="RemoveButton"></td><td><input id="up_button_' + new_id.toString() + '" class="UpButton" type="BUTTON" value="Up" name="UpButton"></td><td><input id="down_button_' + new_id.toString() + '" class="DownButton" type="BUTTON" value="Down" name="DownButton"></td>'
-		return line_values + line_buttons;
-	}
-
-	function add_script()
-	{
-		objects = load_scripts();
-		var min_id = 100;
-		var new_id = -100;
-		for (var i=0;i<objects.length;i++)
-		{
-			min_id = Math.min(min_id,objects[i].id);
-		}
-		if (min_id<0)
-		{
-			new_id = min_id - 1;
-		}
-
-		obj = new Object();
-		obj.id = new_id;
-		var arguments = new Array();
-		arguments.push( "script_name" );
-		arguments.push( "script_file" );
-		obj.arguments = arguments.slice();
-		obj.line = create_line(obj);
-		
-		objects[i] = obj;
-		save_scripts(objects)
-		
-		var line = "<tr id='tr_" + objects[i].id + "'>";
-		line = line + objects[i].line + "</tr>";
-		$("#table_scripts").append(line);
-	}
-
-	function remove_script(id)
-	{
-		objects = load_scripts();
-		for	(var i=0;i<objects.length;i++)
-		{
-			if (id==objects[i].id){
-				objects.splice(i,1);
-			}
-		}
-		save_scripts(objects)
-	}
-
-	function swap_objects(i1,i2,objects)
-	{
-		temp = objects[i1];
-		objects[i1] = objects[i2];
-		objects[i2] = temp;
-		return objects;
-	}
-
-	function down_script(id)
-	{
-		objects = load_scripts();
-		var next_i = -1;
-		var c_i = -1;
-		for	(var i=0;i<objects.length;i++)
-		{
-			if (id==objects[i].id){
-				c_i = i;
-				if (c_i==(objects.length - 1))
-				{
-					next_i = 0;
-				}else{
-					next_i = c_i + 1;
-					//if (next_i==objects.length){
-				//		next_i = 0;
-					//}				
-				}
-			}
-		}
-		new_objects = swap_objects(c_i,next_i,objects);
-		save_scripts(new_objects);
-	}
-
-	function up_script(id)
-	{
-		objects = load_scripts();
-		var last_i = -1;
-		var c_i = -1;
-		for	(var i=0;i<objects.length;i++)
-		{
-			if (id==objects[i].id){
-				c_i = i;
-				if (last_i==-1)
-				{
-					last_i = objects.length - 1;
-				}
-				break;
-			}else{
-				last_i = i;
-			}
-		}
-		new_objects = swap_objects(c_i,last_i,objects);
-		save_scripts(new_objects);
-	}
-
-/*
-	$(document).ready(function(){
-		$(".UpButton").live('click',function(){
-			var id = $(this).attr("id").split("_")[2];
-			up_script(id);
-			refresh_script_table();
-		});
-	});
-
-	$(document).ready(function(){
-		$(".DownButton").live('click',function(){
-			var id = $(this).attr("id").split("_")[2];
-			down_script(id);
-			refresh_script_table();
-		});
-	});
-
-	$(document).ready(function(){
-		$(".RemoveButton").live('click',function(){
-			var id = $(this).attr("id").split("_")[2];
-			remove_script(id);
-			refresh_script_table();
-		});
-	});
-	
-	
-	$(document).ready(function(){
-		$(".AddButton").live('click',function(){
-			add_script();
-			refresh_script_table();
-		});
-	});
-	
-*/	
 	</script>
 	
 	<style>
-	.button,.RemoveButton,.UpButton,.DownButton,.AddButton,.SubmitButton
-	{
-		width: 3cm; 
-		height: 0.74cm; 
-		font-family: 'Arial', sans-serif; 
-		font-size: 12pt;
-	}
-        </style>
+		.button,.SubmitButton
+		{
+			width: 3cm; 
+			height: 0.74cm; 
+			font-family: 'Arial', sans-serif; 
+			font-size: 12pt;
+		}
+    </style>
 
 {% endblock %}
 
+</head>
+<body>
 
 {% block title %}
-<P class="ieTitle3">Scenario Editor</P>
+<P class="ieTitle3">Ingestion Admin Scenario Editor</P>
 {% endblock %}
 
 
@@ -434,5 +236,8 @@
     <input type="submit" class="SubmitButton" value="save"/>
 </form>        
 
+<p>To cancel please close the browser window.</p>
 
 {% endblock %}
+</body>
+</html>

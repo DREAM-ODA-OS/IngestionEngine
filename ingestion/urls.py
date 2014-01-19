@@ -31,7 +31,7 @@ urlpatterns = patterns('',
     # Uncomment the next line to enable the admin:
     url(r'^admin/', include(admin.site.urls)),
 
-    # site_media
+    # static files
     (r'^static/(?P<path>.*)$', 'django.views.static.serve',{'document_root': settings.STATIC_ROOT}),
 
     # site media
@@ -54,6 +54,9 @@ urlpatterns = patterns('',
 
     # listScenarios
     url(r'^ingest/ManageScenario/listScenarios',views.getListScenarios_operation),
+
+    # listScenarios for ajax / backend
+    url(r'^ingest/ManageScenario/ajaxListScenarios',views.getAjaxScenariosList_operation),
 
     # getScenario
     url(r'^ingest/ManageScenario/getScenario/id=(?P<ncn_id>.*)$',views.getScenario_operation),
@@ -80,14 +83,32 @@ urlpatterns = patterns('',
     url(r'^scenario/add/$',views.addScenario),
     
     # addLocalProduct.html
-    url(r'^ingest/addLocal/(?P<sc_id>.*)$',views.addLocalProduct),
+    url(r'^ingest/addLocal/(?P<ncn_id>.*)$',views.addLocalProduct),
     
+    # odaAddLocalProduct.html
+    url(r'^ingest/odaAddLocal/(?P<ncn_id>.*)$',views.odaAddLocalProduct),
+
     # deleteScenario
-    url(r'^scenario/delete/(?P<scenario_id>[1-9]{1,3})',views.deleteScenario),
+    url(r'^scenario/delete/(?P<ncn_id>.*)',views.deleteScenario),
     
     # editScenarioForms.html
-    url(r'^scenario/edit/(?P<scenario_id>[1-9]{1,3})',views.editScenario),
+    url(r'^scenario/edit/(?P<ncn_id>.*)',views.editScenario),
 
+    # Edit Scenario for the ODAClient
+    url(r'^scenario/odaedit/(?P<ncn_id>.*)',views.odaEditScenario),
+
+    # Add Scenario for the ODAClient
+    url(r'^scenario/odaadd/',views.odaAddScenario),
+
+    # Delete Scenario for the ODAClient
+    url(r'^scenario/odadelete/(?P<ncn_id>.*)', views.odaDeleteScenario),
+
+    # Start Ingestion for the ODAClient
+    url(r'^ingestion/odaingest/(?P<ncn_id>.*)', views.odaIngest),
+    
+    # Stop Ingestion for the ODAClient
+    url(r'^ingestion/odastop/(?P<ncn_id>.*)', views.odaStopIngestion),
+    
     # dar response
     url(r'^ingest/darResponse/(?P<seq_id>.*)$',views.darResponse),
     

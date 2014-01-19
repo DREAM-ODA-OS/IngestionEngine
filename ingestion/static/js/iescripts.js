@@ -1,7 +1,7 @@
 /*
  *  Project: DREAM
  *  Module:  Task 5 ODA Ingestion Engine 
- *  Authors: Milan Novacek (CVC), Vojtech Stefka  (CVC)
+ *  Authors: Vojtech Stefka  (CVC), Milan Novacek (CVC)
  *
  *    (c) 2013 Siemens Convergence Creators s.r.o., Prague
  *    Licensed under the 'DREAM ODA Ingestion Engine Open License'
@@ -13,65 +13,83 @@
 
 /* ----------------- overviewScnenario.html --------------------- */
 
-function run_delete(id_scenario) {
+function get_scenario(ncn_id){
+    for (var i=0; i<jscenarios.length; i++) {
+        if (ncn_id==jscenarios[i].ncn_id) {
+            return jscenarios[i];
+        }
+    }
+    return null;
+}
+
+function run_delete(ncn_id) {
     // update status of scenario
     sync_scenarios();
     confirm_text =
         "This will delete all scenario data\n" +
         "and settings, and de-register all\n" +
         "downloaded products from the ODA server.";
-    for (var i=0; i<jscenarios.length; i++) {
-        if (id_scenario==jscenarios[i].id && jscenarios[i].st_isav!=0) {
-            if(confirm(
-                       'Delete scenario - ' + jscenarios[i].ncn_id + '?\n' +
-                       confirm_text )) {
-                // send ajax request to Work-Flow-Manager to delete scenario
-                Dajaxice.ingestion.delete_scenario_wfm(
-                        function(data){
-                            if(data.status !== undefined) {
-                                if (data.status != 0) { alert(data.message); }
-                            }
-                        },
-                        {'scenario_id':id_scenario});
-                // ensure updates of the page via sychronize_scenario
-                operation_pending = true;
-                was_active = true;
-                sync_scenarios();
-            }
+    scenario = get_scenario(ncn_id);
+    if (scenario && scenario.st_isav!=0) {
+        if(confirm
+           ('Delete scenario - ' + ncn_id + '?\n' +
+            confirm_text )) {
+            // send ajax request to Work-Flow-Manager to delete scenario
+            Dajaxice.ingestion.delete_scenario_wfm
+                (function(data){
+                    if(data.status !== undefined) {
+                        if (data.status != 0) { alert(data.message); }
+                    }
+                },
+                {'ncn_id': ncn_id});
+            // ensure updates of the page via sychronize_scenario
+            operation_pending = true;
+            was_active = true;
+            sync_scenarios();
         }
     }
 }
 
-function run_ingestion(id_scenario){
-    // update status of scenario
-    sync_scenarios();
-    for (var i=0; i<jscenarios.length; i++) {
-        if (id_scenario==jscenarios[i].id) {
-            if (jscenarios[i].st_isav==0) {
-                alert('Scenario '+jscenarios[i].ncn_id+
-                      'is locked - operation in progress');
-            } else {
-                if(confirm('Ingest scenario '+jscenarios[i].ncn_id+'?')) {
-                    // send ajax request to Work-Flow-Manager to ingest scenario
-                    Dajaxice.ingestion.ingest_scenario_wfm(
-                        function(data){
-                            if(data.status !== undefined) {
-                                if (data.status != 0) { alert(data.message); }
-                            }
-                        },
-                        {"scenario_id":id_scenario});
-                    // ensure updates of the page via sychronize_scenario
-                    operation_pending = true;
-                    sync_scenarios();
-                }
-            } // closes else
+function ingest(ncn_id){
+    scenario = get_scenario(ncn_id);
+    if (null == scenario) {
+        alert("No scenario found: internal error" +
+              "Please reload the page");
+        return;
+    }
+    if (scenario.st_isav==0) {
+        alert('Scenario '+ncn_id+
+              'is locked - operation in progress');
+    } else {
+        if(confirm('Ingest scenario '+ncn_id+'?')) {
+            // send ajax request to Work-Flow-Manager to ingest scenario
+            Dajaxice.ingestion.ingest_scenario_wfm
+                (function(data){
+                    if(data.status !== undefined) {
+                        if (data.status != 0) { alert(data.message); }
+                    }
+                },
+                {"ncn_id": ncn_id});
         }
-    }  // closes for
+    } // closes else
+}
+
+function run_ingestion(ncnid_scenario) {
+
+    Dajaxice.ingestion.synchronize_scenarios
+        (function(data) {
+            update_scenario(data);
+            ingest(data.op_sc);
+        },
+        {"scenario_id": ncnid_scenario} );
+    // ensure updates of the page via sychronize_scenario
+    operation_pending = true;
+    sync_scenarios();
 }
 
 function stop_ingestion(s)
 {
-    alert("stopping ingestion, scnenario:"+s);
+    alert("stopping ingestion, scnenario: "+s);
     Dajaxice.ingestion.stop_ingestion_wfm(
         function(data){
             if(data.status !== undefined) {
@@ -82,6 +100,8 @@ function stop_ingestion(s)
         },
         {"scenario_id":s});
     Dajaxice.ingestion.synchronize_scenarios(update_scenario);
+    operation_pending = false;
+    was_active = false;
 }
 
 function goToLocation(s)
@@ -98,7 +118,7 @@ function create_scenario(data) {
     scenario.id     = data[0];
     scenario.ncn_id = data[1];
 
-    if (data[2]>0) { // 1 means automatic, 2 means manual
+    if (data[2]>0) { // repeat inteval==0 means manual
         scenario.auto_ingest = 1;
     }else {
         scenario.auto_ingest = 0;
@@ -120,7 +140,9 @@ function remove_scenario(scenario) {
     splice (i,i);
 }
 
-function update_scenario(data) { // called by dajaxice every N-milliseconds
+function update_scenario(data) {
+    // called by dajaxice every N-milliseconds
+    // and also by various other operations
     if (data === null)
     {
         alert("update_scenario: data is null");

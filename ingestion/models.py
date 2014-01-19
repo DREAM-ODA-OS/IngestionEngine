@@ -14,6 +14,7 @@
 ############################################################
 
 import os
+import random
 
 import logging
 from django.db import models
@@ -32,8 +33,39 @@ from settings import \
 #                  Scenario                       *
 #**************************************************
 def make_ncname(root):
-    n = Scenario.objects.count()
-    return root+`n`
+    sc_latest =  Scenario.objects.latest('id')
+    n = sc_latest.id
+    candidate = root+`n`
+    exists = False
+    try:
+        Scenario.objects.get(ncn_id=candidate)
+        exists = True
+    except Scenario.DoesNotExist:
+        exists = False
+    if exists:
+        n = 0
+        try:
+            exid = Scenario.objects. \
+                filter(ncn_id__startswith=root). \
+                order_by('-ncn_id')[0].ncn_id
+            n = int(exid.split(root)[1]) + 1
+            candidate = root+`n`
+        except Exception:
+            n = 0
+        if 0==n:
+            try:
+                # try three times
+                candidate = root+`random.randint(10000,99999)`
+                Scenario.objects.get(ncn_id=candidate)
+                candidate = root+`random.randint(10000,99999)`
+                Scenario.objects.get(ncn_id=candidate)
+                candidate = root+`random.randint(10000,99999)`
+                Scenario.objects.get(ncn_id=candidate)
+                logger = logging.getLogger('dream.file_logger')
+                logger.warning("Cannot generate a unique ncn_id")
+            except Scenario.DoesNotExist:
+                pass # all is well - 'does not exist' is exacty what we needed
+    return candidate
 
 # ------------ choice types  --------------------------
 
@@ -94,6 +126,7 @@ def scenario_dict(db_model):
         "default_script",
         "preprocessing",
         "cat_registration",
+        "coastline_check",
         "ncn_id"):
         response_data[s] = str(getattr(db_model,s))
 
@@ -135,6 +168,7 @@ class Scenario(models.Model):
         max_length=2,
         choices=AOI_CHOICES,
         default=AOI_BBOX_CHOICE)
+    coastline_check      = models.BooleanField()
     aoi_file             = models.CharField(max_length=1024)
     aoi_poly_lat         = models.CommaSeparatedIntegerField(max_length=1024)
     aoi_poly_long        = models.CommaSeparatedIntegerField(max_length=1024)

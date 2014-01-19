@@ -1,0 +1,19 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+{% load staticfiles %}
+
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
+</head>
+
+{% block content %}
+
+<p style="align=center;"> Scenario saved. </p>
+<p style="align=center;"> To continue, please close this window. </p>
+
+<script>
+close();
+</script>
+
+{% endblock %}
+</html>
