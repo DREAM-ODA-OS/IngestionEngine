@@ -7,18 +7,21 @@ This is a development version, not released.
 
 ### Update 19.1.2014:
 
-* enabled usage with the ODA Client Ingestion Admin T5.
+* enabled usage with the ODA Client Ingestion Admin T5. The Ingestion Engine
+  may now be used either with its lightweight standalone development client,
+  or with the main ODA Client (`https://github.com/DREAM-ODA-OS/ODAClient`)
 
 * for other updates see Other Updates towards the bottom of the page
 
 ## Installation and Configuration
 
 ### Notes
-Note 1: the s/w is meant to be used by members of the DREAM consortium 
-and ESA, therefore some components are not necessarily publicly available.
+0. the s/w is meant to be used by members of the DREAM consortium 
+   and ESA, therefore some components are not necessarily publicly available.
 
-Note 2: The Ingestion Engine has been lightly tested to be
-launched with django's development server.
+0. The Ingestion Engine has been lightly tested to be
+   launched with django's development server.
+
 
 ### Prerequisites
 
@@ -57,8 +60,8 @@ If you change these then re-start the DM. This is important because
 the IE reads these settings from the DM's config dir, and the IE
 needs the same values as the _running_ DM.
 0. If you're using 'ODA Client Ingestion Admin T5', then be sure
-to configure the property `ingestionEngineT5.baseUrl`  in
-`ODAClient/app/config.json`.
+to configure in the ODA Client the property `ingestionEngineT5.baseUrl`,
+in the file `ODAClient/app/config.json` of the ODA Client installation tree.
 
 ### Launching
 0. It is assumed the DM is either already running or will be started
@@ -86,8 +89,17 @@ indicated by the following line being logged to the logfile and to stdout:
     DM Port OK, waited 22.2 secs.
     ```
 
-0. View the Ingestion Admin Client page in a browser:
-    `http://127.0.0.1:8000/ingestion`
+0. (optional) To use the standalone development client, simply view the
+   Ingestion Admin Client page in a browser:
+    `http://127.0.0.1:8000/ingestion`.
+   This is a lightweight developement client, and it is recommended to use only
+   one instance of the this client, and not to use anther client concurrently
+   (like the ODA Client described below).
+   The client can be configured to run without access to the internet.
+
+0. Instead of the standalone development client described in the above
+   step use the ODA Client Ingestion Admin T5.
+   see `https://github.com/DREAM-ODA-OS/ODAClient`
 
 0. To shut down the dev server, use `^C`.
 
