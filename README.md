@@ -5,36 +5,11 @@ DREAM Ingestion Engine
 
 This is a development version, not released.
 
-### Update 16.12.2013:
+### Update 19.1.2014:
 
-*  The interface IF-DREAM-O-UpdateQualityMD is operational up
-to (including)  executing the ODA-Server update script
-`ingestion/media/scripts/def_uqmd.sh`, which is an intenal inteface
-to the ODA Server.  See the script for details on this internal IF.
+* enabled usage with the ODA Client Ingestion Admin T5.
 
-* The test script `test/updateQualityMD_sa/test_uqmd.py`
-serves as an example of how to use the IF-DREAM-O-UpdateQualityMD interface.
-
-*  The interface IF-DREAM-O-AddProduct is operational up
-to (including)  executing the ODA-Server update script
-`ingestion/media/scripts/def_addProduct.sh`, which is an intenal inteface
-to the ODA Server. See the script for details on this internal IF.
-The inteface IF-DREAM-O-AddProduct comprises two operations: 
-`addProduct` and `getStatus`.
-An example of how to use these is shown in the test script for this
-interface: `test/addProduct_sa/test_addProd.py`
-
-*  (03.12.) The interface to the ngEO Download Manager (v 0.5.4) is operational.
-
-*  (03.12.) The IE+DM can download products from product facilities that use EO-WCS.
-Registering products in the ODA server remains
-to be tested; the IE executes the registation shell script
-`ingestion/media/scripts/def_ingest.sh`
-For development and debugging only the first 4 download URLs generated
-for a given scenario are downloaded.
-
-* (03.12.) A test-scnenario is pre-loaded on first start-up, see the
-installation instructions below.
+* for other updates see Other Updates towards the bottom of the page
 
 ## Installation and Configuration
 
@@ -67,14 +42,23 @@ The DownloadDirectory is created if it does not exist as long as its
 parent directory exists (i.e. a full recursive path is not created).
 If you should require more fine-tuning then
 edit the variables in `settings.py` or in `dm_control.py`. 
+0. The `ie_server_port` in  `ingestion_config.json` should also be set
+to the same port that will be used to run the django server with (or
+where the ingestion engine will listen on), but note that the code
+only uses this to easily find out where it is listening, and by itself
+setting `ie_server_port` will not ensure that the ingestion engine is
+indeed listening there.
 0. Make sure the Download Manger(DM) is configured correctly: 
 The config is in
 `ngEO-download-manager/conf/userModifiableSettingsPersistentStore.properties`.
 Ensure that `WEB_INTERFACE_PORT_NO` and
 `BASE_DOWNLOAD_FOLDER_ABSOLUTE` are set-up correctly.
-If you change these then re-start the DM. This is important because the IE
-reads these settings from the DM's config dir, and the IE needs the same
-values as the _running_ DM.
+If you change these then re-start the DM. This is important because
+the IE reads these settings from the DM's config dir, and the IE
+needs the same values as the _running_ DM.
+0. If you're using 'ODA Client Ingestion Admin T5', then be sure
+to configure the property `ingestionEngineT5.baseUrl`  in
+`ODAClient/app/config.json`.
 
 ### Launching
 0. It is assumed the DM is either already running or will be started
@@ -111,3 +95,35 @@ indicated by the following line being logged to the logfile and to stdout:
 
 See the LICENSE for licensing conditions, it is a MIT-style open
 source license.
+
+### Other updates
+
+*  (16.12.) The interface IF-DREAM-O-UpdateQualityMD is operational up
+to (including)  executing the ODA-Server update script
+`ingestion/media/scripts/def_uqmd.sh`, which is an intenal inteface
+to the ODA Server.  See the script for details on this internal IF.
+
+*  (16.12.) The test script `test/updateQualityMD_sa/test_uqmd.py`
+serves as an example of how to use the IF-DREAM-O-UpdateQualityMD interface.
+
+*   (16.12.) The interface IF-DREAM-O-AddProduct is operational up
+to (including)  executing the ODA-Server update script
+`ingestion/media/scripts/def_addProduct.sh`, which is an intenal inteface
+to the ODA Server. See the script for details on this internal IF.
+The inteface IF-DREAM-O-AddProduct comprises two operations: 
+`addProduct` and `getStatus`.
+An example of how to use these is shown in the test script for this
+interface: `test/addProduct_sa/test_addProd.py`
+
+*  (03.12.) The interface to the ngEO Download Manager (v 0.5.4) is operational.
+
+*  (03.12.) The IE+DM can download products from product facilities that use EO-WCS.
+Registering products in the ODA server remains
+to be tested; the IE executes the registation shell script
+`ingestion/media/scripts/def_ingest.sh`
+For development and debugging only the first 4 download URLs generated
+for a given scenario are downloaded.
+
+* (03.12.) A test-scnenario is pre-loaded on first start-up, see the
+installation instructions.
+
