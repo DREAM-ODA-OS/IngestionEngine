@@ -77,24 +77,6 @@ def synchronize_scenarios(request, scenario_id=None):
 
 
 @dajaxice_register(method='POST')
-def delete_scenario_django(request,scenario_id):
-    # delete scenario from the db using django commands
-    logger = logging.getLogger('dream.file_logger')
-    print "Delete scenario DJANGO"
-    scenario = models.Scenario.objects.get(id=int(scenario_id))
-    scripts = scenario.script_set.all()
-    views.delete_scripts(scripts)
-
-    logger.info(
-        'Operation: delete scenario: id=%d name=%s' \
-            % (scenario.id,scenario.scenario_name),
-        extra={'user':request.user})
-
-    scenario.delete()
-    return simplejson.dumps(
-        {'message':"Scenario %d is deleted." % int(scenario_id)})
-
-@dajaxice_register(method='POST')
 def read_logging(request, message_type, max_log_lines):
     messages = []
     if max_log_lines == '':

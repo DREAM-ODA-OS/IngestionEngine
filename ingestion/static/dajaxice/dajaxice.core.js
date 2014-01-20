@@ -48,13 +48,6 @@ var Dajaxice = {
 		      callback_function, argv,  custom_settings);
     },
 
-    delete_scenario_django: function(callback_function, argv, custom_settings){
-        Dajaxice.call(
-		      'ingestion.delete_scenario_django',
-		      'POST',
-		      callback_function, argv, custom_settings);
-    },
-
     ingest_scenario_wfm: function(callback_function, argv, custom_settings){
         Dajaxice.call(
 		      'ingestion.ingest_scenario_wfm',

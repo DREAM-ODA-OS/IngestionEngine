@@ -42,6 +42,9 @@ function run_delete(ncn_id) {
                     }
                 },
                 {'ncn_id': ncn_id});
+                var el = document.getElementById("div_scenario_"+ncn_id);
+                el.parentNode.removeChild(el);
+
             // ensure updates of the page via sychronize_scenario
             operation_pending = true;
             was_active = true;
@@ -65,7 +68,7 @@ function ingest(ncn_id){
             // send ajax request to Work-Flow-Manager to ingest scenario
             Dajaxice.ingestion.ingest_scenario_wfm
                 (function(data){
-                    if(data.status !== undefined) {
+                    if(data.status !== undefind) {
                         if (data.status != 0) { alert(data.message); }
                     }
                 },
@@ -135,11 +138,6 @@ function add_scenario(scenario) {
     jscenarios.push(scenario);
 }
 
-function remove_scenario(scenario) {
-    var i = jscenarios.indexOf(scenario)
-    splice (i,i);
-}
-
 function update_scenario(data) {
     // called by dajaxice every N-milliseconds
     // and also by various other operations
@@ -149,41 +147,16 @@ function update_scenario(data) {
         return;
     }
 
-    // First set status of all scenarios to 'deleted' and 'disabled'
-    // The ones that are still alive will get reset
-    // to something else in the next step
-    if (! first_time){
-        for (var i=0; i<jscenarios.length; i++) {
-            jscenarios[i].st_st = "DELETED";
-            jscenarios[i].st_isav=0;
-            jscenarios[i].st_done=0;
-        }
-    }
-    // now update the status of all still existing scenarios.
     var ajax_data = data.jscenario_status;
+    jscenarios = [];
     for (var i=0; i<ajax_data.length; i++) {
         var obj = create_scenario(ajax_data[i]);
-        if (first_time==1){
-            jscenarios.push(obj);
-        }else {
-            jscenarios[i] = obj;
-        }
+        jscenarios.push(obj);
     }
-    if (first_time==1){
-        first_time = 0;
-    }
+
     // update widgets (buttons,progress bars, ...)
     update_oveview_page();
 
-    /*
-    for (var i=0; i<jscenarios.length; i++) {
-        if (jscenarios[i].st_st=="DELETED") {
-            Dajaxice.ingestion.delete_scenario_django(
-                function(data){alert(data.message);},
-                {'scenario_id':jscenarios[i].id});
-        }
-    }
-    */
 }
 
 function update_oveview_page() {
