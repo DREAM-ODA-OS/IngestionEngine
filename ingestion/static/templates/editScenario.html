@@ -365,14 +365,14 @@
          {% elif "id_aoi_type" in b.id_for_label %}
         <tr><td>&nbsp;</td><td colspan=3></td></tr>
         <tr>
-          <th>{{ b.label_tag }}</th> <td> {{ b }} </td>
+          <th align="right">{{ b.label_tag }}&nbsp</th> <td> {{ b }} </td>
          {% elif "id_coastline_check" in b.id_for_label %}
           <th align="right">{{ b.label_tag }}</th> <td align="left"> {{ b }} </td>
         </tr>
          {% elif "id_bb_" in b.id_for_label%}
           {% if "id_bb_lc_long" in b.id_for_label %}
           <tr>
-            <th align="right">BBOX:&nbsp;</th> 
+            <td align="right">BBOX:&nbsp;</td> 
             <td align="left" colspan=3>Lower corner long,lat:
                  {{ b }}
           {% elif "id_bb_lc_lat" in b.id_for_label%}

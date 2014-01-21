@@ -200,9 +200,9 @@ def auto_login(request):
 def oda_init(request):
     port = request.META['SERVER_PORT']
     dmcontroller.set_ie_port(port)
-    #user = request.user
-    #if user.username != IE_DEFAULT_USER:
-    #    user = auto_login(request)
+    user = request.user
+    if user.username != IE_DEFAULT_USER:
+        user = auto_login(request)
 
 def main_page(request):
     dmcontroller.set_ie_port(request.META['SERVER_PORT'])

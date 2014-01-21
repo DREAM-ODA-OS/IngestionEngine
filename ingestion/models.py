@@ -164,6 +164,7 @@ class Scenario(models.Model):
         default=DSRC_EOWCS_CHOICE)
     dsrc_login           = models.CharField(max_length=64)
     dsrc_password        = models.CharField(max_length=64)
+    is_background_map    = models.BooleanField()
     aoi_type             = models.CharField(
         max_length=2,
         choices=AOI_CHOICES,

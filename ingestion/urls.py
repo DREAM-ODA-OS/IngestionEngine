@@ -56,7 +56,7 @@ urlpatterns = patterns('',
     url(r'^ingest/ManageScenario/listScenarios',views.getListScenarios_operation),
 
     # listScenarios for ajax / backend
-    url(r'^ingest/ManageScenario/ajaxListScenarios',views.getAjaxScenariosList_operation),
+    url(r'^ingest/ManageScenario/odaListScenarios',views.getAjaxScenariosList_operation),
 
     # getScenario
     url(r'^ingest/ManageScenario/getScenario/id=(?P<ncn_id>.*)$',views.getScenario_operation),
@@ -85,29 +85,29 @@ urlpatterns = patterns('',
     # addLocalProduct.html
     url(r'^ingest/addLocal/(?P<ncn_id>.*)$',views.addLocalProduct),
     
-    # odaAddLocalProduct.html
-    url(r'^ingest/odaAddLocal/(?P<ncn_id>.*)$',views.odaAddLocalProduct),
-
     # deleteScenario
     url(r'^scenario/delete/(?P<ncn_id>.*)',views.deleteScenario),
     
     # editScenarioForms.html
     url(r'^scenario/edit/(?P<ncn_id>.*)',views.editScenario),
 
+    # odaAddLocalProduct.html
+    url(r'^ingest/ManageScenario/odaAddLocal/(?P<ncn_id>.*)$',views.odaAddLocalProduct),
+
     # Edit Scenario for the ODAClient
-    url(r'^scenario/odaedit/(?P<ncn_id>.*)',views.odaEditScenario),
+    url(r'^ingest/ManageScenario/odaedit/(?P<ncn_id>.*)',views.odaEditScenario),
 
     # Add Scenario for the ODAClient
-    url(r'^scenario/odaadd/',views.odaAddScenario),
+    url(r'^ingest/ManageScenario/odaadd/',views.odaAddScenario),
 
     # Delete Scenario for the ODAClient
-    url(r'^scenario/odadelete/(?P<ncn_id>.*)', views.odaDeleteScenario),
+    url(r'^ingest/ManageScenario/odadelete/(?P<ncn_id>.*)', views.odaDeleteScenario),
 
     # Start Ingestion for the ODAClient
-    url(r'^ingestion/odaingest/(?P<ncn_id>.*)', views.odaIngest),
+    url(r'^ingest/ManageScenario/odaingest/(?P<ncn_id>.*)', views.odaIngest),
     
     # Stop Ingestion for the ODAClient
-    url(r'^ingestion/odastop/(?P<ncn_id>.*)', views.odaStopIngestion),
+    url(r'^ingest/ManageScenario/odastop/(?P<ncn_id>.*)', views.odaStopIngestion),
     
     # dar response
     url(r'^ingest/darResponse/(?P<seq_id>.*)$',views.darResponse),

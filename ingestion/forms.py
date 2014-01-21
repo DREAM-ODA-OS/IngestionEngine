@@ -132,47 +132,49 @@ class ScenarioForm(forms.ModelForm):
         self.fields['default_priority'].widget = forms.TextInput(attrs={'size':8})
 
         # widget labels
-        self.fields['ncn_id'          ].label = 'Unique Id'
-        self.fields['scenario_name'   ].label = 'Name'
+        self.fields['ncn_id'           ].label = 'Unique Id'
+        self.fields['scenario_name'    ].label = 'Name'
         self.fields['scenario_description'].label = 'Description'
-#        self.fields['aoi'             ].label = 'AOI'
-        self.fields['bb_lc_long'      ].label = 'BBox Lower long'
-        self.fields['bb_lc_lat'       ].label = 'BBox Lower lat'
-        self.fields['bb_uc_long'      ].label = 'BBox Upper long'
-        self.fields['bb_uc_lat'       ].label = 'BBox Upper lat'
-        self.fields['from_date'       ].label = 'From'
-        self.fields['to_date'         ].label = 'To'
-        self.fields['cloud_cover'     ].label = 'Max Cloud Cover'
-        self.fields['view_angle'      ].label = 'Max View Angle'
-        self.fields['sensor_type'     ].label = 'Sensor Type'
-        self.fields['dsrc'            ].label = 'Data Source'
-#        self.fields['dsrc_type'       ].label = 'Data Src Type'
-#        self.fields['dsrc_login'      ].label = 'Data Src login'
-#        self.fields['dsrc_password'   ].label = 'Data Src password'
-        self.fields['preprocessing'   ].label = 'S2 atmos. pre-process' 
-        self.fields['default_priority'].label = 'Ingestion priority'
-        self.fields['starting_date'   ].label = 'Repeat Starting Date'
-        self.fields['repeat_interval' ].label = 'Repeat Interval(secs)'
+        self.fields['aoi_type'         ].label = 'AOI'
+        self.fields['bb_lc_long'       ].label = 'BBox Lower long'
+        self.fields['bb_lc_lat'        ].label = 'BBox Lower lat'
+        self.fields['bb_uc_long'       ].label = 'BBox Upper long'
+        self.fields['bb_uc_lat'        ].label = 'BBox Upper lat'
+        self.fields['from_date'        ].label = 'TOI From'
+        self.fields['to_date'          ].label = 'TOI To'
+        self.fields['cloud_cover'      ].label = 'Max Cloud Cover'
+        self.fields['view_angle'       ].label = 'Max View Angle'
+        self.fields['sensor_type'      ].label = 'Sensor Type'
+        self.fields['dsrc'             ].label = 'Data Source'
+#        self.fields['dsrc_type'        ].label = 'Data Src Type'
+#        self.fields['dsrc_login'       ].label = 'Data Src login'
+#        self.fields['dsrc_password'    ].label = 'Data Src password'
+        self.fields['is_background_map'].label = 'Background Map' 
+        self.fields['preprocessing'    ].label = 'S2 atmos. pre-process' 
+        self.fields['default_priority' ].label = 'Ingestion priority'
+        self.fields['starting_date'    ].label = 'Repeat Starting Date'
+        self.fields['repeat_interval'  ].label = 'Repeat Interval(secs)'
 
         # initial values
         # for time-zone aware dates use this one instead:
         #d2 = datetime.datetime.utcnow().replace(tzinfo=utc)
         d2 = datetime.datetime.utcnow()
         d1 = d2 - datetime.timedelta(days=365)
-        self.fields['ncn_id'          ].initial = \
+        self.fields['ncn_id'           ].initial = \
             models.make_ncname(SC_NCN_ID_BASE)
-        self.fields['from_date'       ].initial = d1
-        self.fields['to_date'         ].initial = d2
-        self.fields['starting_date'   ].initial = d2
-        self.fields['cloud_cover'     ].initial = 50
-        self.fields['view_angle'      ].initial = 50
-        self.fields['sensor_type'     ].initial = ""
-        self.fields['preprocessing'   ].initial = 1
-        self.fields['default_script'  ].initial = 1
-        self.fields['default_priority'].initial = 100
-        self.fields['repeat_interval' ].initial = 0
-        self.fields['cat_registration'].initial = 0
-        self.fields['coastline_check' ].initial = 0
+        self.fields['from_date'        ].initial = d1
+        self.fields['to_date'          ].initial = d2
+        self.fields['starting_date'    ].initial = d2
+        self.fields['cloud_cover'      ].initial = 50
+        self.fields['view_angle'       ].initial = 50
+        self.fields['sensor_type'      ].initial = ""
+        self.fields['preprocessing'    ].initial = 1
+        self.fields['default_script'   ].initial = 1
+        self.fields['default_priority' ].initial = 100
+        self.fields['repeat_interval'  ].initial = 0
+        self.fields['cat_registration' ].initial = 0
+        self.fields['coastline_check'  ].initial = 0
+        self.fields['is_background_map'].initial = 0
 
         # not required fields
         self.fields['scenario_description'].required = False
@@ -191,3 +193,4 @@ class ScenarioForm(forms.ModelForm):
         self.fields['repeat_interval'     ].required = False
         self.fields['cat_registration'    ].required = False
         self.fields['coastline_check'     ].required = False
+        self.fields['is_background_map'   ].required = False
