@@ -41,9 +41,12 @@ class ScenarioForm(forms.ModelForm):
    
     class Meta:
        model = models.Scenario
-       exclude = ['user','aoi_file',
-                  'dsrc_type', 'dsrc_password', 'dsrc_login',
-                  'aoi_poly_lat', 'aoi_poly_long']
+       exclude = ['user',
+                  'aoi_file',
+                  'dsrc_password',
+                  'dsrc_login',
+                  'aoi_poly_lat',
+                  'aoi_poly_long']
 
     def clean_cloud_cover(self):
        data = self.cleaned_data['cloud_cover']
@@ -149,7 +152,6 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['dsrc_type'        ].label = 'Data Src Type'
 #        self.fields['dsrc_login'       ].label = 'Data Src login'
 #        self.fields['dsrc_password'    ].label = 'Data Src password'
-        self.fields['is_background_map'].label = 'Background Map' 
         self.fields['preprocessing'    ].label = 'S2 atmos. pre-process' 
         self.fields['default_priority' ].label = 'Ingestion priority'
         self.fields['starting_date'    ].label = 'Repeat Starting Date'
@@ -174,7 +176,7 @@ class ScenarioForm(forms.ModelForm):
         self.fields['repeat_interval'  ].initial = 0
         self.fields['cat_registration' ].initial = 0
         self.fields['coastline_check'  ].initial = 0
-        self.fields['is_background_map'].initial = 0
+
 
         # not required fields
         self.fields['scenario_description'].required = False
@@ -193,4 +195,3 @@ class ScenarioForm(forms.ModelForm):
         self.fields['repeat_interval'     ].required = False
         self.fields['cat_registration'    ].required = False
         self.fields['coastline_check'     ].required = False
-        self.fields['is_background_map'   ].required = False

@@ -38,6 +38,9 @@ class NoEPSGCodeError(Exception):
 class IngestionError(Exception):
     pass
 
+class ManageScenarioError(Exception):
+    pass
+
 class StopRequest(Exception):
     pass
 

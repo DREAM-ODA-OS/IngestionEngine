@@ -28,7 +28,6 @@ from ingestion_logic import create_dl_dir
 
 import os
 import logging
-import datetime
 import json
 
 import models
@@ -45,14 +44,23 @@ from settings import \
     IE_DEFAULT_INGEST_SCRIPT, \
     IE_DEFAULT_DEL_SCRIPT, \
     JQUERYUI_OFFLINEURL, \
+    SC_NCN_ID_BASE, \
     AUTHENTICATION_BACKENDS
 
-from utils import read_from_url
-from dm_control import DownloadManagerController, DM_DAR_STATUS_COMMAND
+from utils import \
+    read_from_url, \
+    ManageScenarioError
+
+from dm_control import \
+    DownloadManagerController, \
+    DM_DAR_STATUS_COMMAND
+
 from uqmd import updateMetaData
+
 from add_product import add_product_submit
 
-IE_DEFAULT_USER = r'dreamer'
+
+IE_DEFAULT_USER = r'drtest'
 IE_DEFAULT_PASS = r'1234'
 
 dmcontroller = DownloadManagerController.Instance()
@@ -245,6 +253,7 @@ def overviewScenario(request):
                 scenario=s,
                 is_available=1,
                 status='IDLE',
+                ingestion_pid=os.getpid(),
                 done=0.0)
             sstat.save()
             scenario_status.append(sstat)
@@ -714,12 +723,14 @@ def edit_scenario_core(request, scenario_id, template, aftersave):
         else:
             logger.warn("Scenario form is not valid",extra={'user':request.user})
             # fall through to display the form again,
-            # with errors showing automatically.
+            # with errors showing automatically, but save the
+            # users' extras input
+            handle_extras(request,scenario)
 
     else:
         form = forms.ScenarioForm()
-        # initialize values of form
         if editing:
+            # initialize values of form 
             for field in form.fields:
                 form.fields[field].initial = getattr(scenario,field)   
 
@@ -728,6 +739,8 @@ def edit_scenario_core(request, scenario_id, template, aftersave):
     extras  = []
     if editing:
         # load scripts, eoids, and extras
+        for field in form.fields:
+            form.fields[field].initial = getattr(scenario,field)   
         scripts = scenario.script_set.all()
         eoid_in = scenario.eoid_set.all()
         extras  = scenario.extraconditions_set.all()
@@ -892,14 +905,14 @@ def getAjaxScenariosList(request):
         ss = s.scenariostatus
         response_data.append(
             {
-                'id':'%s' % s.id,
-                'ncn_id':'%s' % s.ncn_id,
-                'auto_ingest' : auto_ingest,
-                'name': '%s' % s.scenario_name,
-                'decription':'%s' % s.scenario_description,
-                'st_isav': ss.is_available,
-                'st_st': ss.status,
-                'st_done': ss.done
+                'id'                  : '%s' % s.id,
+                'ncn_id'              : '%s' % s.ncn_id,
+                'auto_ingest'         : auto_ingest,
+                'scenario_name'       : '%s' % s.scenario_name,
+                'scenario_description': '%s' % s.scenario_description,
+                'st_isav':  ss.is_available,
+                'st_st'  :  ss.status,
+                'st_done':  ss.done
             })
     return "scenarios", response_data
 
@@ -908,6 +921,113 @@ def getScenario(request,args):
     scenario = models.Scenario.objects.get(ncn_id=args[0])
     response_data = models.scenario_dict(scenario)
     return "scenario", response_data
+
+def set_sc_bbox(scenario, bb):
+    scenario.bb_lc_long = bb["lc"][0]
+    scenario.bb_lc_lat  = bb["lc"][1]
+    scenario.bb_uc_long = bb["uc"][0]
+    scenario.bb_uc_lat  = bb["uc"][1]
+
+def set_sc_dates(scenario, data):
+    for d in ("from_date", "to_date", "starting_date"):
+        if d in data:
+            exec "scenario."+d+"=models.date_from_iso8601(data['"+d+"'])"
+    
+def set_sc_other(scenario, data):
+    eval_str = ""
+    for a in models.EXT_PUT_SCENARIO_KEYS:
+        if a in data:
+            val = data[a]
+            if isinstance(val, basestring):
+                val = val.encode('ascii','ignore')
+            eval_str += "scenario."+a+"="+`val`+"\n"
+    exec eval_str
+    scenario.save()
+    if 'extraconditions' in data:
+        for e in data['extraconditions']:
+            extra = models.ExtraConditions()
+            extra.xpath    = e[0]
+            extra.text     = e[1]
+            extra.scenario = scenario
+            extra.save()
+
+def update_core(data):
+    # expected to be called from within a try block
+    logger = logging.getLogger('dream.file_logger')
+    ncn_id = data['ncn_id']
+    scenario = models.Scenario.objects.get(ncn_id=ncn_id)
+    # extra conditions are deleted, they must be re-sent
+    # if the user wishes to keep them.
+    extras = scenario.extraconditions_set.all()
+    for e in extras:
+        e.delete()
+    extras = None
+    if'aoi_bbox' in data:
+        set_sc_bbox(scenario, data["aoi_bbox"])
+    set_sc_dates(scenario, data)
+    set_sc_other(scenario, data)
+    logger.info("ManageScenario: updated scenario " + scenario.ncn_id)
+    return scenario.ncn_id
+
+def new_sc_core(data):
+    # expected to be called from within a try block
+    logger = logging.getLogger('dream.file_logger')
+    ncn_id = None
+    if 'ncn_id' in data and data['ncn_id']:
+        ncn_id = data['ncn_id']
+        try:
+            scenario = models.Scenario.objects.get(ncn_id=ncn_id)
+        except  models.Scenario.DoesNotExist:
+            pass
+        else:
+            raise ManageScenarioError("Non-unique ncn-id: "+ncn_id)
+    else:
+        ncn_id = models.make_ncname(SC_NCN_ID_BASE)
+
+    scenario = models.Scenario()
+    scenario.ncn_id = ncn_id
+    scenario.user = models.User.objects.get(username='drtest')
+    if 'aoi_bbox' in data:
+        set_sc_bbox(scenario, data["aoi_bbox"])
+    else:
+        raise ManageScenarioError("'aoi_bbox' is mandatory")
+
+    set_sc_dates(scenario, data)
+    set_sc_other(scenario, data)
+    
+    logger.info("ManageScenario: added new scenario " + scenario.ncn_id)
+    return scenario.ncn_id
+
+def updateOrNew(str_data, op):
+    response_data = {}
+    data = None
+    try:
+        data = json.loads(str_data.encode('ascii','ignore'))
+    except Exception as e:
+        response_data['status'] = 1
+        response_data['error']  = "Malformed json data in POST: " + `e`
+    else:
+        wfm = work_flow_manager.WorkFlowManager.Instance()
+        wfm.lock_db()
+        try:
+            ncn_id = op(data)
+            response_data['status'] = 0
+            response_data['ncn_id'] = ncn_id
+        except Exception as e:
+            response_data['status'] = 1
+            response_data['error']  = `e`
+        finally:
+            wfm.release_db()
+
+    return response_data
+
+    
+def updateScenario(data):
+    return updateOrNew(data, update_core)
+
+def newScenario(data):
+    return updateOrNew(data, new_sc_core)
+
 
 def getAddStatus(request,args):
     # Possible Error values:
@@ -1035,6 +1155,13 @@ def getAjaxScenariosList_operation(request):
 def getScenario_operation(request,ncn_id):
     return get_request_json(getScenario, request, args=(ncn_id,))
 
+@csrf_exempt
+def updateScenario_operation(request):
+    return do_post_operation(updateScenario, request)
+
+@csrf_exempt
+def newScenario_operation(request):
+    return do_post_operation(newScenario, request)
 
 @csrf_exempt
 def addProduct_operation(request):

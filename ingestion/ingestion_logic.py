@@ -45,6 +45,7 @@ from models import \
     ScenarioStatus, \
     DSRC_EOWCS_CHOICE, \
     DSRC_OSCAT_CHOICE, \
+    DSRC_BGMAP_CHOICE, \
     AOI_BBOX_CHOICE,   \
     AOI_POLY_CHOICE,   \
     AOI_SHPFILE_CHOICE
@@ -891,10 +892,18 @@ def wait_for_download(scid, dar_url, dar_id):
 # ----- the main entrypoint  --------------------------
 def ingestion_logic(scid,
                     scenario_data,
-                    eoids,
-                    custom):
+                    eoids):
     root_dl_dir = DownloadManagerController.Instance()._download_dir
+    custom = scenario_data['extraconditions']
 
+    print "cc: " +  `scenario_data['coastline_check']`
+    if scenario_data['coastline_check'] != 'False':
+        logger.warning('coastline_check is not implemented')
+    if scenario_data['dsrc_type'] != DSRC_EOWCS_CHOICE:
+        logger.warning(
+            'Data source type ' + scenario_data['dsrc_type'] +
+            ' is not implemented')
+    
     if not os.access(root_dl_dir, os.R_OK|os.W_OK):
         raise IngestionError("Cannot write/read "+root_dl_dir)
 

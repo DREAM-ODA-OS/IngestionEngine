@@ -15,6 +15,7 @@
 
 import os
 import random
+import datetime
 
 import logging
 from django.db import models
@@ -28,6 +29,34 @@ from settings import \
     PROD_ERROR_LEN, \
     IE_SCRIPTS_DIR, \
     IE_DEFAULT_INGEST_SCRIPT
+
+# Scenario attributes that are exposed for external get operations.
+# Also used for some local interfaces.
+# More attributes than are in this tuple are exposed, but those
+# are processed individually: see scenario_dict() below.
+# 
+EXT_GET_SCENARIO_KEYS  = (
+    "aoi_type",
+    "repeat_interval",
+    "cloud_cover",
+    "view_angle",
+    "sensor_type",
+    "dsrc",
+    "dsrc_type",
+    "default_priority",
+    "default_script",
+    "preprocessing",
+    "cat_registration",
+    "coastline_check",
+    "ncn_id"
+)
+
+# additional Scenario attributes accepted for /update/new operations,
+#  in addition to EXT_GET_SCENARIO_KEYS 
+EXT_PUT_SCENARIO_KEYS  = EXT_GET_SCENARIO_KEYS + (
+    "scenario_name",
+    "scenario_description"
+)
 
 #**************************************************
 #                  Scenario                       *
@@ -82,10 +111,12 @@ AOI_CHOICES = (
 
 # Data Source
 DSRC_EOWCS_CHOICE  = 'EO'    # EO-WCS
+DSRC_BGMAP_CHOICE  = 'BG'    # Background Map
 DSRC_OSCAT_CHOICE  = 'OC'    # OpenSearch Catalogue
 
 DSRC_CHOICES = (
     (DSRC_EOWCS_CHOICE,  'EO-WCS'),
+    (DSRC_BGMAP_CHOICE,  'Background Map'),
 #    (DSRC_OSCAT_CHOICE,  'OpenSearch Catalogue'),
 )
 
@@ -93,6 +124,10 @@ DSRC_CHOICES = (
 # ------------ conversion utilities  --------------------------
 def date_to_iso8601(src_date):
     return DateFormat(src_date).format("c")
+
+def date_from_iso8601(src_str):
+    return datetime.datetime.strptime(
+        src_str, "%Y-%m-%dT%H:%M:%S" )
 
 def get_scenario_script_paths(scenario):
     # get list of scripts
@@ -113,21 +148,7 @@ def scenario_dict(db_model):
         built up from individual database fields.
     """
     response_data = {}
-    for s in (
-        "repeat_interval",
-        "cloud_cover",
-        "view_angle",
-        "sensor_type",
-        "dsrc",
-        "dsrc_type",
-        "dsrc_login",
-        "dsrc_password",
-        "default_priority",
-        "default_script",
-        "preprocessing",
-        "cat_registration",
-        "coastline_check",
-        "ncn_id"):
+    for s in ( EXT_GET_SCENARIO_KEYS ):
         response_data[s] = str(getattr(db_model,s))
 
     # convert dates to ISO-8601
@@ -144,6 +165,13 @@ def scenario_dict(db_model):
         raise UnsupportedBboxError("Unsupported AOI type for scenario id=" +\
                                        db_model.ncn_id)
 
+    extraconditions = db_model.extraconditions_set.all()
+    extras_list = []
+    for e in extraconditions:
+        extras_list.append( ( e.xpath.encode('ascii','ignore'),
+                              e.text.encode('ascii','ignore')) )
+    response_data['extraconditions'] = extras_list
+
     return response_data
 
 # ------------  scenario model definition  --------------------------
@@ -151,7 +179,7 @@ class Scenario(models.Model):
     #
     #  Caution:  the editScenario form relies on the order of the
     #   fields - rearranging the order will break the rendering of
-    #   the table
+    #   the table in the django-based standalone admin client
     #
     id                   = models.AutoField(primary_key=True)
     ncn_id               = models.CharField(max_length=NCN_ID_LEN, unique=True)
@@ -164,7 +192,6 @@ class Scenario(models.Model):
         default=DSRC_EOWCS_CHOICE)
     dsrc_login           = models.CharField(max_length=64)
     dsrc_password        = models.CharField(max_length=64)
-    is_background_map    = models.BooleanField()
     aoi_type             = models.CharField(
         max_length=2,
         choices=AOI_CHOICES,

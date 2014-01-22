@@ -73,6 +73,7 @@ function ingest(ncn_id){
                     }
                 },
                 {"ncn_id": ncn_id});
+            operation_pending = true;
         }
     } // closes else
 }
@@ -86,7 +87,6 @@ function run_ingestion(ncnid_scenario) {
         },
         {"scenario_id": ncnid_scenario} );
     // ensure updates of the page via sychronize_scenario
-    operation_pending = true;
     sync_scenarios();
 }
 

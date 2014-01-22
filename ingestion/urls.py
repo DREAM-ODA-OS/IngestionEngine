@@ -61,6 +61,12 @@ urlpatterns = patterns('',
     # getScenario
     url(r'^ingest/ManageScenario/getScenario/id=(?P<ncn_id>.*)$',views.getScenario_operation),
 
+    # getScenario
+    url(r'^ingest/ManageScenario/updateScenario/',views.updateScenario_operation),
+
+    # getScenario
+    url(r'^ingest/ManageScenario/newScenario/',views.newScenario_operation),
+
     # DM DAR status list, used mostly for development/debugging
     url(r'^ingest/dmDARStatus',views.dmDARStatus),
 

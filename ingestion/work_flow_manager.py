@@ -284,19 +284,12 @@ class Worker(threading.Thread):
             for e in eoids:
                 eoid_strs.append(e.eoid_val.encode('ascii','ignore'))
 
-            extraconditions = scenario.extraconditions_set.all()
-            extras_list = []
-            for e in extraconditions:
-                extras_list.append( ( e.xpath.encode('ascii','ignore'),
-                                      e.text.encode('ascii','ignore')) )
-
             # ingestion_logic blocks until DM is finished downloading
             self._wfm.set_ingestion_pid(sc_id, os.getpid())
             dl_dir, dar_url, dar_id = \
                 ingestion_logic(sc_id,
                                 models.scenario_dict(scenario),
-                                eoid_strs,
-                                extras_list)
+                                eoid_strs)
 
             if check_status_stopping(sc_id):
                 raise StopRequest("Stop Request")
@@ -420,6 +413,11 @@ class WorkFlowManager:
         self._lock_db = threading.Lock()
         self._logger = logging.getLogger('dream.file_logger')
 
+    def lock_db(self):
+        self._lock_db.acquire()
+
+    def release_db(self):
+        self._lock_db.release()
 
     def put_task_to_queue(self,current_task):
         if isinstance(current_task,WorkerTask):
