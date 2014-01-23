@@ -59,6 +59,9 @@ urlpatterns = patterns('',
     url(r'^ingest/ManageScenario/odaListScenarios',views.getAjaxScenariosList_operation),
 
     # getScenario
+    url(r'^ingest/ManageScenario/getScenario/ncn_id=(?P<ncn_id>.*)$',views.getScenario_operation),
+
+    # updateScenario
     url(r'^ingest/ManageScenario/getScenario/id=(?P<ncn_id>.*)$',views.getScenario_operation),
 
     # getScenario
@@ -115,6 +118,14 @@ urlpatterns = patterns('',
     # Stop Ingestion for the ODAClient
     url(r'^ingest/ManageScenario/odastop/(?P<ncn_id>.*)', views.odaStopIngestion),
     
+    # ManageScenario: Delete 
+    url(r'^ingest/ManageScenario/delete/(?P<ncn_id>.*)', views.odaDeleteScenario),
+
+    # ManageScenario: Start Ingestion 
+    url(r'^ingest/ManageScenario/ingest/(?P<ncn_id>.*)', views.odaIngest),
+
+    # ManageScenario: Stop Ingestion
+    url(r'^ingest/ManageScenario/stop/(?P<ncn_id>.*)', views.mngStopIngestion),
     # dar response
     url(r'^ingest/darResponse/(?P<seq_id>.*)$',views.darResponse),
     

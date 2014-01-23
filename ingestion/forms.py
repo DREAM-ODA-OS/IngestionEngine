@@ -37,6 +37,11 @@ class AddLocalProductForm(forms.Form):
     metadataFile = forms.FileField()
     rasterFile = forms.FileField()
 
+    def __init__(self, *args, **kwargs):
+        super(AddLocalProductForm, self).__init__(*args, **kwargs)
+        self.fields['rasterFile'].label = 'Data file'
+
+
 class ScenarioForm(forms.ModelForm):
    
     class Meta:

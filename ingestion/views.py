@@ -891,7 +891,7 @@ def getListScenarios(request):
     scenarios = models.Scenario.objects.all()
     for s in scenarios:
         response_data.append(
-            {'id':'%s' % s.ncn_id,
+            {'ncn_id':'%s' % s.ncn_id,
              'name': '%s' % s.scenario_name,
              'decription':'%s' % s.scenario_description})
     return "scenarios", response_data
@@ -992,6 +992,23 @@ def new_sc_core(data):
     else:
         raise ManageScenarioError("'aoi_bbox' is mandatory")
 
+    if not "aoi_type"  in data:
+        scenario.aoi_type = "BB"
+    if not "default_priority" in data:
+        scenario.default_priority = 100
+    if not "starting_date" in data:
+        data["starting_date"] = "2014-01-01T11:22:33"
+    if not "repeat_interval" in data:
+        scenario.repeat_interval = 0
+    if not "default_script" in data:
+        scenario.default_script = 1
+    if not "coastline_check" in data:
+        scenario.coastline_check = 0
+    if not "cat_registration" in data:
+        scenario.cat_registration = 0
+    if not "preprocessing" in data:
+        scenario.preprocessing = 0
+
     set_sc_dates(scenario, data)
     set_sc_other(scenario, data)
     
@@ -1072,7 +1089,7 @@ def odaStop_core( request, args ):
     ncn_id = args[0].encode('ascii','ignore')
     scenario = models.Scenario.objects.get(ncn_id=ncn_id)
     stop_ingestion_core(scenario_id=scenario.id)
-    return {}
+    return {'status':0}
 
 
 @csrf_exempt
@@ -1229,6 +1246,10 @@ def odaDeleteScenario(request, ncn_id):
 
 @csrf_exempt
 def odaStopIngestion(request, ncn_id):
+    return get_request_json(odaStop_core, request, (ncn_id,), wrapper=False)
+
+@csrf_exempt
+def mngStopIngestion(request, ncn_id):
     return get_request_json(odaStop_core, request, (ncn_id,), wrapper=False)
 
 @csrf_exempt

@@ -26,9 +26,9 @@ function run_delete(ncn_id) {
     // update status of scenario
     sync_scenarios();
     confirm_text =
-        "This will delete all scenario data\n" +
-        "and settings, and de-register all\n" +
-        "downloaded products from the ODA server.";
+        "This will delete all scenario data and settings\n" +
+        "for this scenario, and de-register all downloaded\n" +
+        "products for this scenario from the ODA server.";
     scenario = get_scenario(ncn_id);
     if (scenario && scenario.st_isav!=0) {
         if(confirm
