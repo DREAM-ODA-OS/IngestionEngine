@@ -300,8 +300,16 @@
             "active_dar": "",
             "ingestion_pid": 0,
             "scenario": 2
-        }
-    }, 
+    }}, 
+    {"pk": 3, "model": "ingestion.scenariostatus",
+        "fields":  {
+            "status": "IDLE",
+            "is_available": 1,
+            "done": 0.0,
+            "active_dar": "",
+            "ingestion_pid": 0,
+            "scenario": 3
+    }}, 
     { "pk": 1, "model": "ingestion.scenario", "fields": {
             "ncn_id": "scid0", 
             "aoi_file": "", 
@@ -362,10 +370,42 @@
             "from_date": "1999-01-01T08:00:00", 
             "to_date": "2000-03-15T21:00:00"
     }},
+    {"pk": 3,  "model": "ingestion.scenario",
+     "fields": {
+            "aoi_file": "",
+            "dsrc_type": "EO",
+            "aoi_type": "BB",
+            "default_script": true,
+            "bb_lc_long": -12.0,
+            "sensor_type": "",
+            "scenario_description": "For testing.",
+            "repeat_interval": 0,
+            "cloud_cover": 10.0,
+            "dsrc": "http://data.eox.at/instance00/ows",
+            "cat_registration": false,
+            "coastline_check": false,
+            "dsrc_password": "",
+            "from_date": "2013-01-25T12:45:50",
+            "aoi_poly_lat": "",
+            "scenario_name": "Cloud conver and incidence Angle from spot4 take5",
+            "preprocessing": true,
+            "user": 4,
+            "bb_uc_lat": 51.399999999999999,
+            "view_angle": 8.0,
+            "starting_date": "2014-01-25T12:45:50",
+            "bb_uc_long": 22.0,
+            "bb_lc_lat": 48.8504,
+            "dsrc_login": "",
+            "ncn_id": "cc_and_incidence",
+            "aoi_poly_long": "",
+            "default_priority": 100,
+            "to_date": "2014-01-25T12:45:50"
+    }},
     {"pk": 1, "model": "ingestion.eoid", "fields":  {
-       "scenario": 1,
-       "eoid_val":
-       "Landsat5_RGB_view"
+       "scenario": 1, "eoid_val": "Landsat5_RGB_view"
+    }}, 
+    {"pk": 2, "model": "ingestion.eoid", "fields":  {
+       "scenario": 3, "eoid_val": "Spot4Take5_N2A_PENTE"
     }}, 
     { "pk": 1, "model": "ingestion.extraconditions", "fields": {
             "scenario": 1,

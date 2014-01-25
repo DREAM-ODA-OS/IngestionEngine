@@ -68,7 +68,7 @@ function ingest(ncn_id){
             // send ajax request to Work-Flow-Manager to ingest scenario
             Dajaxice.ingestion.ingest_scenario_wfm
                 (function(data){
-                    if(data.status !== undefind) {
+                    if(data.status !== undefined) {
                         if (data.status != 0) { alert(data.message); }
                     }
                 },

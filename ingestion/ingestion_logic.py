@@ -70,6 +70,7 @@ GML_NS   = '{http://www.opengis.net/gml/3.2}'
 GMLCOV_NS= '{http://www.opengis.net/gmlcov/1.0}'
 EOP_NS   = '{http://www.opengis.net/eop/2.0}'
 OM_NS    = '{http://www.opengis.net/om/2.0}'
+OPT_NS   = '{http://www.opengis.net/opt/2.0}' 
 
 # CRS
 EPSG_4326 = 'http://www.opengis.net/def/crs/EPSG/0/4326'
@@ -86,6 +87,41 @@ DEFAULT_SERVICE_VERSION = "2.0.1"
 EXCEPTION_TAG      = "ExceptionReport"
 CAPABILITIES_TAG   = "Capabilities"
 EOCS_DESCRIPTION_TAG = "EOCoverageSetDescription"
+
+EO_METADATA_XPATH = \
+    GMLCOV_NS + "metadata/" + \
+    GMLCOV_NS + "Extension/" + \
+    WCSEO_NS  + "EOMetadata/"
+
+EO_EQUIPMENT_XPATH = \
+    EO_METADATA_XPATH + \
+    EOP_NS   + "EarthObservation/" + \
+    OM_NS    + "procedure/"        + \
+    EOP_NS   + "EarthObservationEquipment/"
+
+# cloud cover XML example
+# <!-- cloud cover -->
+# <gmlcov:metadata>
+#   <gmlcov:Extension>
+#     <wcseo:EOMetadata>
+#       <eop:EarthObservation gml:id="b57ea609-">
+#         <om:result>
+#           <opt:EarthObservationResult gml:id="uuid_94567f">
+#             <opt:cloudCoverPercentage uom="%">13.25</opt:cloudCoverPercentage>
+#           </opt:EarthObservationResult>
+#         </om:result>
+#       </eop:EarthObservation>
+#     </wcseo:EOMetadata>
+#   </gmlcov:Extension>
+# </gmlcov:metadata>
+
+CLOUDCOVER_XPATH = \
+    EO_METADATA_XPATH + \
+    EOP_NS   + "EarthObservation/" + \
+    OM_NS    + "result/"           + \
+    OPT_NS   + "EarthObservationResult/" + \
+    OPT_NS   + "cloudCoverPercentage"
+    
 
 # sensor type XML example:
 # <gmlcov:metadata>
@@ -104,16 +140,34 @@ EOCS_DESCRIPTION_TAG = "EOCoverageSetDescription"
 #         </om:procedure>
 #
 SENSOR_XPATH = \
-    GMLCOV_NS + "metadata/" + \
-    GMLCOV_NS + "Extension/" + \
-    WCSEO_NS  + "EOMetadata/" + \
-    EOP_NS    + "EarthObservation/" + \
-    OM_NS     + "procedure/"        + \
-    EOP_NS    + "EarthObservationEquipment/" + \
-    EOP_NS    + "sensor/" + \
-    EOP_NS    + "Sensor/" + \
-    EOP_NS    + "sensorType"
+    EO_EQUIPMENT_XPATH +\
+    EOP_NS   + "sensor/" + \
+    EOP_NS   + "Sensor/" + \
+    EOP_NS   + "sensorType"
     
+# acquisition angle XML example
+# <!-- acquisition angle -->
+# <gmlcov:metadata>
+#   <gmlcov:Extension>
+#     <wcseo:EOMetadata>
+#
+#       <eop:EarthObservation gml:id="some_id" >
+#         <om:procedure>
+#           <eop:EarthObservationEquipment gml:id="some_id">
+#             <eop:acquisitionParameters>
+#               <eop:Acquisition>
+#                 <eop:incidenceAngle uom="deg">+7.23391641</eop:incidenceAngle>
+#               </eop:Acquisition>
+#             </eop:acquisitionParameters>
+#           </eop:EarthObservationEquipment>
+#         </om:procedure>
+#       </eop:EarthObservation>
+
+INCIDENCEANGLE_XPATH = \
+    EO_EQUIPMENT_XPATH  + \
+    EOP_NS   + "acquisitionParameters/" + \
+    EOP_NS   + "Acquisition/" + \
+    EOP_NS   + "incidenceAngle"
 
 
 logger = logging.getLogger('dream.file_logger')
@@ -485,16 +539,44 @@ def check_custom_conditions(cd, req):
     return True
 
 
-def check_sensor_type(cd, req):
-    if not 'sensor_type' in req:
+def check_text_condition(cd, req, key, xpath):
+    if not key in req:
         return True
-    req_sensor = req['sensor_type']
-    md_sensor  = extract_path_text(cd, SENSOR_XPATH)
-    return req_sensor == md_sensor
+    req_item = req[key]
+    if req_item == '':
+        return True
+    md_item  = extract_path_text(cd, xpath)
+    if not md_item:
+        return True
+    return req_item == md_item
+
+
+def check_float_max(cd, req, key, xpath):
+    if not key in req:
+        return True
+    req_item = req[key]
+    try:
+        req_float = float(req_item)
+    except Exception as e:
+        raise IngestionError("Bad value specified for " + `key` + \
+                                 ', exception: ' + `e`)
+    md_item  = extract_path_text(cd, xpath)
+    if not md_item:
+        return True
+    try:
+        md_float = float(md_item)
+    except Exception as e:
+        logger.warning("unexpected error converting value from metadata"+\
+                           "for "+`key`+"', exception: " + `e`)
+        return True
+    if md_float <= req_float:
+        logger.info("Accepted " + key + " MD value " + `md_float`)
+        return True
+
 
 def gen_getCov_params(params, aoi_toi, md_url):
     if IE_DEBUG > 0:
-        logger.debug("Generating getcoverage params from ULR '"+md_url+"'")
+        logger.debug("Generating getcoverage params from URL '"+md_url+"'")
 
     ret = []
 
@@ -535,8 +617,17 @@ def gen_getCov_params(params, aoi_toi, md_url):
             if IE_DEBUG > 2: logger.info("  TimePeriod check failed.")
             continue
 
-        if not check_sensor_type(cd, params): 
+        if not check_text_condition(cd, params, 'sensor_type', SENSOR_XPATH):
+
             if IE_DEBUG > 2: logger.info("  sensor type check failed.")
+            continue
+
+        if not check_float_max(cd, params, 'view_angle', INCIDENCEANGLE_XPATH):
+            if IE_DEBUG > 2: logger.info("  incidence angle check failed.")
+            continue
+
+        if not check_float_max(cd, params, 'cloud_cover', CLOUDCOVER_XPATH):
+            if IE_DEBUG > 2: logger.info("  cloud cover check failed.")
             continue
 
         if not check_custom_conditions(cd, params):

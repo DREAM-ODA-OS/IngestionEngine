@@ -21,6 +21,8 @@ DEBUG = True
 TEMPLATE_DEBUG = False
 IE_AUTO_LOGIN  = True
 
+IE_N_WORKFLOW_WORKERS = 8
+
 # set to 0 for no debugging
 IE_DEBUG       = 2
 
@@ -30,8 +32,9 @@ IE_HOME_PAGE = 'ingestion'
 
 SC_NCN_ID_BASE     = 'scid'
 NCN_ID_LEN         = 96
-SC_NAME_LEN        = 64
-SC_DESCRIPTION_LEN = 1024
+SC_NAME_LEN        = 256
+SC_DESCRIPTION_LEN = 2048
+SC_DSRC_LEN        = 1024
 PROD_ERROR_LEN     = 2048
 
 # Scripts are located in IE_SCRIPTS_DIR, defined further on down

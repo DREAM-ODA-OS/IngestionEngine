@@ -570,6 +570,34 @@ def check_or_make_dir(dir_path, logger):
 def get_base_fname(orig_full_path):
     return  os.path.basename(orig_full_path)
 
+# ------------ Unix system Proc access  --------------------------
+def check_listening_port(port):
+    SYSTEM_PROC_NET_PATH   = "/proc/net/tcp"
+    PROC_UID_INDEX         = 7
+    PROC_STATUS_INDEX      = 3
+    PROC_ADDRESS_INDEX     = 1
+
+    found = False
+    try:
+        uid = "%d" % os.getuid()
+        proc = open(SYSTEM_PROC_NET_PATH, "r")
+        for l in proc:
+            fields = l.split()
+            if fields[PROC_UID_INDEX] == uid and \
+                    fields[PROC_STATUS_INDEX] == '0A':
+                p = int(fields[PROC_ADDRESS_INDEX].split(":")[1],16)
+                if p == port:
+                    found = True
+                    break
+        proc.close()
+        proc = None
+    except Exception as e:
+        pass
+    finally:
+        if None != proc: proc.close()
+    return found
+   
+
 if __name__ == '__main__':
     # used for stand-alone testing
     class Logger():
@@ -581,4 +609,3 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1: print sys.argv[1]
 
- 

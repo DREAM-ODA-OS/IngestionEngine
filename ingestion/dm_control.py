@@ -62,6 +62,7 @@ class DownloadManagerController:
         self._dar_queue = deque()
         self._lock_queue = threading.Lock()
         self._seq_id  = 0
+        self.is_dm_listening = False
 
     def get_download_dir(self):
         return self._download_dir
@@ -92,6 +93,7 @@ class DownloadManagerController:
                             self._logger.info(msg)
                             found = True
                             port_found = True
+                            self.is_dm_listening = True
                             break
                 proc.close()
                 proc = None

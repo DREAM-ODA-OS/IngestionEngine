@@ -26,6 +26,7 @@ from settings import \
     NCN_ID_LEN, \
     SC_NAME_LEN, \
     SC_DESCRIPTION_LEN, \
+    SC_DSRC_LEN, \
     PROD_ERROR_LEN, \
     IE_SCRIPTS_DIR, \
     IE_DEFAULT_INGEST_SCRIPT
@@ -185,7 +186,7 @@ class Scenario(models.Model):
     ncn_id               = models.CharField(max_length=NCN_ID_LEN, unique=True)
     scenario_name        = models.CharField(max_length=SC_NAME_LEN)
     scenario_description = models.CharField(max_length=SC_DESCRIPTION_LEN)
-    dsrc                 = models.CharField(max_length=1024)
+    dsrc                 = models.CharField(max_length=SC_DSRC_LEN)
     dsrc_type            = models.CharField(
         max_length=2,
         choices=DSRC_CHOICES,

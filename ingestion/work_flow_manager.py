@@ -31,6 +31,7 @@ from django.utils.timezone import utc
 
 from settings import \
     IE_DEBUG, \
+    IE_N_WORKFLOW_WORKERS, \
     STOP_REQUEST, \
     IE_SCRIPTS_DIR, \
     IE_DEFAULT_CATREG_SCRIPT 
@@ -406,10 +407,13 @@ class AISWorker(threading.Thread):
 class WorkFlowManager:
     def __init__(self):
         self._queue = Queue.LifoQueue() # first items added are first retrieved
+
         self._workers = []
-        self._workers.append(Worker(self))
-        self._workers.append(Worker(self))
-        self._workers.append(AISWorker(self))
+        n = 0
+        while n < IE_N_WORKFLOW_WORKERS:
+            self._workers.append(Worker(self))
+            n += 1
+
         self._lock_db = threading.Lock()
         self._logger = logging.getLogger('dream.file_logger')
 

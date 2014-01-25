@@ -118,6 +118,9 @@ urlpatterns = patterns('',
     # Stop Ingestion for the ODAClient
     url(r'^ingest/ManageScenario/odastop/(?P<ncn_id>.*)', views.odaStopIngestion),
     
+    # Show log file contents for the ODAClient
+    url(r'^ingest/ManageScenario/odashowlog/', views.odaShowlog),
+    
     # ManageScenario: Delete 
     url(r'^ingest/ManageScenario/delete/(?P<ncn_id>.*)', views.odaDeleteScenario),
 

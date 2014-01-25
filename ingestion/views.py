@@ -677,6 +677,13 @@ def odaAddLocalProduct(request, ncn_id):
         'uploadedPage.html')
 
 
+def show_log_core(request, template):
+    print 'show_log_core: ' + `template`
+    variables = RequestContext(
+        request,
+        {'home_page':''})
+    return render_to_response( template, variables)
+
 def edit_scenario_core(request, scenario_id, template, aftersave):
     """ used for both add_scneario and edit_scenario
         for add_scenario the scenario_id is None
@@ -787,6 +794,10 @@ def odaEditScenario(request, ncn_id):
         get_scenario_id(ncn_id),
         'odaEditScenario.html',
         'savedPage.html')
+
+def odaShowlog(request):
+    oda_init(request)
+    return show_log_core(request, 'odaShowLog.html')
 
 
 def deleteScenario(request, ncn_id):
@@ -1255,3 +1266,4 @@ def mngStopIngestion(request, ncn_id):
 @csrf_exempt
 def odaIngest(request, ncn_id):
     return get_request_json(odaIngest_core, request, (ncn_id,), wrapper=False )
+
