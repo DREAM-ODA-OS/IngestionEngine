@@ -3,7 +3,10 @@ IngestionEngine
 
 DREAM Ingestion Engine
 
-This is a development version, not released.
+This is release 0.5.1.
+Basic ingestion functionality should work.
+Includes sample scenarios for testing; it is suggested to use the
+last one ('cc_and_incidence') for a first test.
 
 ### Update 19.1.2014:
 
