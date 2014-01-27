@@ -187,7 +187,7 @@ class DownloadManagerController:
         except URLError as e:
             self._logger.error("Download Manager Error: " + `e`)
             if e.reason:
-               self._logger.error("   reason: " + e.reason)
+               self._logger.error("   reason: " + `e.reason`)
             raise DMError("URLError")
         dm_dar_id = None
         if "success" in dm_resp and dm_resp["success"]:

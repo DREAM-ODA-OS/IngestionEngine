@@ -150,7 +150,8 @@ def scenario_dict(db_model):
     """
     response_data = {}
     for s in ( EXT_GET_SCENARIO_KEYS ):
-        response_data[s] = str(getattr(db_model,s))
+#        response_data[s] = str(getattr(db_model,s))
+        response_data[s] = getattr(db_model,s)
 
     # convert dates to ISO-8601
     response_data["from_date"    ] = date_to_iso8601(db_model.from_date)

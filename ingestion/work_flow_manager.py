@@ -244,7 +244,7 @@ class Worker(threading.Thread):
                 parameters["data"],
                 self._logger)
             scripts_args = self.mk_scripts_args(
-                parameters["scripts"], mf_name, parameters["cat_reg"])
+                parameters["scripts"], mf_name, parameters["cat_registration"])
             nerrors += self.run_scripts(sc_id, ncn_id, scripts_args)
             if nerrors > 0:
                 raise IngestionError("Number of errors " +`nerrors`)
@@ -278,7 +278,8 @@ class Worker(threading.Thread):
             self._id, sc_id, 0, "GENERATING URLS", percent)
         try:
             scenario = models.Scenario.objects.get(id=sc_id)
-            ncn_id = scenario.ncn_id
+            ncn_id   = scenario.ncn_id
+            cat_reg  = scenario.cat_registration
 
             eoids = scenario.eoid_set.all()
             eoid_strs = []
@@ -317,7 +318,7 @@ class Worker(threading.Thread):
                     continue
 
                 scripts_args = self.mk_scripts_args(
-                    parameters["scripts"], mf_name, parameters["cat_reg"])
+                    parameters["scripts"], mf_name, cat_reg)
                 nerrors += self.run_scripts(sc_id, ncn_id, scripts_args)
 
                 percent  = 100 * (float(i) / float(n_dirs))

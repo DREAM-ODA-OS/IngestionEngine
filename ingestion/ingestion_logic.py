@@ -50,6 +50,7 @@ from models import \
     AOI_POLY_CHOICE,   \
     AOI_SHPFILE_CHOICE
 
+from coastline_ck import coastline_ck
 
 # For debugging:
 # MAX_DEOCS_URLS limits the number of DescribeEOCoverageSet requests issued,
@@ -492,6 +493,13 @@ def check_bbox(coverageDescription, req_bbox):
         return False
     return bb.overlaps(req_bbox)
 
+def check_coastline(coverageDescription, params):
+    if not 'coastline_check' in params:
+        return True
+    if params['coastline_check'] == False:
+        return True
+    return coastline_ck(coverageDescription)
+
 def check_timePeriod(coverageDescription, req_tp, md_src):
     if req_tp == None:     return True
     timePeriod = extract_om_time(coverageDescription)
@@ -574,13 +582,24 @@ def check_float_max(cd, req, key, xpath):
         return True
 
 
-def gen_getCov_params(params, aoi_toi, md_url):
+def gen_getCov_params(params, aoi_toi, md_url, eoid):
+    """ params is the dictionary of input parameters
+        aoi_toi is a tuple containing Area-of-interest Bounding-Box and
+                the Time of Interest time range
+        md_url  is the metadata url
+
+        This function generates parameters for the get_coverage request
+        generated upstream.
+    """
     if IE_DEBUG > 0:
         logger.debug("Generating getcoverage params from URL '"+md_url+"'")
 
     ret = []
 
+    # cd_tree: coverage description tree extracted from the
+    #          metadata XML file
     (fp, cd_tree) = getXmlTree(md_url, EOCS_DESCRIPTION_TAG)
+
     if check_status_stopping(params['sc_id']):
         raise StopRequest("Stop Request")
 
@@ -592,7 +611,7 @@ def gen_getCov_params(params, aoi_toi, md_url):
         try:
             nreturned = cd_tree.attrib['numberReturned']
             nmatched  = cd_tree.attrib['numberMatched']
-            logger.info("    nreturned = "+`nreturned`+\
+            logger.info("    MD reports nreturned = "+`nreturned`+\
                             ", nmatched =  "+`nmatched`)
         except KeyError:
             pass
@@ -603,6 +622,7 @@ def gen_getCov_params(params, aoi_toi, md_url):
     if len(cds) < 1:
         logger.warning("No CoverageDescriptions found in '"+md_url+"'")
 
+    if IE_DEBUG > 1: logger.info(" EOID "+`eoid`+": checking coditions")
     passed = 0
     for cd in cds:
 
@@ -618,7 +638,6 @@ def gen_getCov_params(params, aoi_toi, md_url):
             continue
 
         if not check_text_condition(cd, params, 'sensor_type', SENSOR_XPATH):
-
             if IE_DEBUG > 2: logger.info("  sensor type check failed.")
             continue
 
@@ -630,6 +649,10 @@ def gen_getCov_params(params, aoi_toi, md_url):
             if IE_DEBUG > 2: logger.info("  cloud cover check failed.")
             continue
 
+        if not check_coastline(cd, params):
+            if IE_DEBUG > 2: logger.info("  Coastline check failed.")
+            continue
+
         if not check_custom_conditions(cd, params):
             if IE_DEBUG > 2: logger.info("  custom conds check failed.")
             continue
@@ -637,7 +660,8 @@ def gen_getCov_params(params, aoi_toi, md_url):
         passed = passed+1
         coverageId = extract_CoverageId(cd)
         if None == coverageId:
-            logger.error("Cannot find CoverageId in '"+md_url+"'")
+            logger.error("EOID " + `eoid` +
+                         " Cannot find CoverageId in '"+md_url+"'")
             continue
         if IE_DEBUG > 2: logger.info("  coverageId="+coverageId)
         ret.append("CoverageId="+coverageId)
@@ -645,13 +669,25 @@ def gen_getCov_params(params, aoi_toi, md_url):
     if None != fp: fp.close()
     cd_tree = None
     if IE_DEBUG > 1:
-        logger.info( "conditions passed: "+`passed`+" / "+`len(cds)`)
+        logger.info( "EOID " + `eoid` +
+                     " conditions passed: "+`passed`+" / "+`len(cds)`)
         
     return ret
     
 
 def process_csDescriptions(params, aoi_toi, service_version, md_urls):
-    logger.info("Processing "+`len(md_urls)`+" coverageSetDescriptions")
+    """ Input: md_urls is a tuple, where each element is a pair containg
+                   the MetaData URL and its EOID :  (MetaData_URL, EOID)
+               aoi_toi is a tuple containing Area-of-interest
+               Bounding-Box and the Time of Interest time range
+        Each md_url is accessed in turn to get the metatada from the
+        product facility.
+        The MD is expected to contain a wcseo:EOCoverageSetDescription,
+          with a number of coverageSetDescriptions
+    """
+    logger.info("Processing "+`len(md_urls)`+
+                " EOCoverageSetDescription urls.")
+
     subset_str = \
         "subset=Lat," +EPSG_4326+"("+`aoi_toi[0].ll[1]`+","+`aoi_toi[0].ur[1]`+")"+\
         "&subset=Long,"+EPSG_4326+"("+`aoi_toi[0].ll[0]`+","+`aoi_toi[0].ur[0]`+")"
@@ -661,27 +697,34 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
         "&" + WCS_GET_COVERAGE + \
         "&" + WCS_FORMATS
     gc_requests = []
-    ndeocs = 1    # number of DescribeEOCOverageSet urls processed
+    ndeocs = 0    # number of DescribeEOCoverageSet urls processed
     ngc    = 1
     toteocs = float(len(md_urls))
 
-    for md_url in md_urls:
+    for md_url_pair in md_urls:
+        md_url = md_url_pair[0]
+        eoid   = md_url_pair[1]
         if check_status_stopping(params["sc_id"]):
             raise StopRequest("Stop Request")
 
-        set_status(params["sc_id"],
-                   "Create DAR: get MD",
-                   (float(ndeocs)/toteocs)*100.0)
+        #make sure percent_done is > 0
+        percent_done = (float(ndeocs)/toteocs)*100.0
+        if percent_done < 0.5:  percent_done = 1.0
+        set_status(params["sc_id"], "Create DAR: get MD", percent_done)
+
+        logger.info("Processing MD for EOID " + `eoid`)
         if 0 != DEBUG_MAX_DEOCS_URLS:
             if ndeocs>DEBUG_MAX_DEOCS_URLS: break
             ndeocs += 1
-        getCov_params = gen_getCov_params(params, aoi_toi, md_url)
+
+        getCov_params = gen_getCov_params(params, aoi_toi, md_url, eoid)
         for gc_fragment in getCov_params:
             if 0 != DEBUG_MAX_GETCOV_URLS:
                 if ngc>DEBUG_MAX_GETCOV_URLS: break
                 ngc += 1
             gc_requests.append( base_url +"&"+ gc_fragment +"&"+ subset_str)
 
+    set_status(params["sc_id"], "Create DAR: get MD", 100)
     return gc_requests
 
 
@@ -711,7 +754,7 @@ def getMD_urls(params, service_version, id_list):
         '&subset=Long('+ `ll[0]`+','+`ur[0]`+')'
     md_urls = []
     for dss_id in id_list:
-        md_urls.append( base_url + "&EOId=" + dss_id )
+        md_urls.append( (base_url + "&EOId=" + dss_id, dss_id) )
     return md_urls
     
 def urls_from_OSCAT(params, eoids):
@@ -987,9 +1030,6 @@ def ingestion_logic(scid,
     root_dl_dir = DownloadManagerController.Instance()._download_dir
     custom = scenario_data['extraconditions']
 
-    print "cc: " +  `scenario_data['coastline_check']`
-    if scenario_data['coastline_check'] != 'False':
-        logger.warning('coastline_check is not implemented')
     if scenario_data['dsrc_type'] != DSRC_EOWCS_CHOICE:
         logger.warning(
             'Data source type ' + scenario_data['dsrc_type'] +
