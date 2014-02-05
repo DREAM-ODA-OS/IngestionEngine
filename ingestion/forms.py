@@ -179,8 +179,8 @@ class ScenarioForm(forms.ModelForm):
         self.fields['default_script'   ].initial = 1
         self.fields['default_priority' ].initial = 100
         self.fields['repeat_interval'  ].initial = 0
-        self.fields['cat_registration' ].initial = 0
-        self.fields['coastline_check'  ].initial = 0
+        self.fields['cat_registration' ].initial = False
+        self.fields['coastline_check'  ].initial = False
 
 
         # not required fields

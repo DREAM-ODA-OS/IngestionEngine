@@ -80,6 +80,12 @@ def find_process_ids(match_strings):
 
 
 # ------------ tmp name generating functions  --------------------------
+LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+LEN_LET = len(LETTERS)
+
+def letter_encode(i):
+    return LETTERS[i]
+
 def mkFname(base):
     tnow = time.time()
     ms = "%03d" % int(1000*(tnow-floor(tnow)))

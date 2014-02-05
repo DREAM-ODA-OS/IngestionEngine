@@ -1,0 +1,124 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+{% load staticfiles %}
+{% load dajaxice_templatetags %}
+
+<head>
+	
+    <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
+    <script src = "{% static 'js/jquery.js' %}">
+
+    <script src="/static/dajaxice/dajaxice.core.js" charset="utf-8"></script>
+
+
+    {% dajaxice_js_import 'nocsrf' %}
+
+    <script>
+        status = "show";
+
+         function get_cookie(cname){
+            var n = cname + "=";
+            var ca = document.cookie.split(';');
+            for(var i=0; i<ca.length; i++)
+            {
+                var c = ca[i].trim();
+                if (c.indexOf(n)==0) return c.substring(n.length,c.length);
+            }
+            return "";
+         }
+
+         function set_cookie(cname,val){
+             var d = new Date();
+             d.setTime(d.getTime()+(5*365*24*60*60*1000));  // 5 yrs
+             var expires = "expires="+d.toGMTString();
+             document.cookie = cname + "=" + val + "; " + expires;
+         }
+
+        first_time = 1
+        log_message_type = 'INFO';
+        max_log_lines = '';
+
+        function show_logging(data){
+            messages = data.message;
+            var logtable = '<table class="ieTblShaded">';
+            for (var i=0; i<messages.length; i++) {
+                logtable += '<tr>' 
+                switch (messages[i].length) {
+                case 0:
+                    break;
+                case 1:
+                    logtable +=
+                        '<td>&nbsp;</td>' +
+                        '<td colspan=3>' + messages[i][0] + '</td>';
+                    break;
+                case 2:
+                    logtable +=
+                        '<td>' + messages[i][0] + '&nbsp;</td>' +
+                        '<td>' + messages[i][1] + '</td>';
+                    break;
+                default:
+                    logtable +=
+                        '<td>' + messages[i][0] + '&nbsp;</td>' +
+                        '<td>' + messages[i][1] + '</td>' +
+                        '<td>' + messages[i][2] + '&nbsp;</td>' +
+                        '<td>' + messages[i][3] + '</td>';
+                }
+                logtable += '</tr>';
+            }
+            logtable = logtable + '</table>';
+            document.getElementById('div_logging').innerHTML = logtable;
+        }
+
+        read_logging = function(){
+            inpt = document.getElementById('input_n_lines');
+            if (inpt) { maxll=$('#input_n_lines').val();}
+            if (maxll != max_log_lines) {
+                max_log_lines = maxll;
+                set_cookie("nloglines", maxll);
+            }
+            Dajaxice.ingestion.read_logging(
+                show_logging,
+                {'message_type' : log_message_type,
+                 'max_log_lines': maxll} );
+        }
+
+
+        function init_log_display() {
+            if (first_time==1) {
+                read_logging();
+                first_time = 0;
+                window.setInterval(read_logging, 3000);  // every n milliseconds
+            }
+        }
+
+        window.onload=function(){
+            maxll = get_cookie("nloglines");
+            if (maxll != "") { max_log_lines = maxll; }
+            init_log_display()
+        };
+
+	</script>
+{% block head %}
+{% endblock %}
+
+
+{% block title %}
+
+<P class="ieTitle3">Ingestion Engine Log File</P>
+{% endblock %}
+
+{% block content %}
+
+
+    <P class="ieTitle4">Ingestion log file &nbsp;  &nbsp;
+    <script>
+    maxll = get_cookie("nloglines");
+    if (maxll != "") { max_log_lines = maxll; }
+    document.write('lines: <input style="border-style:none; background-color:#9fcfcf; font-size:12; margin: 0 0 4px"  id="input_n_lines" type="text" size=5 name="n_lines" value=' +
+                   max_log_lines + '>');
+    </script>
+</P>
+<div id="div_logging"></div>
+
+
+{% endblock %}

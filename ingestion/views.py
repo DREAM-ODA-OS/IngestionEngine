@@ -87,9 +87,6 @@ def delete_scenario_core(scenario_id=None, ncn_id=None):
         scenario = models.Scenario.objects.get(id=int(scenario_id))
         ncn_id   = scenario.ncn_id
 
-    scripts = scenario.script_set.all()
-    #for s in scripts:
-    #    print s.script_name
     # send request/task to work-flow-manager to run delete script
     wfm = work_flow_manager.WorkFlowManager.Instance()
 
@@ -99,32 +96,26 @@ def delete_scenario_core(scenario_id=None, ncn_id=None):
         ret = {'status':1, 'message':"Error: "+msg}
     else:
 
-        logger.info ("Deleting scenario ncn_id="+`ncn_id`)
-        del_scripts = []
+        logger.info ("Submitting to Work-Queue: delete scenario ncn_id="+`ncn_id`)
         default_delete_script = os.path.join(
             IE_SCRIPTS_DIR, IE_DEFAULT_DEL_SCRIPT)
         #del_scripts = models.UserScript.objects.filter(
         #    script_name__startswith="deleteScenario-",user_id__exact=user.id)
-        if len(del_scripts)>0:
-            del_script = del_scripts[0]
-            current_task = work_flow_manager.WorkerTask(
-                {"scenario_id":scenario_id,
-                 "task_type":"DELETE_SCENARIO",
-                 "scripts":["%s/%s" % (MEDIA_ROOT,del_script.script_file)]})
-            wfm.put_task_to_queue(current_task)
+        del_scripts = [default_delete_script]
+        scripts = scenario.script_set.all()
+        for s in scripts:
+            del_scripts.append("%s/%s" % (MEDIA_ROOT,s.script_file))
+        if len(del_scripts)==0:
+            logger.warning('Scenario: id=%d name=%s does not have a delete script.' \
+                               % (scenario.id,scenario.scenario_name))
+
+        current_task = work_flow_manager.WorkerTask(
+            {"scenario_id":scenario_id,
+             "task_type":"DELETE_SCENARIO",
+             "scripts":del_scripts})
+        wfm.put_task_to_queue(current_task)
         
-        elif default_delete_script:
-            current_task = work_flow_manager.WorkerTask(
-                {"scenario_id":scenario_id,
-                 "task_type":"DELETE_SCENARIO",
-                 "scripts":[default_delete_script]
-                 })
-            wfm.put_task_to_queue(current_task)
         
-        else:
-           logger.warning(
-               'Scenario: id=%d name=%s does not have a delete script.' \
-                   % (scenario.id,scenario.scenario_name))
         ret = {'status':0,}
 
     return ret

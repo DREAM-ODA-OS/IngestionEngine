@@ -34,7 +34,8 @@ from settings import \
     IE_N_WORKFLOW_WORKERS, \
     STOP_REQUEST, \
     IE_SCRIPTS_DIR, \
-    IE_DEFAULT_CATREG_SCRIPT 
+    IE_DEFAULT_CATREG_SCRIPT, \
+    IE_DEFAULT_CATDEREG_SCRIPT
 
 from ingestion_logic import \
     ingestion_logic, \
@@ -150,7 +151,7 @@ class Worker(threading.Thread):
     def delete_func(self, parameters):
         scid = parameters["scenario_id"]
         self._wfm._lock_db.acquire()
-
+        
         try:
             scenario = models.Scenario.objects.get(id=int(scid))
             ncn_id = scenario.ncn_id
@@ -177,13 +178,20 @@ class Worker(threading.Thread):
             scenario_status.done = 1
             scenario_status.save()
 
+            is_cat_reg = scenario.cat_registration
+
             #this may run for a long time, and the db is locked, but
             #there is nothing to be done here..
             nerrors = 0
             try:
                 for script in parameters["scripts"]: # scripts absolute path
                     self._logger.info(`ncn_id`+" del running script "+`script`)
-                    r = subprocess.call([script, ncn_id])
+                    if is_cat_reg:
+                        args = [script, ncn_id,
+                                "-catreg=%s"%os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_CATDEREG_SCRIPT)]
+                    else:
+                        args = [script, ncn_id]
+                    r = subprocess.call(args)
                     if 0 != r:
                         nerrors += 1
                         self._logger.error(

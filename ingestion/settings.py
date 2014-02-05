@@ -39,11 +39,12 @@ PROD_ERROR_LEN     = 2048
 
 # Scripts are located in IE_SCRIPTS_DIR, defined further on down
 #  Here use only the leaf file name, not the full path
-IE_DEFAULT_INGEST_SCRIPT  = 'def_ingest.sh'
-IE_DEFAULT_UQMD_SCRIPT    = 'def_uqmd.sh'
-IE_DEFAULT_ADDPROD_SCRIPT = 'def_addProduct.sh'
-IE_DEFAULT_DEL_SCRIPT     = 'def_delete.sh'
-IE_DEFAULT_CATREG_SCRIPT  = 'cat_reg.sh'
+IE_DEFAULT_INGEST_SCRIPT   = 'def_ingest.sh'
+IE_DEFAULT_UQMD_SCRIPT     = 'def_uqmd.sh'
+IE_DEFAULT_ADDPROD_SCRIPT  = 'def_addProduct.sh'
+IE_DEFAULT_DEL_SCRIPT      = 'def_delete.sh'
+IE_DEFAULT_CATREG_SCRIPT   = 'cat_reg.sh'
+IE_DEFAULT_CATDEREG_SCRIPT = 'cat_dereg.sh'
 
 UQMD_SUBDIR = 'uqmd_metadata'
 ADDPRODUCT_SUBDIR = 'added_products'

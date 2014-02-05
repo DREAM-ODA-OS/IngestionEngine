@@ -5,14 +5,15 @@
 #  to ingest a downloaded product into the ODA server.
 #
 # usage:
-# $0 manifest-file [-catreg]
+# $0 manifest-file [-catreg=script]
 #
 #  The script should exit with a 0 status to indicate
 # success; a non-zero status indicates failure.
 #
-# catreg is a flag to request registration in the local
-#        metadata catalogue.  If absent no registration
-#        should be done.
+# catreg is used to request registration in the local
+#        metadata catalogue. The script is the name of
+#        the script to be executed for cat registration.
+#        If absent no registration should be done.
 #
 # The manifest file is further input to this script,
 # and contains KV pairs.  Values are strings enclosed
