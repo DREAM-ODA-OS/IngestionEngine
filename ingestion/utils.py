@@ -382,7 +382,6 @@ def split_wcs_tmp(path, f, logger):
             raise IngestionError("File exists: "+meta_fname)
 
         meta_fp = open(meta_fname,"w")
-        meta_fp.write(l4)
         l = l4
         while l != boundary:
             meta_fp.write(l)
@@ -415,9 +414,9 @@ def split_wcs_tmp(path, f, logger):
                     "'filename=' not found in 'Content-Disposition' header"+ \
                         "headers: "+`hdrs`)
             if fnstring.startswith('/') or '../' in fnstring:
-                raise IngestionError("Bad filename="+cd)
+                raise IngestionError("Bad filename='"+fnstring+"'")
             if len(cd) == 2:
-                data_fname = os.path.join(path, cd[1])
+                data_fname = os.path.join(path, fnstring)
 
         if None == data_fname:
             data_fname = fn+DATA_SUFFIX
@@ -605,7 +604,7 @@ def check_listening_port(port):
    
 
 if __name__ == '__main__':
-    # used for stand-alone testing
+    # Hook used for stand-alone testing
     class Logger():
         def info(self,s):   print "INFO: "+s
         def warning(self,s):print "WARN: "+s
@@ -615,3 +614,5 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1: print sys.argv[1]
 
+    split_wcs_tmp("/home/novacek/dream/tst_tmp/debug_2014-02-06", sys.argv[1], Logger())
+    

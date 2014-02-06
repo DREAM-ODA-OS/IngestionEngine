@@ -175,8 +175,8 @@ class ScenarioForm(forms.ModelForm):
         self.fields['cloud_cover'      ].initial = 50
         self.fields['view_angle'       ].initial = 50
         self.fields['sensor_type'      ].initial = ""
-        self.fields['preprocessing'    ].initial = 1
-        self.fields['default_script'   ].initial = 1
+        self.fields['preprocessing'    ].initial = True
+        self.fields['default_script'   ].initial = True
         self.fields['default_priority' ].initial = 100
         self.fields['repeat_interval'  ].initial = 0
         self.fields['cat_registration' ].initial = False
