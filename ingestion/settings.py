@@ -304,7 +304,7 @@ INSTALLED_APPS = (
 # browser locally as cookie.
 BROWSER_N_LOGLINES = 35
 LOGGING_DIR = os.path.join(os.path.dirname(PROJECT_DIR), "logs")
-LOGGING_FILE = os.path.join(LOGGING_DIR,"log")
+LOGGING_FILE = os.path.join(LOGGING_DIR,"ingestion_engine.log")
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
