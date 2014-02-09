@@ -61,13 +61,18 @@ PROJECT_DIR = os.path.dirname(__file__)
 #    "DM_MaxPortWaitSecs": 44
 # }
 
+INGESTION_CONFIG_JSON= os.path.join(os.path.dirname(PROJECT_DIR),"ingestion_config.json") 
+
 try:
-    fp = open("ingestion_config.json", "r")
-    config = json.load(fp)
-    fp.close()
+
+    with open(INGESTION_CONFIG_JSON, "r") as fp : 
+        config = json.load(fp)
+
 except Exception as e:
-    print "warning: ingestion_settings.json not found, "+`e`
-    print "         using defaults"
+
+    print >>sys.stderr, "WARNING: %s not found! REASON: %s " % \
+            ( INGESTION_CONFIG_JSON , `e` ) 
+    print >>sys.stderr, "WARNING: Using default settings." 
     config = {}
 
 ADMINS = (
