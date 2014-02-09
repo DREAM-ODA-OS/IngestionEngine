@@ -302,7 +302,7 @@ INSTALLED_APPS = (
 # Settable by the user in the browser, then saved by the
 # browser locally as cookie.
 BROWSER_N_LOGLINES = 35
-LOGGING_DIR = os.path.join(os.getcwd(), "logs")
+LOGGING_DIR = os.path.join(os.path.dirname(PROJECT_DIR), "logs")
 LOGGING_FILE = os.path.join(LOGGING_DIR,"log")
 LOGGING = {
     'version': 1,
