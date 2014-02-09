@@ -26,6 +26,7 @@ from urllib2 import HTTPError, URLError
 
 from utils import find_process_ids, pid_is_valid, get_dm_config, \
     read_from_url, DMError, mkIdBase, check_or_make_dir
+from utils import ConfigError 
 
 from settings import \
     DM_CONF_FN, \
