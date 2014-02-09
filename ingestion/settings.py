@@ -118,7 +118,8 @@ DOWNLOAD_MANAGER_CONFIG_DIR = os.path.join(DOWNLOAD_MANAGER_DIR,"conf")
 # The DM configuration file name, incl. its full path prefix.
 DM_CONF_FN = os.path.join(
     DOWNLOAD_MANAGER_CONFIG_DIR,
-    "userModifiableSettingsPersistentStore.properties")
+    "user-modifiable-settings.properties" ) 
+#    "userModifiableSettingsPersistentStore.properties")
 
 if "DM_MaxPortWaitSecs" in config:
     MAX_PORT_WAIT_SECS = config["DM_MaxPortWaitSecs"]
