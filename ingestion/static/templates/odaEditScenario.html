@@ -6,10 +6,9 @@
 {% block head %}	
     <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
     <script src = "{% static 'js/jquery.js' %}">
+	</script>
 
 	<script>
-	var script_objects = -1;
-    var show_eoids = 0;
     var show_extras = 0;
 
     var input_status = "{{status}}";
@@ -60,21 +59,18 @@
 
     function show_hide_extras()
     {
-        eoidsPara  = document.getElementById('id_eoids');
         extrasPara = document.getElementById('id_extra');
         extrasBtn  = document.getElementById('id_but_shh_extras');
         if (show_extras) {
-            eoidsPara.style.display="none";
             extrasPara.style.display="none";
             extrasBtn.value =  "Show Extras";
             show_extras = 0;
         } else {
-            eoidsPara.style.display="block";
             extrasPara.style.display="block";
-            show_extras = 1;
             extrasBtn.value =  "Hide Extras";
+            show_extras = 1;
         }
-    }
+    };
 
 	</script>
 	
@@ -97,9 +93,7 @@
 <P class="ieTitle3">Ingestion Admin Scenario Editor</P>
 {% endblock %}
 
-
 {% block content %}
-
 
 <form method="post" action="" enctype="multipart/form-data">
 {% csrf_token %}
@@ -135,18 +129,6 @@
                title="Show or Hide EXTRAS"
                onClick="show_hide_extras()"
                value="Show Extras"/>
-    <div class="cl_eoids" id="id_eoids" style="display:none">
-     <table>
-	<tr id="tr_eoids">
-            <td> Restrict Products to EO-IDs: &nbsp; </td>
-		<td> 
-                <script>
-                document.writeln('<input type="text" size=60 id="id_eoid_input" name="eoid_val" value="'+eoids+'">');
-                </script>
-        </td> 
-    </tr>
-     </table>
-    </div>
     </p> <p>
     <div class="cl_extra" id="id_extra" style="display:none">
      <table>
@@ -159,15 +141,28 @@
                onClick="append_more_extras()"
                value="Add additional conditions"/>
     </div>
-    </p>
+    </p><p>
      <table>
         <tr>
           <th>{{ b.label_tag }}</th> <td colspan=3> {{ b }} </td>
         </tr>
          {% elif "id_aoi_type" in b.id_for_label %}
+     </table>
+     <table>
+     <tr><td>&nbsp;</td><td colspan=3></td></tr>
+	 <tr id="tr_eoids">
+     <th align="right"> Data Set IDs: &nbsp; </th>
+		<td colspan=3> 
+                <script>
+                document.writeln('<input type="text" size=60 id="id_eoid_input" '
+                                 + ' name="eoid_val" title="Comma-separated list" value="'+eoids+'">');
+                </script>
+        </td> 
+    </tr>
+
         <tr><td>&nbsp;</td><td colspan=3></td></tr>
         <tr>
-          <th>{{ b.label_tag }}</th> <td> {{ b }} </td>
+          <th align="right">{{ b.label_tag }}&nbsp</th> <td> {{ b }} </td>
          {% elif "id_coastline_check" in b.id_for_label %}
           <th align="right">{{ b.label_tag }}</th> <td align="left"> {{ b }} </td>
         </tr>
@@ -230,8 +225,8 @@
 	</table>
     
     <!-- input type=BUTTON class="AddButton" id="AddButton" nane="AddScript" value="Add Script" -->
-    
-     <p></p>
+    </p>
+    <p></p>
   
     <input type="submit" class="SubmitButton" value="save"/>
 </form>        
