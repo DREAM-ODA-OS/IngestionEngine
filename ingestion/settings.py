@@ -126,6 +126,9 @@ if "DM_MaxPortWaitSecs" in config:
 else:
     MAX_PORT_WAIT_SECS = 40
 
+
+DM_DAM_RESP_URL = "ingest/DataAccessMonitoringResp"
+
 BASH_EXEC_PATH = "/bin/bash"
 
 STOP_REQUEST = 'STOPPING'

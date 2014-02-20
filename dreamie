@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# dreamie: daemon service script to start the DREAM ingestion engine,
+#          to be executed by the init script dreamied (normally 
+#          found in /etc/init.d)
+
+PROGRAM="ie"
+
+while [[ $# > 0 ]] ;  do
+
+    case "$1" in
+        -P)
+            PIDFILE=$2
+            shift
+            shift
+        ;;
+        -U)
+            RUNAS=$2
+            shift
+            shift
+        ;;
+        -H)
+            IEHOME=$2
+            shift
+            shift
+        ;;
+        *)
+            OPTARGS=$*
+            break
+    esac
+
+done
+
+INGESTION_SCRIPT=${IEHOME}/$PROGRAM
+test -x $INGESTION_SCRIPT ||  echo "$INGESTION_SCRIPT not installed"
+
+if [ -z $RUNAS ]; then
+  echo Noone to run as
+  exit 4
+else
+  sudo -u $RUNAS $INGESTION_SCRIPT $OPTARGS &
+  echo $! >$PIDFILE
+fi
+
+exit 0
