@@ -34,9 +34,10 @@ import models
 import forms
 import work_flow_manager
 
+from constants import IE_DEBUG
+
 from settings import \
     set_autoLogin, \
-    IE_DEBUG, \
     IE_HOME_PAGE, \
     IE_AUTO_LOGIN, \
     MEDIA_ROOT, \
@@ -64,6 +65,18 @@ IE_DEFAULT_USER = r'drtest'
 IE_DEFAULT_PASS = r'1234'
 
 dmcontroller = DownloadManagerController.Instance()
+
+def get_scenario_script_paths(scenario):
+    # get list of scripts
+    scripts = scenario.script_set.all()
+    ingest_scripts = []
+    if scenario.default_script != 0:
+        ingest_scripts.append(os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_INGEST_SCRIPT) )
+    for s in scripts:
+        ingest_scripts.append("%s" % s.script_path)
+
+    return ingest_scripts
+
 
 def get_scenario_id(ncn_id):
     return models.Scenario.objects.get(ncn_id=ncn_id).id
@@ -142,7 +155,7 @@ def ingest_scenario_core(scenario_id=None, ncn_id=None):
         ret = {'status':1, 'message':"Error: "+msg}
     else:
 
-        scripts = models.get_scenario_script_paths(scenario)
+        scripts = get_scenario_script_paths(scenario)
         if len(scripts) > 0:
             # send request/task to work-flow-manager to run script
             current_task = work_flow_manager.WorkerTask(
@@ -294,8 +307,7 @@ def handle_eoids(request,scenario):
         delete_all_eoids(scenario)
         return
 
-    new_eoids = request.POST['eoid_val'].split('.')
-
+    new_eoids = request.POST['eoid_val'].encode('ascii','ignore').split(',')
     old_list = []
     for e in old_objs:
         old_list.append(e.eoid_val)
@@ -307,7 +319,7 @@ def handle_eoids(request,scenario):
     delete_eoids(scenario, del_list)
 
     for e in new_eoids:
-        ne = e.encode('ascii','ignore')
+        ne = e.strip()
         if not ne in old_list:
             models.Eoid( scenario=scenario,eoid_val=ne ).save()
 
@@ -434,7 +446,7 @@ def addLocalProductOld(request, sc_id):
                 logger.error("Failed to save product's raster file")
                 return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
 
-            scripts = models.get_scenario_script_paths(scenario)
+            scripts = get_scenario_script_paths(scenario)
             if len(scripts) > 0:
                 # send request/task to work-flow-manager to run script
                 current_task = work_flow_manager.WorkerTask(
@@ -523,7 +535,7 @@ def odaAddLocalProductOld(request, ncn_id):
                 logger.error("Failed to save product's raster file")
                 return HttpResponseRedirect('http://127.0.0.1:'+port+'/scenario/overview/')
 
-            scripts = models.get_scenario_script_paths(scenario)
+            scripts = get_scenario_script_paths(scenario)
             if len(scripts) > 0:
                 # send request/task to work-flow-manager to run script
                 current_task = work_flow_manager.WorkerTask(
@@ -598,7 +610,7 @@ def add_local_product_core(request, ncn_id, template, aftersave=None):
                   saveFile(request.FILES['metadataFile'], full_directory_name)
                   saveFile(request.FILES['rasterFile'], full_directory_name)
 
-                  scripts = models.get_scenario_script_paths(scenario)
+                  scripts = get_scenario_script_paths(scenario)
                   if len(scripts) > 0:
                       # send request/task to work-flow-manager to run script
                       current_task = work_flow_manager.WorkerTask(
