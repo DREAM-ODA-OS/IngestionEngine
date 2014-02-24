@@ -11,9 +11,6 @@
 #
 ############################################################
 
-# set to 0 for no debugging
-IE_DEBUG = 2
-
 NCN_ID_LEN         = 96
 SC_NAME_LEN        = 256
 SC_DESCRIPTION_LEN = 2048

@@ -13,6 +13,15 @@ fi
 
 cd $ie_dd
 
+#get port number from ingestion_config.json, if any
+nn=($(grep ie_server_port ingestion_config.json))
+if [ $? == 0 ]
+then
+    TMP_IE_PORT=$(echo ${nn[2]} | sed s/,//)
+fi
+
+DREAM_IE_IE_PORT=${TMP_IE_PORT:-$1}
+
 if [[ ! -d $INGESTION_DIR/static/db ]]
 then
   mkdir $INGESTION_DIR/static/db
@@ -24,5 +33,5 @@ then
 fi
 if [ $? == 0 ]
 then
-  ./manage.py runserver $1
+  ./manage.py runserver  $DREAM_IE_IE_PORT
 fi

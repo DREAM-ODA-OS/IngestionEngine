@@ -85,11 +85,12 @@ ADMINS = (
 # engine is listening.  
 # Please use a string ('8000'), not a number (8000).
 # Once the ie is running and the user accesses some pages
-# of the Ingestion Admin, the port will be set to
+# of the Ingestion Admin, then depending on the method
+#  set_ie_port() in dm_control.py the port may be set to
 # request['SERVER_PORT'] when certain requests are processed.
-# To disable re-setting according to the request SERVER_PORT,
-#  it would be necessary to disable the method set_ie_port() in
-#  dm_control.py
+# To en- or disable re-setting according to the request SERVER_PORT,
+#  see set_ie_port() in dm_control.py 
+#
 if "ie_server_port" in config:
     IE_SERVER_PORT = `config["ie_server_port"]`
 else:

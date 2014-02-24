@@ -38,7 +38,8 @@ from settings import \
     DM_CONF_FN, \
     MAX_PORT_WAIT_SECS, \
     IE_SERVER_PORT, \
-    IE_DEBUG
+    IE_DEBUG, \
+    DM_DAM_RESP_URL
 
 # The %s will be replaced by the port where DM is listening
 DM_URL_TEMPLATE = "http://127.0.0.1:%s/download-manager/"
@@ -48,7 +49,7 @@ DM_DAR_STATUS_COMMAND = "dataAccessRequests"
 # the string is the uuid
 DM_PRODUCT_CANCEL_TEMPLATE = '/products/%s?action=cancel'
 
-IE_DAR_RESP_URL_TEMPLATE = "http://127.0.0.1:%s/ingest/darResponse"
+IE_DAR_RESP_URL_TEMPLATE = "http://127.0.0.1:%s/"+DM_DAM_RESP_URL
 
 DEFAULT_PORT_WAIT_SECS = 25
 SYSTEM_PROC_NET_PATH   = "/proc/net/tcp"
@@ -216,6 +217,7 @@ class DownloadManagerController:
         return ("OK", dar_url, dm_dar_id)
 
     def get_next_dar(self, dar_seq_id):
+        #todo: should lock the queue!
         if len(self._dar_queue) == 0:
             return None
         else:
@@ -242,7 +244,12 @@ class DownloadManagerController:
         return None
 
     def set_ie_port(self, port):
-        self._ie_port = port
+        # If behind a proxy/httpd apache server, then use the
+        # hardcoded setting, igoring the port parameter.
+        self._ie_port = IE_SERVER_PORT
+        # uncomment to set port according to request SERVER_PORT
+        #  from certain requests
+        #self._ie_port = port
 
     def set_condIEport(self,newport):
         if None == self._ie_port:

@@ -34,9 +34,8 @@ import models
 import forms
 import work_flow_manager
 
-from constants import IE_DEBUG
-
 from settings import \
+    IE_DEBUG, \
     set_autoLogin, \
     IE_HOME_PAGE, \
     IE_AUTO_LOGIN, \
