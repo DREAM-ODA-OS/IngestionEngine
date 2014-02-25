@@ -25,7 +25,12 @@ import subprocess
 import traceback
 from email import message_from_string
 
-from settings import IE_SCRIPTS_DIR, IE_DEFAULT_UQMD_SCRIPT, UQMD_SUBDIR
+from settings import \
+    IE_DEBUG, \
+    IE_SCRIPTS_DIR, \
+    IE_DEFAULT_UQMD_SCRIPT, \
+    UQMD_SUBDIR
+
 from ingestion_logic import create_dl_dir
 from utils import mkFname, open_unique_file
 
@@ -120,7 +125,6 @@ def updateMetaData(postData):
         status = 50
         error_str = "Unexpected exception: " + e.__class__.__name__
         logger.error("Exception in updateMetaData: " + `e`)
-        from settings import IE_DEBUG
         if IE_DEBUG>0:
             traceback.print_exc(4,sys.stdout)
             

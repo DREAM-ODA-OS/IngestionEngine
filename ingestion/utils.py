@@ -23,6 +23,7 @@ import re
 import urllib2
 import traceback
 from math import floor
+from osgeo import osr
 
 BLK_SZ = 8192
 MAX_MANIF_FILES = 750000
@@ -80,11 +81,11 @@ def find_process_ids(match_strings):
 
 
 # ------------ tmp name generating functions  --------------------------
-LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-LEN_LET = len(LETTERS)
+B60_SYMBOLS = "0123456789abcdefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ"
+LEN_LET = len(B60_SYMBOLS)
 
 def letter_encode(i):
-    return LETTERS[i]
+    return B60_SYMBOLS[i]
 
 def mkFname(base):
     tnow = time.time()
@@ -206,6 +207,20 @@ class Bbox:
         if (self.ur[1] < bb2.ll[1]) or (self.ur[0] < bb2.ll[0]): return False
         return True
 
+    def equals(self, other):
+        return \
+            self.ll[0] == other.ll[0] and \
+            self.ll[1] == other.ll[1] and \
+            self.ur[0] == other.ur[0] and \
+            self.ur[1] == other.ur[1]
+
+    def equals_corners(self, ll, ur):
+        return \
+            self.ll[0] == ll[0] and \
+            self.ll[1] == ll[1] and \
+            self.ur[0] == ur[0] and \
+            self.ur[1] == ur[1]
+
 #factory
 def bbox_from_strings(lc, uc, order_xy = True):
     if order_xy:
@@ -229,6 +244,10 @@ def bbox_from_strings(lc, uc, order_xy = True):
     
 # ------------ time periods   --------------------------
 class TimePeriod:
+    # fields:
+    #   begin_time, begin_str
+    #   end_time,   end_str
+    #
     # only UTC times are supported
     TIME_FORMAT_8601   = "%Y-%m-%dT%H:%M:%S"
     TIME_FORMAT_SIMPLE = "%Y-%m-%d %H:%M:%S"
@@ -268,19 +287,20 @@ class TimePeriod:
             self.begin_time = self.end_time
             self.end_time = tmp
 
-
     def __str__(self):
         return self.begin_str +", "+self.end_str
 
     def __repr__(self):
         return self.begin_str +", "+self.end_str
 
-
     def overlaps(self, t2):
         if None == t2: return True
         if self.begin_time > t2.end_time: return False
         if self.end_time   < t2.begin_time: return False
         return True
+
+    def equals_se(self, start, end):
+        return self.begin_time == start and self.end_time == end
 
 # ------------ internet access --------------------------
 def read_from_url(
@@ -325,8 +345,12 @@ def read_headers(fp):
 
 
 def split_wcs_tmp(path, f, logger):
-    """ TEMPORARY: splits a file into mime/multipart parts,
-        More or less expects the boundary to be '--wcs',
+    """ TEMPORARY: splits a file into mime/multipart parts.
+        path is the directory where the product is dowloaded to and
+             also where the new metadata, and data files are to be
+             created.
+        f  is the mime/multipart source as downloaded by the DM.
+        The algorithm more or less expects the boundary to be '--wcs',
         but will check and try with whatever it finds in the
         first line.
         The file must start with a line that is the boundary,
@@ -465,7 +489,7 @@ def split_wcs_tmp(path, f, logger):
             'DATA="'+data_fname     + '"\n' + \
             extra_manifest
         
-        return manif_str
+        return manif_str, meta_fname
 
     except Exception as e:
         fp.close()
@@ -473,7 +497,7 @@ def split_wcs_tmp(path, f, logger):
         if data_fp != None: data_fp.close()
         logger.error("Exception while splitting file '"+f+"': "+`e`)
         logger.debug(traceback.format_exc(4))
-        return None
+        return None, None
 
 def write_manifest_file(dir_path, manif_str):
     mf_name = os.path.join(dir_path, MANIFEST_FN)
@@ -521,6 +545,7 @@ def create_manifest(dir_path, ncn_id, metadata, data, logger):
 def split_and_create_mf(dir_path, ncn_id, logger):
 
     manif_str = ''
+    metafiles = []
     files = os.listdir(dir_path)
     if len(files) > 1:
         logger.warning("Found " + `len(files)` + " in " + dir_path + \
@@ -529,12 +554,13 @@ def split_and_create_mf(dir_path, ncn_id, logger):
         if f.startswith(MANIFEST_FN) or f.endswith(META_SUFFIX) or f.endswith(DATA_SUFFIX):
             logger.warning("Ingestion: ignoring "+f)
             continue
-        ret = split_wcs_tmp(dir_path, f, logger)
-        if not ret:
+        ret_str, metafile = split_wcs_tmp(dir_path, f, logger)
+        if not ret_str:
             logger.error("Failed to split file '"+f+"'.")
             continue
         else:
-            manif_str += ret
+            manif_str += ret_str
+            metafiles.append(metafile)
 
     if manif_str:
         manif_str = \
@@ -542,10 +568,10 @@ def split_and_create_mf(dir_path, ncn_id, logger):
             'DOWNLOAD_DIR="'+ dir_path + '"\n' + \
             manif_str
         mf_name = write_manifest_file(dir_path, manif_str)
-        return mf_name
+        return mf_name, metafiles
 
     else:
-        return None
+        return None, None
 
 
 # ------------ Directory check access & create  --------------------------
@@ -602,17 +628,48 @@ def check_listening_port(port):
         if None != proc: proc.close()
     return found
    
+# ------------ osr Init  ------------
+SPATIAL_REF_WGS84 = osr.SpatialReference()
+SPATIAL_REF_WGS84.SetWellKnownGeogCS( "EPSG:4326" )
+
+
+# ------------ spatial references cache --------------------------
+
+spatial_refs = {}
+
+def get_spatialReference(epsg):
+    ref = None
+    try:
+        ref = spatial_refs[epsg]
+    except KeyError:
+        ref = osr.SpatialReference()
+        ret = ref.ImportFromEPSG(epsg)
+        if 0 != ret:
+            raise NoEPSGCodeError("Unknown EPSG code "+epsg)
+        spatial_refs[epsg] = ref
+    return ref
+
+def bbox_to_WGS84(epsg, bbox):
+    if 4326==epsg: return
+    srcRef = get_spatialReference(epsg)
+    ct=osr.CoordinateTransformation(srcRef, SPATIAL_REF_WGS84)
+    new_ll = ct.TransformPoint(bbox.ll[0], bbox.ll[1])
+    new_ur = ct.TransformPoint(bbox.ur[0], bbox.ur[1])
+    bbox.ll = (new_ll[0], new_ll[1])
+    bbox.ur = (new_ur[0], new_ur[1])
+
+
+class DummyLogger():
+    def info(self,s):   print "INFO: "+s
+    def warning(self,s):print "WARN: "+s
+    def error(self,s):  print "*ERR: "+s
+    def debug(self,s):  print "DEBG: "+s
 
 if __name__ == '__main__':
     # Hook used for stand-alone testing
-    class Logger():
-        def info(self,s):   print "INFO: "+s
-        def warning(self,s):print "WARN: "+s
-        def error(self,s):  print "*ERR: "+s
-        def debug(sefl,s):  print "DEBG: "+s
 
     import sys
     if len(sys.argv) > 1: print sys.argv[1]
 
-    split_wcs_tmp("/home/novacek/dream/tst_tmp/debug_2014-02-06", sys.argv[1], Logger())
-    
+    print "l="+`len(B60_SYMBOLS)`
+    print letter_encode(int(sys.argv[1]))

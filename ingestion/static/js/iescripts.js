@@ -172,6 +172,9 @@ function update_oveview_page() {
         // update tr_status
         current_id = "div_status_" + jscenarios[i].ncn_id;
         var element = document.getElementById(current_id);
+        if (null === element) {
+            continue;
+        }
         element.innerHTML = " " + jscenarios[i].st_st;
 
         // update progress bar
@@ -213,4 +216,44 @@ function sync_scenarios() {
    Dajaxice.ingestion.synchronize_scenarios(update_scenario);
 }
 
+/* ----------------- Edit Scnenario --------------------- */
 
+    function append_more_extras()
+    {
+        add_extras_line('','');
+    };
+
+    function add_extras_line(xp, xt)
+    {
+        $('#id_extras_line').append(
+            '\n<tr>' +
+            '<td>Xpath:</td> <td colspan=3><input type="text" size=80 name="extra_xpath" value="'+xp+'"></td></tr></td><tr>\n' +
+            '<td>Text:</td> <td> <input type="text" size=50 name=extra_text value="'+ xt + '"></td>' +
+            '</tr>' +
+            '<tr><td colspan=4>&nbsp;</td></tr>');
+        
+    };
+
+    function write_extras_lines(){
+        $('#id_extras_line').append("\n<tr><td colspan=3>Additional conditions:</td></tr>");
+		for (var i=0;i<extras.length;i++)
+        {
+            x = extras[i];
+            add_extras_line(x[0], x[1]);
+        }
+    };
+
+    function show_hide_extras()
+    {
+        extrasPara = document.getElementById('id_extra');
+        extrasBtn  = document.getElementById('id_but_shh_extras');
+        if (show_extras) {
+            extrasPara.style.display="none";
+            extrasBtn.value =  "Show Extras";
+            show_extras = 0;
+        } else {
+            extrasPara.style.display="block";
+            extrasBtn.value =  "Hide Extras";
+            show_extras = 1;
+        }
+    };

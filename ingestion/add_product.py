@@ -29,7 +29,11 @@ import json
 import sys
 import subprocess
 
-from settings import IE_SCRIPTS_DIR, IE_DEFAULT_ADDPROD_SCRIPT, ADDPRODUCT_SUBDIR
+from settings import \
+    IE_SCRIPTS_DIR, \
+    IE_DEFAULT_ADDPROD_SCRIPT, \
+    ADDPRODUCT_SUBDIR
+
 from ingestion_logic import create_dl_dir
 from utils import get_base_fname, mkFname
 import work_flow_manager

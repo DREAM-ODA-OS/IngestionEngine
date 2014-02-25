@@ -7,6 +7,8 @@
     <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
     <script src = "{% static 'js/jquery.js' %}">
 	</script>
+    <script src = "{% static 'js/iescripts.js' %}">
+    </script>
 
 	<script>
     var show_extras = 0;
@@ -19,7 +21,7 @@
         "{{ eoid.eoid_val }}," + 
     	{% endfor %}
         '' ;
-      eoids = eoids.slice(0, -1);
+    eoids = eoids.slice(0, -1);
 
     var extras = new Array();
         {% for e in extras_in %}
@@ -31,57 +33,16 @@
     window.onload=function(){
         write_extras_lines()
     };
-
-    function append_more_extras()
-    {
-        add_extras_line('','');
-    };
-
-    function add_extras_line(xp, xt)
-    {
-        $('#id_extras_line').append(
-            '\n<tr>' +
-            '<td>Xpath:</td> <td colspan=3><input type="text" size=80 name="extra_xpath" value="'+xp+'"></td></tr></td><tr>\n' +
-            '<td>Text:</td> <td> <input type="text" size=50 name=extra_text value="'+ xt + '"></td>' +
-            '</tr>' +
-            '<tr><td colspan=4>&nbsp;</td></tr>');
-        
-    };
-
-    function write_extras_lines(){
-        $('#id_extras_line').append("\n<tr><td colspan=3>Additional conditions:</td></tr>");
-		for (var i=0;i<extras.length;i++)
-        {
-            x = extras[i];
-            add_extras_line(x[0], x[1]);
-        }
-    };
-
-    function show_hide_extras()
-    {
-        extrasPara = document.getElementById('id_extra');
-        extrasBtn  = document.getElementById('id_but_shh_extras');
-        if (show_extras) {
-            extrasPara.style.display="none";
-            extrasBtn.value =  "Show Extras";
-            show_extras = 0;
-        } else {
-            extrasPara.style.display="block";
-            extrasBtn.value =  "Hide Extras";
-            show_extras = 1;
-        }
-    };
-
 	</script>
 	
-	<style>
-		.button,.SubmitButton
-		{
-			width: 3cm; 
-			height: 0.74cm; 
-			font-family: 'Arial', sans-serif; 
-			font-size: 12pt;
-		}
+    <style>
+        .button,.SubmitButton
+        {
+          width: 3cm; 
+          height: 0.74cm; 
+          font-family: 'Arial', sans-serif; 
+          font-size: 12pt;
+        }
     </style>
 
 {% endblock %}
@@ -95,143 +56,9 @@
 
 {% block content %}
 
-<form method="post" action="" enctype="multipart/form-data">
-{% csrf_token %}
-     <p>
-       {% for i in form.errors %}
-         Error in field  {{i}}: {{ form.i.errors.as_text }}
-       {% endfor %}
-{% if form.errors %}
-    {% for field in form %}
-        {% for error in field.errors %}
-            <div class="alert alert-error">
-                <strong>{{ error|escape }}</strong>
-            </div>
-        {% endfor %}
-    {% endfor %}
-    {% for error in form.non_field_errors %}
-        <div class="alert alert-error">
-            <strong>{{ error|escape }}</strong>
-        </div>
-    {% endfor %}
-{% endif %}
-     </p>
-    <table>
-        <!-- Relies on the table items (fields) being in a certain order,
-             as defined in the models. -->
-      {% for b in form %}
-        {% if "id_repeat_interval" in b.id_for_label %}
-    </table>
-    <p>
-    <!--  show/hide extras button -->
-    <INPUT TYPE="BUTTON" class="ShowHideExtras"
-               id="id_but_shh_extras"
-               title="Show or Hide EXTRAS"
-               onClick="show_hide_extras()"
-               value="Show Extras"/>
-    </p> <p>
-    <div class="cl_extra" id="id_extra" style="display:none">
-     <table>
-       <div class="cl_extras_line" id="id_extras_line">
-       </div>
-     </table>
-    <INPUT TYPE="BUTTON" class="AddExtrasBtn"
-               id="id_but_add_extras"
-               title="Add additional conditions"
-               onClick="append_more_extras()"
-               value="Add additional conditions"/>
-    </div>
-    </p><p>
-     <table>
-        <tr>
-          <th>{{ b.label_tag }}</th> <td colspan=3> {{ b }} </td>
-        </tr>
-         {% elif "id_aoi_type" in b.id_for_label %}
-     </table>
-     <table>
-     <tr><td>&nbsp;</td><td colspan=3></td></tr>
-	 <tr id="tr_eoids">
-     <th align="right"> Data Set IDs: &nbsp; </th>
-		<td colspan=3> 
-                <script>
-                document.writeln('<input type="text" size=60 id="id_eoid_input" '
-                                 + ' name="eoid_val" title="Comma-separated list" value="'+eoids+'">');
-                </script>
-        </td> 
-    </tr>
+    {% include "editForm.html" %}
 
-        <tr><td>&nbsp;</td><td colspan=3></td></tr>
-        <tr>
-          <th align="right">{{ b.label_tag }}&nbsp</th> <td> {{ b }} </td>
-         {% elif "id_coastline_check" in b.id_for_label %}
-          <th align="right">{{ b.label_tag }}</th> <td align="left"> {{ b }} </td>
-        </tr>
-         {% elif "id_bb_" in b.id_for_label%}
-          {% if "id_bb_lc_long" in b.id_for_label %}
-          <tr>
-            <th align="right">BBOX:&nbsp;</th> 
-            <td align="left" colspan=3>Lower corner long,lat:
-                 {{ b }}
-          {% elif "id_bb_lc_lat" in b.id_for_label%}
-                  {{ b }}
-            </td>
-          </tr>
-          {% elif "id_bb_uc_long" in b.id_for_label%}
-          <tr>
-            <td></td>
-            <td align="left" colspan=3>Upper corner long,lat:
-                  {{ b }}  
-          {% elif "id_bb_uc_lat" in b.id_for_label%}
-                  {{ b }} 
-            </td>
-          </tr>
-          <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
-          {% endif %}
-        {% elif "id_cloud_cover" in b.id_for_label%}
-        <tr><td>&nbsp;</td><td colspan=3></td></tr>
-          <tr>
-            <th> {{ b.label_tag }}</th><td> {{ b }} </td>
-        {% elif "id_view_angle" in b.id_for_label%}
-            <th> {{ b.label_tag }}</th><td> {{ b }} </td>
-          </tr>
-        {% elif "id_sensor_type" in b.id_for_label%}
-        <tr>
-          <th> {{ b.label_tag }}</th><td colspan=3> {{ b }} </td>
-        </tr>
-        <tr><td>&nbsp;</td><td colspan=3></td></tr>
-        {% elif "id_preprocessing" in b.id_for_label%}
-        <tr>
-          <th> {{ b.label_tag }}</th><td>{{ b }} </td>
-        {% elif "id_default_script" in b.id_for_label%}
-          <th align=right> {{ b.label_tag }}</th><td>{{ b }} </td>
-        </tr>
-        {% else %}
-        <tr>
-          <th> {{ b.label_tag }}</th><td colspan=3> {{ b }} </td>
-        </tr>
-        {% endif %}
-	  {% endfor %}
-    </table>
-
-	<p> </p>
-    <table id="table_scripts" data-ids={{sequence}}>
-		
-	{% for script in scripts %}
-	<tr id="tr_{{script.id_script}}">
-		<td><input type="text" name="script_name" value="{{ script.script_name }}"  disabled></td>
-		<td><input type="text" name="script_file" value="{{ script.script_path }}"  disabled></td>
-	</tr>
-	{% endfor %}
-	</table>
-    
-    <!-- input type=BUTTON class="AddButton" id="AddButton" nane="AddScript" value="Add Script" -->
-    </p>
-    <p></p>
-  
-    <input type="submit" class="SubmitButton" value="save"/>
-</form>        
-
-<p>To cancel please close the browser window.</p>
+    <p>To cancel please close the browser window.</p>
 
 {% endblock %}
 </body>

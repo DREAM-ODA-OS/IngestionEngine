@@ -23,7 +23,7 @@ admin.autodiscover()
 from dajaxice.core import dajaxice_autodiscover, dajaxice_config
 dajaxice_autodiscover()
 
-from settings import IE_HOME_PAGE
+from settings import IE_HOME_PAGE, DM_DAM_RESP_URL
 
 
 urlpatterns = patterns('',
@@ -130,7 +130,7 @@ urlpatterns = patterns('',
     # ManageScenario: Stop Ingestion
     url(r'^ingest/ManageScenario/stop/(?P<ncn_id>.*)', views.mngStopIngestion),
     # dar response
-    url(r'^ingest/darResponse/(?P<seq_id>.*)$',views.darResponse),
+    url(r'^'+DM_DAM_RESP_URL+'/(?P<seq_id>.*)$',views.darResponse),
     
     # Main page
     # Skip showing the main page views.main_page,

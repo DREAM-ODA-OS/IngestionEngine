@@ -14,22 +14,27 @@
 
 import logging
 import os
+import sys
 import urllib2
-import xml.etree.ElementTree as ET
-import xml.parsers.expat
 import json
 import time
 import traceback
 
-from osgeo import osr
-
 import dar_builder
 import work_flow_manager
 
+from ie_xml_parser import parse_file
+
 from utils import \
-    Bbox, bbox_from_strings, TimePeriod, mkFname, DMError, \
-    NoEPSGCodeError, IngestionError, StopRequest, \
-    read_from_url, check_or_make_dir, make_new_dir
+    Bbox, \
+    TimePeriod, \
+    mkFname, \
+    DMError, \
+    IngestionError, \
+    StopRequest, \
+    read_from_url, \
+    check_or_make_dir, \
+    make_new_dir
 
 from settings import \
     IE_DEBUG, \
@@ -42,15 +47,47 @@ from dm_control import \
     DM_PRODUCT_CANCEL_TEMPLATE
 
 from models import \
+    Scenario, \
     ScenarioStatus, \
+    Archive, \
     DSRC_EOWCS_CHOICE, \
     DSRC_OSCAT_CHOICE, \
     DSRC_BGMAP_CHOICE, \
     AOI_BBOX_CHOICE,   \
     AOI_POLY_CHOICE,   \
-    AOI_SHPFILE_CHOICE
+    AOI_SHPFILE_CHOICE, \
+    date_from_iso8601
 
 from coastline_ck import coastline_ck
+
+# XML metadata parsing
+from ie_xml_parser import \
+    extract_path_text, \
+    extract_Id, \
+    extract_gml_bbox, \
+    extract_WGS84bbox, \
+    extract_TimePeriod, \
+    extract_om_time, \
+    extract_ServiceTypeVersion, \
+    extract_DatasetSeriesSummary, \
+    extract_CoverageId, \
+    get_coverageDescriptions, \
+    SENSOR_XPATH, \
+    INCIDENCEANGLE_XPATH, \
+    CLOUDCOVER_XPATH
+
+# misc. constants
+SERVICE_WCS        = "service=wcs"
+WCS_GET_CAPS       = "request=GetCapabilities"
+EOWCS_DESCRIBE_CS  = "request=DescribeEOCoverageSet"
+WCS_GET_COVERAGE   = "request=GetCoverage"
+WCS_IMAGE_FORMAT   = "format=image/tiff&mediatype=multipart/mixed"
+
+CAPABILITIES_TAG   = "Capabilities"
+EOCS_DESCRIPTION_TAG = "EOCoverageSetDescription"
+
+# CRS
+EPSG_4326 = 'http://www.opengis.net/def/crs/EPSG/0/4326'
 
 # For debugging:
 # MAX_DEOCS_URLS limits the number of DescribeEOCoverageSet requests issued,
@@ -62,137 +99,8 @@ if IE_DEBUG>0:
     DEBUG_MAX_DEOCS_URLS  = 0
     DEBUG_MAX_GETCOV_URLS = 0
 
-# namespaces
-wcs_vers = '2.0'
-WCS_NS   = '{http://www.opengis.net/wcs/' + wcs_vers + '}'
-WCSEO_NS = '{http://www.opengis.net/wcseo/1.0}'
-OWS_NS   = '{http://www.opengis.net/ows/2.0}'
-GML_NS   = '{http://www.opengis.net/gml/3.2}'
-GMLCOV_NS= '{http://www.opengis.net/gmlcov/1.0}'
-EOP_NS   = '{http://www.opengis.net/eop/2.0}'
-OM_NS    = '{http://www.opengis.net/om/2.0}'
-OPT_NS   = '{http://www.opengis.net/opt/2.0}' 
-
-# CRS
-EPSG_4326 = 'http://www.opengis.net/def/crs/EPSG/0/4326'
-
-# misc. constants
-SERVICE_WCS        = "service=wcs"
-WCS_GET_CAPS       = "request=GetCapabilities"
-EOWCS_DESCRIBE_CS  = "request=DescribeEOCoverageSet"
-WCS_GET_COVERAGE   = "request=GetCoverage"
-WCS_FORMATS        = "format=image/tiff&mediatype=multipart/mixed"
-
-DEFAULT_SERVICE_VERSION = "2.0.1"
-
-EXCEPTION_TAG      = "ExceptionReport"
-CAPABILITIES_TAG   = "Capabilities"
-EOCS_DESCRIPTION_TAG = "EOCoverageSetDescription"
-
-EO_METADATA_XPATH = \
-    GMLCOV_NS + "metadata/" + \
-    GMLCOV_NS + "Extension/" + \
-    WCSEO_NS  + "EOMetadata/"
-
-EO_EQUIPMENT_XPATH = \
-    EO_METADATA_XPATH + \
-    EOP_NS   + "EarthObservation/" + \
-    OM_NS    + "procedure/"        + \
-    EOP_NS   + "EarthObservationEquipment/"
-
-# cloud cover XML example
-# <!-- cloud cover -->
-# <gmlcov:metadata>
-#   <gmlcov:Extension>
-#     <wcseo:EOMetadata>
-#       <eop:EarthObservation gml:id="b57ea609-">
-#         <om:result>
-#           <opt:EarthObservationResult gml:id="uuid_94567f">
-#             <opt:cloudCoverPercentage uom="%">13.25</opt:cloudCoverPercentage>
-#           </opt:EarthObservationResult>
-#         </om:result>
-#       </eop:EarthObservation>
-#     </wcseo:EOMetadata>
-#   </gmlcov:Extension>
-# </gmlcov:metadata>
-
-CLOUDCOVER_XPATH = \
-    EO_METADATA_XPATH + \
-    EOP_NS   + "EarthObservation/" + \
-    OM_NS    + "result/"           + \
-    OPT_NS   + "EarthObservationResult/" + \
-    OPT_NS   + "cloudCoverPercentage"
-    
-
-# sensor type XML example:
-# <gmlcov:metadata>
-#   <gmlcov:Extension>
-#     <wcseo:EOMetadata>
-#       <eop:EarthObservation gml:id="some_id"
-#        xsi:schemaLocation="http://www.opengis.net/opt/2.0 ../xsd/opt.xsd">
-#         <om:procedure>
-#           <eop:EarthObservationEquipment gml:id="some_id">  
-#             <eop:sensor>
-#               <eop:Sensor>
-#                 <eop:sensorType>OPTICAL</eop:sensorType>
-#               </eop:Sensor>
-#             </eop:sensor>
-#           </eop:EarthObservationEquipment>
-#         </om:procedure>
-#
-SENSOR_XPATH = \
-    EO_EQUIPMENT_XPATH +\
-    EOP_NS   + "sensor/" + \
-    EOP_NS   + "Sensor/" + \
-    EOP_NS   + "sensorType"
-    
-# acquisition angle XML example
-# <!-- acquisition angle -->
-# <gmlcov:metadata>
-#   <gmlcov:Extension>
-#     <wcseo:EOMetadata>
-#
-#       <eop:EarthObservation gml:id="some_id" >
-#         <om:procedure>
-#           <eop:EarthObservationEquipment gml:id="some_id">
-#             <eop:acquisitionParameters>
-#               <eop:Acquisition>
-#                 <eop:incidenceAngle uom="deg">+7.23391641</eop:incidenceAngle>
-#               </eop:Acquisition>
-#             </eop:acquisitionParameters>
-#           </eop:EarthObservationEquipment>
-#         </om:procedure>
-#       </eop:EarthObservation>
-
-INCIDENCEANGLE_XPATH = \
-    EO_EQUIPMENT_XPATH  + \
-    EOP_NS   + "acquisitionParameters/" + \
-    EOP_NS   + "Acquisition/" + \
-    EOP_NS   + "incidenceAngle"
-
 
 logger = logging.getLogger('dream.file_logger')
-
-# ------------ osr Init  ------------
-SPATIAL_REF_WGS84 = osr.SpatialReference()
-SPATIAL_REF_WGS84.SetWellKnownGeogCS( "EPSG:4326" )
-
-
-# ------------ spatial references cache --------------------------
-
-spatial_refs = {}
-
-def get_spatialReference(epsg):
-    ref = None
-    try:
-        ref = spatial_refs[epsg]
-    except KeyError:
-        ref = osr.SpatialReference()
-        ret = ref.ImportFromEPSG(epsg)
-        if 0 != ret:
-            raise NoEPSGCodeError("Unknown EPSG code "+epsg)
-        spatial_refs[epsg] = ref
-    return ref
 
 
 # ------------ utilities --------------------------
@@ -207,22 +115,8 @@ def wfm_set_dar(scid, darid):
 def wfm_clear_dar(scid):
     work_flow_manager.WorkFlowManager.Instance().set_active_dar(scid, '')
 
-def srsName_to_Number(srsName):
-    if not srsName.startswith("http://www.opengis.net/def/crs/EPSG"):
-        raise NoEPSGCodeError("Unknown SRS: '" + srsName +"'")
-    return int(srsName.split('/')[-1])
-
 def file_is_zero(fname):
     return 0 == os.stat(fname)[stat.ST_SIZE]
-
-def bbox_to_WGS84(epsg, bbox):
-    if 4326==epsg: return
-    srcRef = get_spatialReference(epsg)
-    ct=osr.CoordinateTransformation(srcRef, SPATIAL_REF_WGS84)
-    new_ll = ct.TransformPoint(bbox.ll[0], bbox.ll[1])
-    new_ur = ct.TransformPoint(bbox.ur[0], bbox.ur[1])
-    bbox.ll = (new_ll[0], new_ll[1])
-    bbox.ur = (new_ur[0], new_ur[1])
 
 def create_dl_dir(leaf_name_root, extradir=None):
     # structure of dirs created, shown by example:
@@ -262,177 +156,6 @@ def create_dl_dir(leaf_name_root, extradir=None):
 
     return full_path, rel_path
 
-# ------------ XML parsing --------------------------
-def is_nc_tag(qtag, nctag):
-    parts=qtag.split("}")
-    if len(parts)==1:
-        return qtag==nctag
-    elif len(parts)==2:
-        return nctag==parts[1]
-    else:
-        return False
-
-def tree_is_exception(tree):
-    return is_nc_tag(tree.tag,EXCEPTION_TAG)
-
-
-def parse_file(src_data, expected_root, url):
-    result = None
-    try:
-        xmlTree = ET.parse(src_data)
-        result = xmlTree.getroot()
-        if tree_is_exception(result):
-            result = None
-            if IE_DEBUG > 0:
-                logger.warning("'"+url+"' contains exception")
-                if IE_DEBUG > 0:
-                    logger.info(ET.tostring(result))
-        elif not is_nc_tag(result.tag, expected_root):
-            result = None
-            logger.error("'"+url+"' does not contain expected root '"+ \
-                   expected_root )
-    except IOError as e:
-        loger.error("Cannot open/parse md source '"+url+"': " + `e`)
-        return None
-    except xml.parsers.expat.ExpatError as e:
-        logger.error("Cannot parse '"+url+"', error="+`e`)
-        return None
-    except:
-        logger.error("Cannot parse '"+url+"', unknown error.")
-        return None
-
-    return result
-
-
-def extract_path_text(cd, path):
-    ret = None
-    leaf_node = cd.find("./"+path)
-    if None == leaf_node:
-        return None
-    return leaf_node.text
-
-
-def extract_Id(dss):
-    dsid = dss.find("./"+ WCSEO_NS + "DatasetSeriesId")
-    if None == dsid:
-        logger.error("'DatasetSeriesId' not found in DatasetSeriesSummary")
-        return None
-    return dsid.text
-
-
-def is_x_axis_first(axisLabels):
-    labels = axisLabels.strip().lower().split(' ')
-    if len(labels) != 2:
-        logger.error("Error: can't parse axisLabels '"+axisLabels+"'")
-        return False
-    if labels[0] == 'lat' or labels[0] == 'y':
-        return False
-    if labels[0] == 'long' or labels[0] == 'x':
-        return True
-    else:
-        logger.error("Error: can't parse axisLabels '"+axisLabels+"'")
-        return False
-
-def extract_gml_bbox(cd):
-    # cd is the CoverageDescription, should contain boundedBy/Envelope
-    # The extracted bbox is converted to WGS84
-    envelope = cd.find("./" + GML_NS + "boundedBy" + "/" \
-                            +  GML_NS + "Envelope" )
-    if None == envelope:
-        return None
-
-    srsNumber = None
-    axisLabels = None
-    try:
-        axisLabels = envelope.attrib['axisLabels']
-        srsName = envelope.attrib['srsName']
-        srsNumber = srsName_to_Number(srsName)
-    except KeyError:
-        logger.error("Error: srsName or axisLabels not found")
-        return None
-    except NoEPSGCodeError as e:
-        logger.error("Error: "+e)
-        return None
-
-    lc = envelope.find("./"+ GML_NS +"lowerCorner")
-    uc = envelope.find("./"+ GML_NS +"upperCorner")
-
-    if None==lc or None==uc:
-        logger.error(
-            "Error: lowerCorner or upperCorner not found in envelope.")
-        return None
-
-    bb = bbox_from_strings(lc.text, uc.text, is_x_axis_first(axisLabels))
-    bbox_to_WGS84(srsNumber, bb)
-    return bb
-
-
-def extract_WGS84bbox(dss):
-    WGS84bbox = dss.find("./"+ OWS_NS +"WGS84BoundingBox")
-    if None == WGS84bbox:
-        logger.error("'WGS84BoundingBox' not found in DatasetSeriesSummary")
-        return None
-    lc = WGS84bbox.find("./"+ OWS_NS +"LowerCorner")
-    uc = WGS84bbox.find("./"+ OWS_NS +"UpperCorner")
-    if None == lc or None == uc:
-        logger.error("error, LowerCorner or Upper Corner not found in bbox")
-        return None
-    return bbox_from_strings(lc.text, uc.text)
-
-
-def extract_TimePeriod(dss):
-    # returns an instance of a utils.TimePeriod
-    tp = dss.find("./"+ GML_NS + "TimePeriod")
-    if None == tp: return None
-    begin_pos = tp.find("./"+ GML_NS + "beginPosition")
-    end_pos   = tp.find("./"+ GML_NS + "endPosition")
-    if None == begin_pos or None == end_pos: return None
-    return TimePeriod(begin_pos.text, end_pos.text)
-
-def extract_om_time(cd):
-    phenomenonTime = cd.find("./"+GMLCOV_NS+"metadata" + "/" \
-                                 +GMLCOV_NS+"Extension" + "/" \
-                                 +WCSEO_NS+"EOMetadata" + "/" \
-                                 +EOP_NS+"EarthObservation" + "/" \
-                                 +OM_NS+"phenomenonTime")
-    if None==phenomenonTime:
-        logger.error("Error: failed to find 'phenomenonTime'")
-        return None
-    return extract_TimePeriod(phenomenonTime)
-    
-
-def extract_ServiceTypeVersion(caps):
-    stv = caps.findall("./"+ OWS_NS +"ServiceIdentification" +
-                          "/" + OWS_NS +"ServiceTypeVersion")
-    if len(stv) < 1:
-        logger.warning("ServiceTypeVersion not found")
-        return DEFAULT_SERVICE_VERSION
-    return stv[0].text
-
-def extract_DatasetSeriesSummary(caps):
-    result = []
-    wcs_extension = caps.findall(
-        "." +
-        "/" + WCS_NS +"Contents" +
-        "/" + WCS_NS + "Extension")
-    if len(wcs_extension) < 1:
-        logger.error("Contents/Extension not found")
-    else:
-        result = wcs_extension[0].findall(
-        "./" + WCSEO_NS +"DatasetSeriesSummary")
-    return result
-
-def extract_CoverageId(cd):
-    covId = None
-    coverageIdNode = cd.find("./"+WCS_NS+"CoverageId")
-    if None!=coverageIdNode:
-        covId = coverageIdNode.text
-    else:
-        try:
-            covId = cd.attrib[GML_NS+'id']
-        except KeyError:
-            pass
-    return covId
 
 # ------------ status reporting  -------------------
 def set_status(sc_id, st_text, percentage):
@@ -578,7 +301,8 @@ def check_float_max(cd, req, key, xpath):
                            "for "+`key`+"', exception: " + `e`)
         return True
     if md_float <= req_float:
-        logger.info("Accepted " + key + " MD value " + `md_float`)
+        if IE_DEBUG>1:
+            logger.info("Accepted " + key + " MD value " + `md_float`)
         return True
 
 
@@ -589,18 +313,20 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid):
         md_url  is the metadata url
 
         This function generates parameters for the get_coverage request
-        generated upstream.
+        generated later.
     """
     if IE_DEBUG > 0:
         logger.debug("Generating getcoverage params from URL '"+md_url+"'")
 
     ret = []
+    scid = params['sc_id']
 
     # cd_tree: coverage description tree extracted from the
     #          metadata XML file
     (fp, cd_tree) = getXmlTree(md_url, EOCS_DESCRIPTION_TAG)
 
-    if check_status_stopping(params['sc_id']):
+    if check_status_stopping(scid):
+        if None != fp: fp.close()
         raise StopRequest("Stop Request")
 
     if None==cd_tree:
@@ -616,9 +342,7 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid):
         except KeyError:
             pass
     
-    cds = cd_tree.findall("./" + \
-                              WCS_NS + "CoverageDescriptions" + "/" +\
-                              WCS_NS + "CoverageDescription")
+    cds = get_coverageDescriptions(cd_tree)
     if len(cds) < 1:
         logger.warning("No CoverageDescriptions found in '"+md_url+"'")
 
@@ -626,8 +350,22 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid):
     passed = 0
     for cd in cds:
 
-        if check_status_stopping(params["sc_id"]):
+        if check_status_stopping(scid):
+            if None != fp: fp.close()
             raise StopRequest("Stop Request")
+
+        coverage_id = extract_CoverageId(cd)
+        if None == coverage_id:
+            logger.error("EOID " + `eoid` +
+                         " Cannot find CoverageId in '"+md_url+"'")
+            continue
+        if IE_DEBUG > 2:
+            logger.info("  coverage_id="+coverage_id)
+        if check_archived(scid, coverage_id):
+            if IE_DEBUG > 0:
+                logger.info("  coverage_id='"+coverage_id+
+                            "' is achived, not downloading.")
+            continue
 
         if not check_bbox(cd, aoi_toi[0]):
             if IE_DEBUG > 2: logger.info("  bbox check failed.")
@@ -658,13 +396,7 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid):
             continue
 
         passed = passed+1
-        coverageId = extract_CoverageId(cd)
-        if None == coverageId:
-            logger.error("EOID " + `eoid` +
-                         " Cannot find CoverageId in '"+md_url+"'")
-            continue
-        if IE_DEBUG > 2: logger.info("  coverageId="+coverageId)
-        ret.append("CoverageId="+coverageId)
+        ret.append("CoverageId="+coverage_id)
 
     if None != fp: fp.close()
     cd_tree = None
@@ -694,8 +426,7 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
     base_url = params['dsrc'] + \
         "?" + SERVICE_WCS + \
         '&version=' + service_version + \
-        "&" + WCS_GET_COVERAGE + \
-        "&" + WCS_FORMATS
+        "&" + WCS_GET_COVERAGE
     gc_requests = []
     ndeocs = 0    # number of DescribeEOCoverageSet urls processed
     ngc    = 1
@@ -740,7 +471,7 @@ def extract_aoi_toi(params):
     return req_bb, req_time
 
 
-def getMD_urls(params, service_version, id_list):
+def generate_MD_urls(params, service_version, id_list):
     req_aoi = params["aoi_bbox"]
     ll = (req_aoi["lc"][0], req_aoi["lc"][1])
     ur = (req_aoi["uc"][0], req_aoi["uc"][1])
@@ -796,7 +527,7 @@ def urls_from_EOWCS(params, eoids):
         if IE_DEBUG>1:
             logger.debug(" id list after culling:" + `id_list`)
 
-    md_urls = getMD_urls(params, service_version, id_list)
+    md_urls = generate_MD_urls(params, service_version, id_list)
     if IE_DEBUG>1:
         logger.debug("Qualified "+`len(md_urls)`+" md_urls")
     gc_requests = process_csDescriptions(
@@ -819,12 +550,34 @@ def get_coverage_URLs(params, eoids):
              "Requested '"+url_parts[0]+"' is not supported.")
         return None
 
+    urls = None
     if params['dsrc_type'] == DSRC_EOWCS_CHOICE:
-        return urls_from_EOWCS(params, eoids)
+        urls = urls_from_EOWCS(params, eoids)
     elif params['dsrc_type'] == DSRC_OSCAT_CHOICE:
-        return urls_from_OSCAT(params, eoids)
+        urls = urls_from_OSCAT(params, eoids)
     else:
         raise IngestionError("bad dsrc_type:" + params['dsrc_type'])
+
+    ret = []
+    for url in urls:
+        full_url =  url + "&" + WCS_IMAGE_FORMAT
+        ret.append(full_url)
+    return ret
+
+
+def check_archived(scid, coverage_id):
+    # returns True if matching metadata already exists in the archive.
+    # Checks only for a match against the EO-ID (coverage ID)
+
+    scenario = Scenario.objects.get(id=int(scid))
+    archived = Archive.objects.filter(scenario=scenario,eoid=coverage_id)
+    if len(archived)==0:
+        if IE_DEBUG > 1:
+            logger.info("Not in archive: " + `coverage_id`)
+        return False
+
+    return True
+
 
 def request_download(sc_ncn_id, scid, urls):
 
@@ -966,16 +719,30 @@ def wait_for_download(scid, dar_url, dar_id):
     all_done = False
     n_done = 0
     total_size = 0
+    n_errors = 0
     try:
         while not all_done:
             all_done = True
             part_percent = 0
             n_done = 0
+            n_errors = 0
             for product in product_list:
                 if "productProgress" not in product:
                     continue
                 progress = product["productProgress"]
-                if progress["status"] == "COMPLETED":
+                if progress["status"] == "IN_ERROR":
+                    n_errors += 1
+                    n_done += 1
+                    if "message" in progress: msg = progress["message"]
+                    else: msg = "(none)"
+                    if "uuid" in product: uuid = product["uuid"]
+                    else: uuid = "(unknown)"
+                    if "productAccessUrl" in product: url = product["productAccessUrl"]
+                    else: url = "(unknown"
+                    logger.info("Dl Manager reports 'IN_ERROR' for uuid "+uuid+
+                                ", message: " + msg +
+                                "\n url: " + url)
+                elif progress["status"] == "COMPLETED":
                     n_done += 1
                 else:
                     all_done = False
@@ -989,7 +756,10 @@ def wait_for_download(scid, dar_url, dar_id):
             percent_done = int( (float(part_percent)/float(total_percent))*100 )
             if percent_done < 1: percent_done = 1
             if all_done:
-                set_status(scid, "Finished Dl. ("+`n_products`+")", percent_done)
+                if n_errors > 0:
+                    set_status(scid, `n_errors` +" errors during Dl.", percent_done)
+                else:
+                    set_status(scid, "Finished Dl. ("+`n_products`+")", percent_done)
                 if total_size < 102400:
                     ts = `total_size`+' bytes'
                 else:
@@ -1009,6 +779,10 @@ def wait_for_download(scid, dar_url, dar_id):
                 raise StopRequest("Stop Request")
             
             product_list = request["productList"]
+            
+        # all done
+        if n_errors > 0:
+            logger.info("Completed download with " + `n_errors` + " errors")
 
     except StopRequest:
         logger.info("StopRequest while waiting for download") 
@@ -1022,14 +796,15 @@ def wait_for_download(scid, dar_url, dar_id):
     finally:
         wfm_clear_dar(scid)
 
+    return n_errors
 
 # ----- the main entrypoint  --------------------------
 def ingestion_logic(scid,
-                    scenario_data,
-                    eoids):
+                    scenario_data):
     root_dl_dir = DownloadManagerController.Instance()._download_dir
     custom = scenario_data['extraconditions']
 
+    eoids = scenario_data['dssids']
     if scenario_data['dsrc_type'] != DSRC_EOWCS_CHOICE:
         logger.warning(
             'Data source type ' + scenario_data['dsrc_type'] +
@@ -1044,7 +819,7 @@ def ingestion_logic(scid,
         logger.info(" DEBUG_MAX_GETCOV_URLS = "+`DEBUG_MAX_GETCOV_URLS`)
 
     nreqs = 0
-    retval = (None, None, None)
+    retval = (0, None, None, None, "")
     
     scenario_data["sc_id"]  = scid
     scenario_data["custom"] = custom
@@ -1052,6 +827,7 @@ def ingestion_logic(scid,
     gc_requests = get_coverage_URLs(scenario_data, eoids)
     if not gc_requests or 0 == len(gc_requests):
         logger.warning(`ncn_id`+": no GetCoverage requests generated")
+        retval = (0, None, None, None, "NO_ACTION")
     else:
         if check_status_stopping(scid):
             raise StopRequest("Stop Request")
@@ -1060,9 +836,9 @@ def ingestion_logic(scid,
         logger.info(`ncn_id`+": Submitting "+`nreqs`+" URLs to the Download Manager")
         dl_dir, dar_url, dar_id = \
             request_download(scenario_data["ncn_id"], scid, gc_requests)
-        wait_for_download(scid, dar_url, dar_id)
+        dl_errors = wait_for_download(scid, dar_url, dar_id)
         logger.info("Products for scenario " + ncn_id +
                     " downloaded to " + dl_dir)
-        retval = (dl_dir, dar_url, dar_id)
+        retval = (dl_errors, dl_dir, dar_url, dar_id, "OK")
 
     return retval

@@ -42,6 +42,8 @@ from ingestion_logic import \
     check_status_stopping, \
     stop_active_dar_dl
 
+from darc import archive_metadata
+
 from add_product import add_product_wfunc
 
 from utils import \
@@ -214,14 +216,6 @@ class Worker(threading.Thread):
             scripts = scenario.script_set.all()
             views.delete_scripts(scripts)
 
-            eoids = scenario.eoid_set.all()
-            for e in eoids:
-                e.delete()
-
-            extras = scenario.extraconditions_set.all()
-            for e in extras:
-                e.delete()
-
             scenario.delete()
             scenario_status.delete()
 
@@ -289,17 +283,10 @@ class Worker(threading.Thread):
             ncn_id   = scenario.ncn_id
             cat_reg  = scenario.cat_registration
 
-            eoids = scenario.eoid_set.all()
-            eoid_strs = []
-            for e in eoids:
-                eoid_strs.append(e.eoid_val.encode('ascii','ignore'))
-
             # ingestion_logic blocks until DM is finished downloading
             self._wfm.set_ingestion_pid(sc_id, os.getpid())
-            dl_dir, dar_url, dar_id = \
-                ingestion_logic(sc_id,
-                                models.scenario_dict(scenario),
-                                eoid_strs)
+            dl_errors, dl_dir, dar_url, dar_id, status = \
+                ingestion_logic(sc_id, models.scenario_dict(scenario))
 
             if check_status_stopping(sc_id):
                 raise StopRequest("Stop Request")
@@ -316,14 +303,19 @@ class Worker(threading.Thread):
             dir_list = os.listdir(dl_dir)
             n_dirs = len(dir_list)
             scripts = parameters["scripts"]
-            nerrors = 0
+            nerrors = dl_errors
             i = 1
             for d in dir_list:
-                mf_name = split_and_create_mf(
+                mf_name, metafiles = split_and_create_mf(
                     os.path.join(dl_dir, d), ncn_id, self._logger)
                 if not mf_name:
+                    logger.info("Error processing download directry " + `d`)
                     nerrors += 1
                     continue
+
+                # archive products that were downloaded
+                for m in metafiles:
+                    archive_metadata(sc_id, m)
 
                 scripts_args = self.mk_scripts_args(
                     parameters["scripts"], mf_name, cat_reg)

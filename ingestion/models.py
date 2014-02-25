@@ -22,14 +22,12 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.dateformat import DateFormat
 
-from settings import \
+from constants import \
     NCN_ID_LEN, \
     SC_NAME_LEN, \
     SC_DESCRIPTION_LEN, \
     SC_DSRC_LEN, \
-    PROD_ERROR_LEN, \
-    IE_SCRIPTS_DIR, \
-    IE_DEFAULT_INGEST_SCRIPT
+    PROD_ERROR_LEN
 
 # Scenario attributes that are exposed for external get operations.
 # Also used for some local interfaces.
@@ -46,8 +44,11 @@ EXT_GET_SCENARIO_KEYS  = (
     "dsrc_type",
     "default_priority",
     "default_script",
-    "preprocessing",
+    "preprocessA",
+    "preprocessB",
+    "preprocessC",
     "cat_registration",
+    "download_subset",
     "coastline_check",
     "ncn_id"
 )
@@ -121,6 +122,7 @@ DSRC_CHOICES = (
 #    (DSRC_OSCAT_CHOICE,  'OpenSearch Catalogue'),
 )
 
+TIME_FORMAT_8601   = "%Y-%m-%dT%H:%M:%S"
 
 # ------------ conversion utilities  --------------------------
 def date_to_iso8601(src_date):
@@ -128,19 +130,7 @@ def date_to_iso8601(src_date):
 
 def date_from_iso8601(src_str):
     return datetime.datetime.strptime(
-        src_str, "%Y-%m-%dT%H:%M:%S" )
-
-def get_scenario_script_paths(scenario):
-    # get list of scripts
-    scripts = scenario.script_set.all()
-    ingest_scripts = []
-    if scenario.default_script != 0:
-        ingest_scripts.append(os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_INGEST_SCRIPT) )
-    for s in scripts:
-        ingest_scripts.append("%s" % s.script_path)
-
-    return ingest_scripts
-
+        src_str, TIME_FORMAT_8601)
 
 def scenario_dict(db_model):
     """ creates a dictionary from a database model record,
@@ -173,6 +163,12 @@ def scenario_dict(db_model):
         extras_list.append( ( e.xpath.encode('ascii','ignore'),
                               e.text.encode('ascii','ignore')) )
     response_data['extraconditions'] = extras_list
+
+    dssids = []
+    dss_set = db_model.eoid_set.all()
+    for dssid in dss_set:
+        dssids.append(dssid.eoid_val.encode('ascii','ignore'))
+    response_data['dssids'] = dssids
 
     return response_data
 
@@ -211,14 +207,31 @@ class Scenario(models.Model):
     cloud_cover          = models.FloatField()
     view_angle           = models.FloatField()
     sensor_type          = models.CharField(max_length=96)
-    preprocessing        = models.BooleanField()
+    preprocessA          = models.BooleanField()
+    preprocessB          = models.BooleanField()
+    preprocessC          = models.BooleanField()
     default_script       = models.BooleanField()
     cat_registration     = models.BooleanField()
+    download_subset      = models.BooleanField()
     default_priority     = models.IntegerField()
     repeat_interval      = models.IntegerField()
     starting_date        = models.DateTimeField()
     user                 = models.ForeignKey(User)
     
+#*****************************************************
+#                   Archive                          *
+#  Archive of products already downloaded            *
+#  used to avoid re-downloading what we already have.*
+#  Stores just the EOID.                             *
+#*****************************************************
+class Archive(models.Model):
+    id           = models.AutoField(primary_key=True)
+    scenario     = models.ForeignKey(Scenario)
+
+    # EOID
+    eoid         = models.CharField(max_length=2048)
+
+
 #**************************************************
 #                   Eoid                          *
 #  List of EOIDS for a scenario settable by       *

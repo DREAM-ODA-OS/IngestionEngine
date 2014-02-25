@@ -157,7 +157,10 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['dsrc_type'        ].label = 'Data Src Type'
 #        self.fields['dsrc_login'       ].label = 'Data Src login'
 #        self.fields['dsrc_password'    ].label = 'Data Src password'
-        self.fields['preprocessing'    ].label = 'S2 atmos. pre-process' 
+        self.fields['preprocessA'      ].label = 'S2 pre-process type A' 
+        self.fields['preprocessB'      ].label = 'S2 pre-process type B' 
+        self.fields['preprocessC'      ].label = 'S2 pre-process type C' 
+        self.fields['download_subset'  ].label = 'Restrict Product DL to AOI subset' 
         self.fields['default_priority' ].label = 'Ingestion priority'
         self.fields['starting_date'    ].label = 'Repeat Starting Date'
         self.fields['repeat_interval'  ].label = 'Repeat Interval(secs)'
@@ -175,7 +178,10 @@ class ScenarioForm(forms.ModelForm):
         self.fields['cloud_cover'      ].initial = 50
         self.fields['view_angle'       ].initial = 50
         self.fields['sensor_type'      ].initial = ""
-        self.fields['preprocessing'    ].initial = True
+        self.fields['preprocessA'      ].initial = False
+        self.fields['preprocessB'      ].initial = False
+        self.fields['preprocessC'      ].initial = False
+        self.fields['download_subset'  ].initial = True
         self.fields['default_script'   ].initial = True
         self.fields['default_priority' ].initial = 100
         self.fields['repeat_interval'  ].initial = 0
@@ -194,7 +200,10 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['dsrc_type'           ].required = False
 #        self.fields['dsrc_login'          ].required = False
 #        self.fields['dsrc_password'       ].required = False
-        self.fields['preprocessing'       ].required = False
+        self.fields['preprocessA'         ].required = False
+        self.fields['preprocessB'         ].required = False
+        self.fields['preprocessC'         ].required = False
+        self.fields['download_subset'     ].required = False
         self.fields['default_script'      ].required = False
         self.fields['default_priority'    ].required = False
         self.fields['repeat_interval'     ].required = False

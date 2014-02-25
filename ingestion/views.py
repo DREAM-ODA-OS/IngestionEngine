@@ -761,6 +761,7 @@ def edit_scenario_core(request, scenario_id, template, aftersave):
          'eoid_in':eoid_in,
          'extras_in':extras,
          'sequence':"",
+         'jqueryui_offlineurl': JQUERYUI_OFFLINEURL,
          'home_page':IE_HOME_PAGE})
     return render_to_response(template, variables)
 
@@ -1019,8 +1020,11 @@ def new_sc_core(data):
         scenario.coastline_check = 0
     if not "cat_registration" in data:
         scenario.cat_registration = 0
-    if not "preprocessing" in data:
-        scenario.preprocessing = 0
+
+# TODO set preprocessA/B/C flags CONTINUE HERE
+    scenario.preprocessA = 0
+    scenario.preprocessB = 0
+    scenario.preprocessC = 0
 
     set_sc_dates(scenario, data)
     set_sc_other(scenario, data)
