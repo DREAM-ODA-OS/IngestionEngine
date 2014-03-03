@@ -120,7 +120,7 @@ class Worker(threading.Thread):
         return scripts_args
 
     def run_scripts(self, sc_id, ncn_id, scripts_args):
-        nerrors = 0
+        n_errors = 0
         for script_arg in scripts_args:
             if check_status_stopping(sc_id):
                 raise StopRequest("Stop Request")
@@ -128,9 +128,44 @@ class Worker(threading.Thread):
             self._logger.info("Running script: %s" % script_arg[0])
             r = subprocess.call(script_arg)
             if 0 != r:
-                nerrors += 1
+                n_errors += 1
                 self._logger.error(`ncn_id`+": ingest script returned status:"+`r`)
-        return nerrors
+        return n_errors
+
+    def post_download_actions(self, scid, ncn_id, dl_dir,scripts, cat_reg):
+        # For each product that was downloaded into its seperate
+        # directory, generate a product manifest for the ODA server,
+        # and also split each downloaded product into its parts.
+        # Then run the ODA ingestion script.
+        # TODO: the splitting could be done by the EO-WCS DM plugin
+        #       instead of doing it here
+        dir_list = os.listdir(dl_dir)
+        n_dirs = len(dir_list)
+        n_errors = 0
+        i = 1
+        for d in dir_list:
+            mf_name, metafiles = split_and_create_mf(
+                os.path.join(dl_dir, d), ncn_id, self._logger)
+            if not mf_name:
+                logger.info("Error processing download directry " + `d`)
+                n_errors += 1
+                continue
+
+            # archive products that were downloaded
+            for m in metafiles:
+                archive_metadata(scid, m)
+
+            scripts_args = self.mk_scripts_args(scripts, mf_name, cat_reg)
+            n_errors += self.run_scripts(scid, ncn_id, scripts_args)
+
+            percent  = 100 * (float(i) / float(n_dirs))
+            # keep percent > 0 to ensure webpage updates
+            if percent < 1.0: percent = 1
+            self._wfm.set_scenario_status(self._id, scid, 0, "INGESTING", percent)
+            i += 1
+
+        return n_errors
+
 
     def do_task(self,current_task):
         # set scenario status (processing)
@@ -184,7 +219,7 @@ class Worker(threading.Thread):
 
             #this may run for a long time, and the db is locked, but
             #there is nothing to be done here..
-            nerrors = 0
+            n_errors = 0
             try:
                 for script in parameters["scripts"]: # scripts absolute path
                     self._logger.info(`ncn_id`+" del running script "+`script`)
@@ -195,14 +230,14 @@ class Worker(threading.Thread):
                         args = [script, ncn_id]
                     r = subprocess.call(args)
                     if 0 != r:
-                        nerrors += 1
+                        n_errors += 1
                         self._logger.error(
                             `ncn_id`+": delete script returned status:"+`r`)
             except Exception as e:
-                nerrors += 1
+                n_errors += 1
                 self._logger.error(`ncn_id`+": Exception while deleting: "+`e`)
 
-            if nerrors > 0:
+            if n_errors > 0:
                 scenario_status.status = "NOT DELETED - ERROR."
                 scenario_status.is_available = 1
                 scenario_status.done = 0
@@ -232,7 +267,7 @@ class Worker(threading.Thread):
 
         percent = 1
         ncn_id = None
-        nerrors = 0
+        n_errors = 0
         try:
             sc_id = parameters["scenario_id"]
             self._wfm.set_scenario_status(
@@ -247,9 +282,9 @@ class Worker(threading.Thread):
                 self._logger)
             scripts_args = self.mk_scripts_args(
                 parameters["scripts"], mf_name, parameters["cat_registration"])
-            nerrors += self.run_scripts(sc_id, ncn_id, scripts_args)
-            if nerrors > 0:
-                raise IngestionError("Number of errors " +`nerrors`)
+            n_errors += self.run_scripts(sc_id, ncn_id, scripts_args)
+            if n_errors > 0:
+                raise IngestionError("Number of errors " +`n_errors`)
             self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
 
         except StopRequest as e:
@@ -276,11 +311,12 @@ class Worker(threading.Thread):
         percent = 1
         sc_id = parameters["scenario_id"]
         ncn_id = None
+        final_status = "IDLE"
         self._wfm.set_scenario_status(
             self._id, sc_id, 0, "GENERATING URLS", percent)
         try:
             scenario = models.Scenario.objects.get(id=sc_id)
-            ncn_id   = scenario.ncn_id
+            ncn_id   = scenario.ncn_id.encode('ascii','ignore')
             cat_reg  = scenario.cat_registration
 
             # ingestion_logic blocks until DM is finished downloading
@@ -291,53 +327,31 @@ class Worker(threading.Thread):
             if check_status_stopping(sc_id):
                 raise StopRequest("Stop Request")
 
-            if None == dar_id:
-                raise IngestionError("No DAR generated")
+            n_errors = 0
+            if status == "NO_ACTION":
+                final_status = "NOTHING INGESTED"
+            else:
+                if None == dar_id:
+                    raise IngestionError("No DAR generated")
 
-            # For each product that was downloaded into its seperate
-            # directory, generate a product manifest for the ODA server,
-            # and also split each downloaded product into its parts.
-            # Then run the ODA ingestion script.
-            # TODO: the splitting could be done by the EO-WCS DM plugin
-            #       instead of doing it here
-            dir_list = os.listdir(dl_dir)
-            n_dirs = len(dir_list)
-            scripts = parameters["scripts"]
-            nerrors = dl_errors
-            i = 1
-            for d in dir_list:
-                mf_name, metafiles = split_and_create_mf(
-                    os.path.join(dl_dir, d), ncn_id, self._logger)
-                if not mf_name:
-                    logger.info("Error processing download directry " + `d`)
-                    nerrors += 1
-                    continue
+                n_errors = self.post_download_actions(
+                    sc_id,
+                    ncn_id,
+                    dl_dir,
+                    parameters["scripts"],
+                    cat_reg)
 
-                # archive products that were downloaded
-                for m in metafiles:
-                    archive_metadata(sc_id, m)
-
-                scripts_args = self.mk_scripts_args(
-                    parameters["scripts"], mf_name, cat_reg)
-                nerrors += self.run_scripts(sc_id, ncn_id, scripts_args)
-
-                percent  = 100 * (float(i) / float(n_dirs))
-                # keep percent > 0 to ensure webpage updates
-                if percent < 1.0: percent = 1
-                self._wfm.set_scenario_status(
-                    self._id, sc_id, 0, "INGESTING", percent)
-                i += 1
-
-            if nerrors>0:
-                raise IngestionError(`ncn_id`+": ingestion encountered "+ `nerrors` +" errors")
+            n_errors += dl_errors
+            if n_errors>0:
+                raise IngestionError(`ncn_id`+": ingestion encountered "+ `n_errors` +" errors")
 
             # Finished
-            self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
+            self._wfm.set_scenario_status(self._id, sc_id, 1, final_status, 0)
             self._logger.info(`ncn_id`+": ingestion completed.")
 
         except StopRequest as e:
             self._logger.info(`ncn_id`+": Stop request from user: Ingestion Stopped")
-            self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
+            self._wfm.set_scenario_status(self._id, sc_id, 1, "STOPPED, IDLE", 0)
 
         except Exception as e:
             self._logger.error(`ncn_id`+"Error while ingesting: " + `e`)

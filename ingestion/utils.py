@@ -302,6 +302,13 @@ class TimePeriod:
     def equals_se(self, start, end):
         return self.begin_time == start and self.end_time == end
 
+def build_aoi_toi(aoi_json, start_tp, end_tp):
+    bb_ll = ( float(aoi_json["lc"][0]), float(aoi_json["lc"][1]) )
+    bb_ur = ( float(aoi_json["uc"][0]), float(aoi_json["uc"][1]) )
+    ret_aoi = Bbox( bb_ll, bb_ur )
+    ret_time = TimePeriod(start_tp, end_tp)
+    return ret_aoi, ret_time
+    
 # ------------ internet access --------------------------
 def read_from_url(
     url,

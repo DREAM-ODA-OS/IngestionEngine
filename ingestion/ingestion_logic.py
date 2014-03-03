@@ -28,6 +28,7 @@ from ie_xml_parser import parse_file
 from utils import \
     Bbox, \
     TimePeriod, \
+    build_aoi_toi, \
     mkFname, \
     DMError, \
     IngestionError, \
@@ -47,9 +48,9 @@ from dm_control import \
     DM_PRODUCT_CANCEL_TEMPLATE
 
 from models import \
+    Archive, \
     Scenario, \
     ScenarioStatus, \
-    Archive, \
     DSRC_EOWCS_CHOICE, \
     DSRC_OSCAT_CHOICE, \
     DSRC_BGMAP_CHOICE, \
@@ -69,7 +70,7 @@ from ie_xml_parser import \
     extract_TimePeriod, \
     extract_om_time, \
     extract_ServiceTypeVersion, \
-    extract_DatasetSeriesSummary, \
+    extract_DatasetSeriesSummaries, \
     extract_CoverageId, \
     get_coverageDescriptions, \
     SENSOR_XPATH, \
@@ -104,6 +105,31 @@ logger = logging.getLogger('dream.file_logger')
 
 
 # ------------ utilities --------------------------
+
+def get_dssids_from_pf(product_facility, aoi_toi):
+    # gets dssids from the pf
+    # returns service_version, dssids
+    #  where service_version is a string and ddsids is an array (list).
+
+    ids_from_pf = []
+
+    caps = get_caps_from_pf(product_facility)
+
+    if None == caps:
+        return ids_from_pf
+
+    try:
+        service_version = extract_ServiceTypeVersion(caps).strip()
+        wcseo_dss_list  = extract_DatasetSeriesSummaries(caps)
+    except Exception as e:
+        logger.error("Exception in get_dssids_from_pf: " + `e`)
+
+    caps = None  # no longer needed
+
+    ids_from_pf = getDssList(None, wcseo_dss_list, aoi_toi)
+
+    return service_version, ids_from_pf
+
 
 def check_status_stopping(scid):
     status = ScenarioStatus.objects.get(scenario_id=scid).status
@@ -195,20 +221,37 @@ def getDssList(scid, eo_dss_list, aoi_toi):
     id_list = []
     req_bb, req_time = aoi_toi
     for dss in eo_dss_list:
-        if check_status_stopping(scid):
+        if scid and check_status_stopping(scid):
             raise StopRequest("Stop Request")
+
+        timeperiod = extract_TimePeriod(dss)
+        if None == timeperiod:
+            logger.warning("Failed to extract time range from " + `dss`)
+            continue
+        if not req_time.overlaps(timeperiod):
+            continue
 
         bb1 = extract_WGS84bbox(dss)
         if None == bb1:
             logger.warning("Failed to extract bb from " + `dss`)
             continue
-        timeperiod = extract_TimePeriod(dss)
-        if None == timeperiod:
-            logger.warning("Failed to extract time range from " + `dss`)
-        if bb1.overlaps( req_bb ) and req_time.overlaps(timeperiod):
+        if bb1.overlaps( req_bb ):
             id_list.append( extract_Id(dss) )
 
     return id_list
+
+def get_caps_from_pf(product_facility_url):
+    base_url = product_facility_url + "?" + SERVICE_WCS
+    url_GetCapabilities = base_url + "&" + WCS_GET_CAPS
+    (fp, caps) = getXmlTree(url_GetCapabilities, CAPABILITIES_TAG)
+    ret = None
+    if None == caps:
+        logger.error("Cannot parse getCap file. Url="+url_GetCapabilities)
+    else:
+        ret = caps
+
+    if None != fp: fp.close()
+    return ret
 
 def check_bbox(coverageDescription, req_bbox):
     bb = extract_gml_bbox(coverageDescription)
@@ -459,18 +502,6 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
     return gc_requests
 
 
-def extract_aoi_toi(params):
-    # extract bbox and toi from request input
-    req_aoi = params["aoi_bbox"]
-    req_bb_ll = ( float(req_aoi["lc"][0]), float(req_aoi["lc"][1]) )
-    req_bb_ur = ( float(req_aoi["uc"][0]), float(req_aoi["uc"][1]) )
-    req_bb = Bbox( req_bb_ll, req_bb_ur )
-
-    req_time = TimePeriod(params['from_date'], params['to_date'])
-
-    return req_bb, req_time
-
-
 def generate_MD_urls(params, service_version, id_list):
     req_aoi = params["aoi_bbox"]
     ll = (req_aoi["lc"][0], req_aoi["lc"][1])
@@ -492,40 +523,28 @@ def urls_from_OSCAT(params, eoids):
     raise IngestionError("Catalogues are not yet implemented")
 
 def urls_from_EOWCS(params, eoids):
-    base_url = params['dsrc'] + "?" + SERVICE_WCS
-    url_GetCapabilities = base_url + "&" + WCS_GET_CAPS
-    (fp, caps) = getXmlTree(url_GetCapabilities, CAPABILITIES_TAG)
+
+    caps = get_caps_from_pf(params['dsrc'])
     if None == caps:
-        logger.error("Cannot parse getCap file. Url="+url_GetCapabilities)
-        if None != fp: fp.close()
-        if check_status_stopping(params["sc_id"]):
-            raise StopRequest("Stop Request")
-        return None
-
-    service_version = extract_ServiceTypeVersion(caps).strip()
-    wcseo_dss = extract_DatasetSeriesSummary(caps)
-
-    caps = None  # no longer needed
-    fp.close()
+        raise IngestionError("cannot get Capabilities from '"+params['dsrc']+"'")
 
     if check_status_stopping(params["sc_id"]):
         raise StopRequest("Stop Request")
 
-    aoi_toi = extract_aoi_toi(params)
-    id_list = getDssList(params["sc_id"], wcseo_dss, aoi_toi)
+    service_version = extract_ServiceTypeVersion(caps).strip()
 
-    if IE_DEBUG>1:
-        logger.debug(" id list before culling:" + `id_list`)
+    wcseo_dss = extract_DatasetSeriesSummaries(caps)
+
+    caps = None  # no longer needed
+    aoi_toi = build_aoi_toi(
+        params["aoi_bbox"], params['from_date'], params['to_date'])
     
-    # cull id list according to eoids specified by user
-    if len(eoids) >  0:
-        culled_list = []
-        for e in eoids:
-            if e in id_list:
-                culled_list.append(e)
-        id_list = culled_list
-        if IE_DEBUG>1:
-            logger.debug(" id list after culling:" + `id_list`)
+    if len(eoids) > 0:
+        # use only the dssids specified, don't look for more.
+        id_list = eoids
+    else:
+        # find all datasets that match the bbox and Toi
+        id_list = getDssList(params["sc_id"], wcseo_dss, aoi_toi)
 
     md_urls = generate_MD_urls(params, service_version, id_list)
     if IE_DEBUG>1:
@@ -537,7 +556,7 @@ def urls_from_EOWCS(params, eoids):
     
 def get_coverage_URLs(params, eoids):
     if IE_DEBUG > 1:
-        print "   get_coverage_URLs: params=" + `params`
+        logger.debug ("   get_coverage_URLs: params=" + `params`)
     
     url_parts = params['dsrc'].split(":", 1)
     if len(url_parts) < 2:
@@ -799,8 +818,7 @@ def wait_for_download(scid, dar_url, dar_id):
     return n_errors
 
 # ----- the main entrypoint  --------------------------
-def ingestion_logic(scid,
-                    scenario_data):
+def ingestion_logic(scid, scenario_data):
     root_dl_dir = DownloadManagerController.Instance()._download_dir
     custom = scenario_data['extraconditions']
 

@@ -295,32 +295,67 @@ def delete_eoids(scenario, del_list):
             logger = logging.getLogger('dream.file_logger')
             logger.error("Internal error housekeeping for EOIDS," + `e`)
         
+def  refresh_dssids_chache(scenario, new_dssids, selected_dssids):
+    # Caches in the db dssids that were presumably obtained from the pf
+    #  if any dss ids already exist in the db, then the old ones are
+    #  deleted and replaced by new dssids.  The selected flag is
+    #  set to True for any dssid that is in the selected_dssids list.
+
+    scenario.eoid_set.all().delete()
+
+    for e in new_dssids:
+
+        if e in selected_dssids: this_sel = True
+        else:                    this_sel = False
+
+        eoid = models.Eoid(scenario=scenario,
+                    eoid_val=e.encode('ascii','ignore'),
+                    selected=this_sel)
+        eoid.save()
+
+def reset_dssid_selection(scenario, selected_dssids):
+    old_selection = scenario.eoid_set.filter(selected=True)
+    for eoid in old_selection:
+        eoid.selected=False
+        eoid.save()
+
+    for e in selected_dssids:
+        eoid = models.Eoid.objects.get(eoid_val=e,scenario=scenario)
+        eoid.selected=True
+        eoid.save()
+
+def empty_dssids(ids):
+    if len(ids) == 0: return True
+    if ids == '':     return True
+    if len(ids) == 1 and (ids[0] == '' or len(ids[0]) == 0): return True
+    return False
+
 def handle_eoids(request,scenario):
 
-    if not 'eoid_val' in request.POST:
+    if not 'eoid_selected' in request.POST or \
+            not 'all_dssids'  in request.POST:
         return
 
-    old_objs = scenario.eoid_set.all()
+    all_dssids = request.POST['all_dssids'].encode('ascii','ignore').split(',')
+    
+    selected_dssids = request.POST.getlist(u'eoid_selected')
 
-    if len(request.POST['eoid_val']) == 0:
-        delete_all_eoids(scenario)
-        return
+    wfm = work_flow_manager.WorkFlowManager.Instance()
+    wfm._lock_db.acquire()
 
-    new_eoids = request.POST['eoid_val'].encode('ascii','ignore').split(',')
-    old_list = []
-    for e in old_objs:
-        old_list.append(e.eoid_val)
-        
-    del_list = []
-    for e in old_list:
-        if not e in new_eoids:
-            del_list.append(e)
-    delete_eoids(scenario, del_list)
+    try:
 
-    for e in new_eoids:
-        ne = e.strip()
-        if not ne in old_list:
-            models.Eoid( scenario=scenario,eoid_val=ne ).save()
+        if not empty_dssids(all_dssids):
+            refresh_dssids_chache(scenario, all_dssids, selected_dssids)
+        else:
+            reset_dssid_selection(scenario, selected_dssids)
+
+    except Exception as e:
+        logger = logging.getLogger('dream.file_logger')
+        logger.error(`e`)
+
+    finally:
+        wfm._lock_db.release()
 
 
 def handle_extras(request,scenario):
@@ -569,7 +604,7 @@ def odaAddLocalProductOld(request, ncn_id):
         return render_to_response('addLocalProduct.html', variables)
 
 def getAddProductResult(request, sc_id, error):
-    print 'start getAddProductResult()'
+
     #print `request`
     response_data = []
     response_data.append({'sc_id'          :'%s' % sc_id})
@@ -581,7 +616,6 @@ def getAddProductResult(request, sc_id, error):
     else :
         response_data.append({'status': 0 })
 
-    print 'end getAddProductResult()'
     return "addLocalProductResult", response_data
 
 def add_local_product_core(request, ncn_id, template, aftersave=None):
@@ -680,7 +714,6 @@ def odaAddLocalProduct(request, ncn_id):
 
 
 def show_log_core(request, template):
-    print 'show_log_core: ' + `template`
     variables = RequestContext(
         request,
         {'home_page':''})
@@ -744,21 +777,21 @@ def edit_scenario_core(request, scenario_id, template, aftersave):
                 form.fields[field].initial = getattr(scenario,field)   
 
     scripts = []
-    eoid_in = []
+    eoids   = []
     extras  = []
     if editing:
         # load scripts, eoids, and extras
         for field in form.fields:
             form.fields[field].initial = getattr(scenario,field)   
         scripts = scenario.script_set.all()
-        eoid_in = scenario.eoid_set.all()
+        eoids   = scenario.eoid_set.all()
         extras  = scenario.extraconditions_set.all()
 
     variables = RequestContext(
         request,
         {'form':form,
          'scripts':scripts,
-         'eoid_in':eoid_in,
+         'eoids_in':eoids,
          'extras_in':extras,
          'sequence':"",
          'jqueryui_offlineurl': JQUERYUI_OFFLINEURL,

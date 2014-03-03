@@ -24,6 +24,10 @@ import work_flow_manager
 import logging
 import os
 
+from utils import build_aoi_toi
+
+from ingestion_logic import get_dssids_from_pf
+
 from settings import \
     MEDIA_ROOT, \
     LOGGING_FILE, \
@@ -113,6 +117,15 @@ def ingest_scenario_wfm(request, ncn_id):
     except Exception as e:
         return simplejson.dumps({'error': `e`})
         
+
+@dajaxice_register(method='POST')
+def get_available_dssids(request, dsrc, aoi, toi_start, toi_end):
+    logger = logging.getLogger('dream.file_logger')
+    logger.info("get_available_dssids, url: "+`dsrc`)
+    aoi_toi = build_aoi_toi(aoi, toi_start, toi_end)
+    sv, dssids = get_dssids_from_pf( dsrc.encode('ascii','ignore'), aoi_toi )
+    ret = { 'status': 0, 'eoids' : dssids }
+    return simplejson.dumps(ret)
 
 @dajaxice_register(method='POST')
 def stop_ingestion_wfm(request,scenario_id):

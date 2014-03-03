@@ -1,9 +1,11 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 {% load staticfiles %}
+{% load dajaxice_templatetags %}
 
 <head>
 {% block head %}	
+{% dajaxice_js_import 'nocsrf' %}
     <link rel="stylesheet" type="text/css" href={% static "css/iestyle.css" %} />
     <script src = "{% static 'js/jquery.js' %}">
 	</script>
@@ -16,12 +18,12 @@
     var input_status = "{{status}}";
     if (status !== "") { alert(""+status) }
 
-    var eoids = 
-        {% for eoid in eoid_in %}
-        "{{ eoid.eoid_val }}," + 
-    	{% endfor %}
-        '' ;
-    eoids = eoids.slice(0, -1);
+    var eoids = new Array();
+    {% for eoid in eoids_in %}
+       eoids.push(new Array(
+           "{{ eoid.eoid_val }}",
+           "{{ eoid.selected }}" === "True" ? true : false ));
+    {% endfor %}
 
     var extras = new Array();
         {% for e in extras_in %}
@@ -31,6 +33,7 @@
     	{% endfor %}
 
     window.onload=function(){
+        write_eoids();
         write_extras_lines()
     };
 	</script>

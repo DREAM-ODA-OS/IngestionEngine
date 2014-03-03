@@ -325,9 +325,7 @@
             "dsrc_type": "EO",
             "dsrc_password": "", 
             "scenario_name": "Test Scenario 1", 
-            "preprocessA": 0, 
-            "preprocessB": 0, 
-            "preprocessC": 0,
+            "s2_preprocess": "NO",
             "download_subset": 1,
             "default_script": 1, 
             "cat_registration": 0, 
@@ -359,9 +357,7 @@
             "dsrc_type": "EO",
             "dsrc_password": "", 
             "default_script": 1, 
-            "preprocessA": 0, 
-            "preprocessB": 0, 
-            "preprocessC": 0,
+            "s2_preprocess": "NO",
             "download_subset": 1,
             "cat_registration": 0,
             "coastline_check": 0,
@@ -397,9 +393,7 @@
             "from_date": "2013-01-25T12:45:50",
             "aoi_poly_lat": "",
             "scenario_name": "Cloud conver and incidence Angle from spot4 take5",
-            "preprocessA": 0, 
-            "preprocessB": 0, 
-            "preprocessC": 0,
+            "s2_preprocess": "NO",
             "download_subset": 1,
             "user": 4,
             "view_angle": 8.0,
@@ -411,11 +405,16 @@
             "to_date": "2014-01-25T12:45:50"
     }},
     {"pk": 1, "model": "ingestion.eoid", "fields":  {
-       "scenario": 1, "eoid_val": "Landsat5_RGB_view"
+       "scenario": 1,
+       "eoid_val": "Landsat5_RGB_view",
+       "selected": true
     }}, 
     {"pk": 2, "model": "ingestion.eoid", "fields":  {
-       "scenario": 3, "eoid_val": "Spot4Take5_N2A_PENTE"
+       "scenario": 3,
+       "eoid_val": "Spot4Take5_N2A_PENTE",
+       "selected": true
     }}, 
+
     { "pk": 1, "model": "ingestion.extraconditions", "fields": {
             "scenario": 1,
             "xpath": "{http://www.opengis.net/eop/2.0}Platform/{http://www.opengis.net/eop/2.0}shortName",

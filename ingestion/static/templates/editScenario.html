@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load staticfiles %}
+{% load dajaxice_templatetags %}
 
 {% block head %}	
+{% dajaxice_js_import 'nocsrf' %}
 
     <script src = "{% static 'js/iescripts.js' %}">
     </script>
@@ -12,12 +14,12 @@
     var input_status = "{{status}}";
     if (status !== "") { alert(""+status) }
 
-    var eoids = 
-        {% for eoid in eoid_in %}
-        "{{ eoid.eoid_val }}," + 
-    	{% endfor %}
-        '' ;
-    eoids = eoids.slice(0, -1);
+    var eoids = new Array();
+    {% for eoid in eoids_in %}
+       eoids.push(new Array(
+           "{{ eoid.eoid_val }}",
+           "{{ eoid.selected }}" === "True" ? true : false ));
+    {% endfor %}
 
     var extras = new Array();
         {% for e in extras_in %}
@@ -27,7 +29,8 @@
     	{% endfor %}
 
     window.onload=function(){
-        write_extras_lines()
+        write_eoids();
+        write_extras_lines();
     };
     </script>
 

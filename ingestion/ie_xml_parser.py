@@ -301,7 +301,7 @@ def extract_ServiceTypeVersion(caps):
         return DEFAULT_SERVICE_VERSION
     return stv[0].text
 
-def extract_DatasetSeriesSummary(caps):
+def extract_DatasetSeriesSummaries(caps):
     result = []
     wcs_extension = caps.findall(
         "." +

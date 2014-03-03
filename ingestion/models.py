@@ -35,24 +35,24 @@ from constants import \
 # are processed individually: see scenario_dict() below.
 # 
 EXT_GET_SCENARIO_KEYS  = (
-    "aoi_type",
     "repeat_interval",
     "cloud_cover",
     "view_angle",
-    "sensor_type",
-    "dsrc",
-    "dsrc_type",
     "default_priority",
     "default_script",
-    "preprocessA",
-    "preprocessB",
-    "preprocessC",
     "cat_registration",
     "download_subset",
-    "coastline_check",
-    "ncn_id"
+    "coastline_check"
 )
 
+EXT_GET_SCENARIO_STRINGS = (
+    "aoi_type",
+    "dsrc_type",
+    "dsrc",
+    "sensor_type",
+    "s2_preprocess",
+    "ncn_id"
+)
 # additional Scenario attributes accepted for /update/new operations,
 #  in addition to EXT_GET_SCENARIO_KEYS 
 EXT_PUT_SCENARIO_KEYS  = EXT_GET_SCENARIO_KEYS + (
@@ -111,6 +111,18 @@ AOI_CHOICES = (
 #    (AOI_SHPFILE_CHOICE, 'Shapefile'),
 )
 
+S2_PRE_NONE = 'NO'
+S2_PRE_A    = 'PA'
+S2_PRE_B    = 'PB'
+S2_PRE_C    = 'PC'
+
+S2_PRE_CHOICES = (
+    (S2_PRE_NONE, 'None'),
+    (S2_PRE_A,    'Type A'),
+    (S2_PRE_B,    'Type B'),
+    (S2_PRE_C,    'Type C')
+)
+
 # Data Source
 DSRC_EOWCS_CHOICE  = 'EO'    # EO-WCS
 DSRC_BGMAP_CHOICE  = 'BG'    # Background Map
@@ -140,8 +152,10 @@ def scenario_dict(db_model):
     """
     response_data = {}
     for s in ( EXT_GET_SCENARIO_KEYS ):
-#        response_data[s] = str(getattr(db_model,s))
         response_data[s] = getattr(db_model,s)
+
+    for s in ( EXT_GET_SCENARIO_STRINGS ):
+        response_data[s] = getattr(db_model,s).encode('ascii','ignore')
 
     # convert dates to ISO-8601
     response_data["from_date"    ] = date_to_iso8601(db_model.from_date)
@@ -165,7 +179,7 @@ def scenario_dict(db_model):
     response_data['extraconditions'] = extras_list
 
     dssids = []
-    dss_set = db_model.eoid_set.all()
+    dss_set = db_model.eoid_set.filter(selected=True)
     for dssid in dss_set:
         dssids.append(dssid.eoid_val.encode('ascii','ignore'))
     response_data['dssids'] = dssids
@@ -207,11 +221,12 @@ class Scenario(models.Model):
     cloud_cover          = models.FloatField()
     view_angle           = models.FloatField()
     sensor_type          = models.CharField(max_length=96)
-    preprocessA          = models.BooleanField()
-    preprocessB          = models.BooleanField()
-    preprocessC          = models.BooleanField()
     default_script       = models.BooleanField()
     cat_registration     = models.BooleanField()
+    s2_preprocess        = models.CharField(
+        max_length=2,
+        choices=S2_PRE_CHOICES,
+        default=S2_PRE_NONE)
     download_subset      = models.BooleanField()
     default_priority     = models.IntegerField()
     repeat_interval      = models.IntegerField()
@@ -227,20 +242,19 @@ class Scenario(models.Model):
 class Archive(models.Model):
     id           = models.AutoField(primary_key=True)
     scenario     = models.ForeignKey(Scenario)
-
-    # EOID
     eoid         = models.CharField(max_length=2048)
 
 
 #**************************************************
 #                   Eoid                          *
-#  List of EOIDS for a scenario settable by       *
+#  List of EOIDS for a scenario selected by       *
 #  the user, used to restrict product selection   *
 #**************************************************   
 class Eoid(models.Model):
     id       = models.AutoField(primary_key=True)
     scenario = models.ForeignKey(Scenario)
     eoid_val = models.CharField(max_length=2048)
+    selected = models.BooleanField()
 
 
 #**************************************************
@@ -283,9 +297,10 @@ class ProductInfo(models.Model):
 #                 User Script                     *
 #**************************************************
 def update_script_filename(instance,filename):
+    logger = logging.getLogger('dream.file_logger')
     path = "scripts/" # save destination related to .../<ie_project>/media/
     file_name = "%s_%s" % (str(instance.user.id),instance.script_name)
-    print "File name: %s" % file_name
+    logger.debug ("File name: %s" % file_name)
     return os.path.join(path,file_name)
 
 class UserScript(models.Model):

@@ -55,15 +55,21 @@ var Dajaxice = {
 		      callback_function, argv, custom_settings);
 	},
     
-   stop_ingestion_wfm: function(callback_function, argv, custom_settings){
+    get_available_dssids: function(callback_function, argv, custom_settings){
+        Dajaxice.call(
+		      'ingestion.get_available_dssids',
+		      'POST',
+		      callback_function, argv, custom_settings);
+	},
+    
+    stop_ingestion_wfm: function(callback_function, argv, custom_settings){
         Dajaxice.call(
 		      'ingestion.stop_ingestion_wfm',
 		      'POST',
 		      callback_function, argv, custom_settings);
     }
     
-    }
-,
+    },
 
     get_cookie: function(name)
     {

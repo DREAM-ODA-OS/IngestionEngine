@@ -1,5 +1,7 @@
 <form method="post" action="" enctype="multipart/form-data">
 {% csrf_token %}
+<!-- used for the list of dssids requested by the user -->
+<input type="hidden" id="id_dssids" value="" name="all_dssids">
      <p>
        {% for i in form.errors %}
          Error in field  {{i}}: {{ form.i.errors.as_text }}
@@ -34,98 +36,105 @@
                value="Show Extras"/>
     </p> <p>
     <div class="cl_extra" id="id_extra" style="display:none">
-     <table>
-       <div class="cl_extras_line" id="id_extras_line">
-       </div>
-     </table>
-    <INPUT TYPE="BUTTON" class="AddExtrasBtn"
+      <table>
+        <div class="cl_extras_line" id="id_extras_line">
+        </div>
+      </table>
+      <INPUT TYPE="BUTTON" class="AddExtrasBtn"
                id="id_but_add_extras"
                title="Add additional conditions"
                onClick="append_more_extras()"
                value="Add additional conditions"/>
     </div>
     </p><p>
-     <table>
-        <tr>
-          <th>{{ b.label_tag }}</th> <td colspan=3> {{ b }} </td>
-        </tr>
+    <table>
+      <tr>
+        <th>{{ b.label_tag }}</th> <td colspan=3> {{ b }} </td>
+      </tr>
          {% elif "id_aoi_type" in b.id_for_label %}
-     </table>
-     <table>
-     <tr><td>&nbsp;</td><td colspan=3></td></tr>
-	 <tr id="tr_eoids">
-     <th align="right"> Data Set IDs: &nbsp; </th>
-		<td colspan=3> 
-                <script>
-                document.writeln('<input type="text" size=60 id="id_eoid_input" '
-                                 + ' name="eoid_val" title="Comma-separated list" value="'+eoids+'">');
-                </script>
-        </td> 
-    </tr>
-
-        <tr><td>&nbsp;</td><td colspan=3></td></tr>
-        <tr>
+    </table>
+    <table>
+      <tr><td>&nbsp;</td><td colspan=3></td></tr>
+      <tr>
           <th align="right">{{ b.label_tag }}&nbsp</th> <td> {{ b }} </td>
          {% elif "id_coastline_check" in b.id_for_label %}
           <th align="right">{{ b.label_tag }}</th> <td align="left"> {{ b }} </td>
-        </tr>
+      </tr>
          {% elif "id_bb_" in b.id_for_label%}
           {% if "id_bb_lc_long" in b.id_for_label %}
-          <tr>
-            <th align="right">BBOX:&nbsp;</th> 
-            <td align="left" colspan=3>Lower corner long,lat:
+      <tr>
+        <th align="right">BBOX:&nbsp;</th> 
+        <td align="left" colspan=3>Lower corner long,lat:
                  {{ b }}
           {% elif "id_bb_lc_lat" in b.id_for_label%}
                   {{ b }}
-            </td>
-          </tr>
+        </td>
+      </tr>
           {% elif "id_bb_uc_long" in b.id_for_label%}
-          <tr>
+      <tr>
             <td></td>
             <td align="left" colspan=3>Upper corner long,lat:
                   {{ b }}  
           {% elif "id_bb_uc_lat" in b.id_for_label%}
                   {{ b }} 
             </td>
-          </tr>
-          <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+      </tr>
+      <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
           {% endif %}
         {% elif "id_cloud_cover" in b.id_for_label%}
-        <tr><td>&nbsp;</td><td colspan=3></td></tr>
-          <tr>
+    <tr><td>&nbsp;</td><td colspan=3></td></tr>
+    <tr id="tr_eoids">
+      <th align="right"> Data Set IDs: &nbsp; </th>
+      <td colspan=3> 
+        <div class="cl_eoids" id="id_eoids">
+        </div>
+      </td> 
+    </tr>
+      <tr><td>&nbsp;</td><td colspan=3></td></tr>
+      <tr>
             <th> {{ b.label_tag }}</th><td> {{ b }} </td>
+
         {% elif "id_view_angle" in b.id_for_label%}
             <th> {{ b.label_tag }}</th><td> {{ b }} </td>
-          </tr>
+      </tr>
+
         {% elif "id_sensor_type" in b.id_for_label%}
-        <tr>
+      <tr>
           <th> {{ b.label_tag }}</th><td colspan=3> {{ b }} </td>
-        </tr>
-        <tr><td>&nbsp;</td><td colspan=3></td></tr>
-        {% elif "id_preprocess" in b.id_for_label%}
-        <tr>
-          <th> {{ b.label_tag }}</th><td>{{ b }} </td>
+      </tr>
+      <tr><td>&nbsp;</td><td colspan=3></td></tr>
+
         {% elif "id_default_script" in b.id_for_label%}
+      <tr>
           <th align=right> {{ b.label_tag }}</th><td>{{ b }} </td>
-        </tr>
+        {% elif "id_cat_registration" in b.id_for_label%}
+          <th align=right> {{ b.label_tag }}</th><td>{{ b }} </td>
+      </tr>
+        {% elif "id_download_subset" in b.id_for_label%}
+      <tr><td>&nbsp;</td><td colspan=3></td></tr>
+      <tr>
+          <th align=right colspan=2> {{ b.label_tag }}</th><td>{{ b }} </td>
+      </tr>
+      <tr><td>&nbsp;</td><td colspan=3></td></tr>
+
         {% else %}
-        <tr>
+      <tr>
           <th> {{ b.label_tag }}</th><td colspan=3> {{ b }} </td>
-        </tr>
+      </tr>
         {% endif %}
-	  {% endfor %}
+      {% endfor %}
     </table>
 
-	<p> </p>
+    <p> </p>
     <table id="table_scripts" data-ids={{sequence}}>
-		
-	{% for script in scripts %}
-	<tr id="tr_{{script.id_script}}">
-		<td><input type="text" name="script_name" value="{{ script.script_name }}"  disabled></td>
-		<td><input type="text" name="script_file" value="{{ script.script_path }}"  disabled></td>
-	</tr>
-	{% endfor %}
-	</table>
+        
+    {% for script in scripts %}
+    <tr id="tr_{{script.id_script}}">
+        <td><input type="text" name="script_name" value="{{ script.script_name }}"  disabled></td>
+        <td><input type="text" name="script_file" value="{{ script.script_path }}"  disabled></td>
+    </tr>
+    {% endfor %}
+    </table>
     
     </p>
     <p></p>

@@ -223,6 +223,90 @@ function sync_scenarios() {
         add_extras_line('','');
     };
 
+    function get_el_val(element_id)
+    {
+        return document.getElementById(element_id).value;
+    };
+
+    function get_available_dssids()
+    {
+        var dsrc_val = get_el_val("id_dsrc");
+        if (! dsrc_val || '' == dsrc_val)
+        {
+            alert("Please first fill in the Product Facility (Data Source)");
+        }
+        else
+        {
+            var aoi = {
+                'lc' : [get_el_val("id_bb_lc_long"), get_el_val("id_bb_lc_lat")],
+                'uc' : [get_el_val("id_bb_uc_long"), get_el_val("id_bb_uc_lat")]
+            };
+            var toi_start = get_el_val("id_from_date_0")+'T'+get_el_val("id_from_date_1");
+            var toi_end   = get_el_val("id_to_date_0")+'T'+get_el_val("id_to_date_1");
+            Dajaxice.ingestion.get_available_dssids(
+                function(data){
+                    if(data.status === undefined || ! 'eoids' in data) {
+                        alert("Error getting Data Set Ids");
+                    } else {
+                        if (data.status != 0) {
+                            alert(data.message);
+                        } else  {
+                            eoids = null;
+                            eoids = new Array();
+                            for (var i=0; i<data.eoids.length; i++) {
+                                eoids.push ( new Array(data.eoids[i], false) );
+                            }
+                            write_eoids();
+                            // store the dssids in the hidden element
+                            // to pass then to the python code for
+                            // caching in the database
+                            var dsslist = document.getElementById("id_dssids");
+                            if (dsslist) {
+                                dsslist.value = data.eoids;
+                            }
+                        }
+                    }
+                },
+                { "dsrc": dsrc_val,
+                  "aoi": aoi,
+                  "toi_start": toi_start,
+                  "toi_end": toi_end});
+        }
+    };
+
+    function write_eoids()
+    {
+        if (eoids.length==0) {
+            $('#id_eoids').html(
+              '<INPUT type="BUTTON" class="cl_gen_eoids"' +
+              ' id="id_but_gen_eoids"'+
+              ' title="Get available Data Set Ids from Product Facility"'+
+              ' onClick="get_available_dssids()"' +
+              ' value="..."/>');
+        }
+        else
+        {
+            var size = eoids.length < 4 ? eoids.length : 4;
+            var select_html =
+                '<select multiple name="eoid_selected" size="'+size+'"'+' title="Select one or more">';
+             for (var i=0; i<eoids.length; i++) {
+                 var eoid=eoids[i][0];
+                 var selected = eoids[i][1] ? 'selected="selected"' : '';
+                 select_html +='<option ' +selected+' value="'+eoid+'">'+
+                     eoid+
+                     '</option>';
+             }
+             select_html += '</select>';
+             refresh_html =
+                 '&nbsp; <INPUT type="BUTTON" class="cl_ref_eoids"'+
+                 ' id="id_but_ref_eoids"'+
+                 ' title="Refresh available Data Set Ids from Product Facility"'+
+                 ' onClick="get_available_dssids()"' +
+                 ' value="<-- Refresh" />';
+             $('#id_eoids').html(select_html+refresh_html);
+        }
+    };
+
     function add_extras_line(xp, xt)
     {
         $('#id_extras_line').append(
