@@ -110,7 +110,7 @@ class Worker(threading.Thread):
                 time.sleep(1)
 
 
-    def mk_catreg_arg():
+    def mk_catreg_arg(self):
         return "-catreg=" + \
                 os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_CATREG_SCRIPT)
 
@@ -118,7 +118,7 @@ class Worker(threading.Thread):
     def mk_scripts_args(self, scripts, mf_name, cat_reg):
         scripts_args = []
         if cat_reg:
-            cat_reg_str = mk_catreg_arg()
+            cat_reg_str = self.mk_catreg_arg()
         for s in scripts:
             if cat_reg:
                 scripts_args.append([s, mf_name, cat_reg_str])
@@ -185,7 +185,7 @@ class Worker(threading.Thread):
             tar_script = os.path.join(IE_SCRIPTS_DIR, IE_TAR_RESULT_SCRIPT)
             script_arg = [tar_script, dl_dir]
             if cat_reg:
-                script_arg.append(mk_catreg_arg())
+                script_arg.append(self.mk_catreg_arg())
             self._logger.info(`ncn_id`+": running " + `script_arg`)
             r = subprocess.call(script_arg)
             if 0 != r:
