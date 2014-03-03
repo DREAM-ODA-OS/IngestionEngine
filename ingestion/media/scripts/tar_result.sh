@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # 
-#  DREAM tar result.
+#  DREAM tar result script.
 #  This script is invoked by the Ingestion Engine
 #  when the 'tar results' flag is set.  The intent is 
 #  is to package up in a tar file the comple result
