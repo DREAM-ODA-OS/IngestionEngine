@@ -404,6 +404,7 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid):
             continue
         if IE_DEBUG > 2:
             logger.info("  coverage_id="+coverage_id)
+        
         if check_archived(scid, coverage_id):
             if IE_DEBUG > 0:
                 logger.info("  coverage_id='"+coverage_id+
@@ -749,7 +750,8 @@ def wait_for_download(scid, dar_url, dar_id):
                 if "productProgress" not in product:
                     continue
                 progress = product["productProgress"]
-                if progress["status"] == "IN_ERROR":
+                dl_status = progress["status"]
+                if dl_status == "IN_ERROR":
                     n_errors += 1
                     n_done += 1
                     if "message" in progress: msg = progress["message"]
@@ -761,9 +763,17 @@ def wait_for_download(scid, dar_url, dar_id):
                     logger.info("Dl Manager reports 'IN_ERROR' for uuid "+uuid+
                                 ", message: " + msg +
                                 "\n url: " + url)
-                elif progress["status"] == "COMPLETED":
+                elif dl_status == "COMPLETED":
                     n_done += 1
                 else:
+                    if IE_DEBUG > 1:
+                        prod_uuid = None
+                        if 'uuid' in product:
+                            prod_uuid = product['uuid']
+                        else:
+                            prod_uuid = 'unknown'
+                        logger.debug("Status from DM: " + `dl_status` +
+                                     ", prod. uuid="+`prod_uuid`)
                     all_done = False
                 if "progressPercentage" not in progress:
                     part_percent += 100

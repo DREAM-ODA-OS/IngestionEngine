@@ -35,7 +35,9 @@ from settings import \
     STOP_REQUEST, \
     IE_SCRIPTS_DIR, \
     IE_DEFAULT_CATREG_SCRIPT, \
-    IE_DEFAULT_CATDEREG_SCRIPT
+    IE_DEFAULT_CATDEREG_SCRIPT, \
+    IE_TAR_RESULT_SCRIPT, \
+    IE_TAR_FILE_SUFFIX
 
 from ingestion_logic import \
     ingestion_logic, \
@@ -107,11 +109,16 @@ class Worker(threading.Thread):
             if queue.empty():
                 time.sleep(1)
 
+
+    def mk_catreg_arg():
+        return "-catreg=" + \
+                os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_CATREG_SCRIPT)
+
+    
     def mk_scripts_args(self, scripts, mf_name, cat_reg):
         scripts_args = []
         if cat_reg:
-            cat_reg_str = "-catreg=" + \
-                os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_CATREG_SCRIPT)
+            cat_reg_str = mk_catreg_arg()
         for s in scripts:
             if cat_reg:
                 scripts_args.append([s, mf_name, cat_reg_str])
@@ -129,14 +136,20 @@ class Worker(threading.Thread):
             r = subprocess.call(script_arg)
             if 0 != r:
                 n_errors += 1
-                self._logger.error(`ncn_id`+": ingest script returned status:"+`r`)
+                self._logger.error(`ncn_id`+": script returned status:"+`r`)
         return n_errors
 
-    def post_download_actions(self, scid, ncn_id, dl_dir,scripts, cat_reg):
+    def post_download_actions(self,
+                              scid,
+                              ncn_id,
+                              dl_dir,
+                              scripts,
+                              cat_reg,
+                              tar_result):
         # For each product that was downloaded into its seperate
         # directory, generate a product manifest for the ODA server,
         # and also split each downloaded product into its parts.
-        # Then run the ODA ingestion script.
+        # Then run the post- ingestion scripts.
         # TODO: the splitting could be done by the EO-WCS DM plugin
         #       instead of doing it here
         dir_list = os.listdir(dl_dir)
@@ -163,6 +176,24 @@ class Worker(threading.Thread):
             if percent < 1.0: percent = 1
             self._wfm.set_scenario_status(self._id, scid, 0, "INGESTING", percent)
             i += 1
+
+        # run the tar script if requested
+        if tar_result:
+            if check_status_stopping(scid):
+                raise StopRequest("Stop Request")
+
+            tar_script = os.path.join(IE_SCRIPTS_DIR, IE_TAR_RESULT_SCRIPT)
+            script_arg = [tar_script, dl_dir]
+            if cat_reg:
+                script_arg.append(mk_catreg_arg())
+            self._logger.info(`ncn_id`+": running " + `script_arg`)
+            r = subprocess.call(script_arg)
+            if 0 != r:
+                n_errors += 1
+                self._logger.error(`ncn_id`+": tar script returned status:"+`r`)
+            else:
+                self._logger.info(`ncn_id`+": tar file is ready: " +
+                                  dl_dir + IE_TAR_FILE_SUFFIX);
 
         return n_errors
 
@@ -339,7 +370,8 @@ class Worker(threading.Thread):
                     ncn_id,
                     dl_dir,
                     parameters["scripts"],
-                    cat_reg)
+                    cat_reg,
+                    scenario.tar_result)
 
             n_errors += dl_errors
             if n_errors>0:

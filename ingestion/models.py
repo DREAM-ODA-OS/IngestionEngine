@@ -39,7 +39,8 @@ EXT_GET_SCENARIO_KEYS  = (
     "cloud_cover",
     "view_angle",
     "default_priority",
-    "default_script",
+    "oda_server_ingest",
+    "tar_result",
     "cat_registration",
     "download_subset",
     "coastline_check"
@@ -221,7 +222,8 @@ class Scenario(models.Model):
     cloud_cover          = models.FloatField()
     view_angle           = models.FloatField()
     sensor_type          = models.CharField(max_length=96)
-    default_script       = models.BooleanField()
+    oda_server_ingest    = models.BooleanField()
+    tar_result           = models.BooleanField()
     cat_registration     = models.BooleanField()
     s2_preprocess        = models.CharField(
         max_length=2,

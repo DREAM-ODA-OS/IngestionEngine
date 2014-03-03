@@ -69,7 +69,7 @@ def get_scenario_script_paths(scenario):
     # get list of scripts
     scripts = scenario.script_set.all()
     ingest_scripts = []
-    if scenario.default_script != 0:
+    if scenario.oda_server_ingest != 0:
         ingest_scripts.append(os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_INGEST_SCRIPT) )
     for s in scripts:
         ingest_scripts.append("%s" % s.script_path)
@@ -155,24 +155,23 @@ def ingest_scenario_core(scenario_id=None, ncn_id=None):
     else:
 
         scripts = get_scenario_script_paths(scenario)
-        if len(scripts) > 0:
-            # send request/task to work-flow-manager to run script
-            current_task = work_flow_manager.WorkerTask(
-                {"scenario_id":scenario_id,
-                 "task_type":"INGEST_SCENARIO",
-                 "scripts":scripts})
-
-            wfm.put_task_to_queue(current_task)
-            logger.info(
-                'Operation: ingest scenario: id=%d name=%s' \
-                    % (scenario.id,scenario.scenario_name))
-            ret = {'status':0,
-                   "message":"Ingestion Submitted to processing queue."}
-        else:
-            msg = "Scenario '%s' name=%s does not have scripts to ingest." \
-                    % (scenario.ncn_id,scenario.scenario_name)
+        if len(scripts) == 0:
+            msg = "Scenario '%s' name=%s does not have any scripts." \
+                    % (scenario.ncn_id, scenario.scenario_name)
             logger.warning(msg)
-            ret = {'status':1, 'message':"Error"+msg}
+
+        # send request/task to work-flow-manager to run ingestion
+        current_task = work_flow_manager.WorkerTask(
+            {"scenario_id":scenario_id,
+             "task_type":"INGEST_SCENARIO",
+             "scripts":scripts})
+
+        wfm.put_task_to_queue(current_task)
+        logger.info(
+            'Operation: ingest scenario: id=%d name=%s' \
+                % (scenario.id,scenario.scenario_name))
+        ret = {'status':0,
+               "message":"Ingestion Submitted to processing queue."}
 
     return ret
 
@@ -1047,12 +1046,14 @@ def new_sc_core(data):
         data["starting_date"] = "2014-01-01T11:22:33"
     if not "repeat_interval" in data:
         scenario.repeat_interval = 0
-    if not "default_script" in data:
-        scenario.default_script = 1
-    if not "coastline_check" in data:
-        scenario.coastline_check = 0
+    if not "oda_server_ingest" in data:
+        scenario.oda_server_ingest = 1
+    if not "tar_result" in data:
+        scenario.tar_result = 0
     if not "cat_registration" in data:
         scenario.cat_registration = 0
+    if not "coastline_check" in data:
+        scenario.coastline_check = 0
 
 # TODO set preprocessA/B/C flags CONTINUE HERE
     scenario.preprocessA = 0

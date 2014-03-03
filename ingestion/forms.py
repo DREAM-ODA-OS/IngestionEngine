@@ -129,7 +129,6 @@ class ScenarioForm(forms.ModelForm):
         self.fields['dsrc'            ].widget = \
             forms.TextInput(attrs={'size':60})
 #        self.fields['dsrc_password'   ].widget = forms.PasswordInput()
-#        self.fields['default_script'  ].widget = forms.CheckboxInput()
 #        self.fields['cat_registration'].widget = forms.CheckboxInput()
         self.fields['from_date'       ].widget = forms.SplitDateTimeWidget(attrs={'size':11})
         self.fields['to_date'         ].widget = forms.SplitDateTimeWidget(attrs={'size':11})
@@ -167,6 +166,7 @@ class ScenarioForm(forms.ModelForm):
         self.fields['default_priority' ].label = 'Ingestion priority'
         self.fields['starting_date'    ].label = 'Repeat Starting Date'
         self.fields['repeat_interval'  ].label = 'Repeat Interval(secs)'
+        self.fields['oda_server_ingest'].label = 'Ingest into ODA server'
 
         # initial values
         # for time-zone aware dates use this one instead:
@@ -182,9 +182,10 @@ class ScenarioForm(forms.ModelForm):
         self.fields['view_angle'       ].initial = 50
         self.fields['sensor_type'      ].initial = ""
         self.fields['download_subset'  ].initial = True
-        self.fields['default_script'   ].initial = True
+        self.fields['oda_server_ingest'].initial = True
         self.fields['default_priority' ].initial = 100
         self.fields['repeat_interval'  ].initial = 0
+        self.fields['tar_result'       ].initial = False
         self.fields['cat_registration' ].initial = False
         self.fields['coastline_check'  ].initial = False
 
@@ -201,9 +202,10 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['dsrc_login'          ].required = False
 #        self.fields['dsrc_password'       ].required = False
         self.fields['download_subset'     ].required = False
-        self.fields['default_script'      ].required = False
+        self.fields['oda_server_ingest'   ].required = False
         self.fields['default_priority'    ].required = False
         self.fields['repeat_interval'     ].required = False
+        self.fields['tar_result'          ].required = False
         self.fields['cat_registration'    ].required = False
         self.fields['coastline_check'     ].required = False
         self.fields['s2_preprocess'       ].required = False

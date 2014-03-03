@@ -104,12 +104,17 @@
       </tr>
       <tr><td>&nbsp;</td><td colspan=3></td></tr>
 
-        {% elif "id_default_script" in b.id_for_label%}
+        {% elif "id_oda_server_ingest" in b.id_for_label%}
       <tr>
-          <th align=right> {{ b.label_tag }}</th><td>{{ b }} </td>
-        {% elif "id_cat_registration" in b.id_for_label%}
-          <th align=right> {{ b.label_tag }}</th><td>{{ b }} </td>
+          <th align=right colspan=2> {{ b.label_tag }}</th><td>{{ b }} </td>
+        {% elif "id_tar_result" in b.id_for_label%}
+          <th> {{ b.label_tag }}&nbsp;{{ b }} </th>
       </tr>
+        {% elif "id_cat_registration" in b.id_for_label%}
+      <tr>
+         <th align=right colspan=2> {{ b.label_tag }}</th><td>{{ b }} </td>
+         <td></td>
+       <tr>
         {% elif "id_download_subset" in b.id_for_label%}
       <tr><td>&nbsp;</td><td colspan=3></td></tr>
       <tr>
