@@ -199,8 +199,9 @@ class DownloadManagerController:
             raise DMError("URLError")
         dm_dar_id = None
         if "success" in dm_resp and dm_resp["success"]:
-            self._logger.info("DM accepted DAR. TODO: set DAR id.")
-            dm_dar_id = "TODO"  #TODO: set dm_dar_id if/when the DM supplies one.
+            self._logger.info("DM accepted DAR.")
+            if 'darUuid' in dm_resp:
+                dm_dar_id = dm_resp['darUuid']
         elif "errorType" in dm_resp and \
                 dm_resp["errorType"] == "DataAccessRequestAlreadyExistsException":
             # TODO: try to auto-recover/find the status/resume the dar
