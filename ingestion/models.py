@@ -234,7 +234,7 @@ class Scenario(models.Model):
     repeat_interval      = models.IntegerField()
     starting_date        = models.DateTimeField()
     user                 = models.ForeignKey(User)
-    
+
 #*****************************************************
 #                   Archive                          *
 #  Archive of products already downloaded            *

@@ -15,17 +15,21 @@
 from singleton_pattern import Singleton
 import threading
 import logging
-import time
 import Queue
 import os
 import shutil
+import time
 import datetime
+import calendar
 import traceback
 import subprocess
 import sys
 
 import models
-import views
+
+from views import \
+    delete_scripts, \
+    submit_scenario
 
 from django.utils.timezone import utc
 
@@ -61,7 +65,7 @@ worker_id = 0
 #                 Work Task                       *
 #**************************************************
 class WorkerTask:
-    def __init__(self,parameters):
+    def __init__(self, parameters, set_status=True):
         # parameters must contain at least 'task_type'.
         # task_types are the keys for Worker.task_functions, see below.
         # Different task types then have their specific parameters.
@@ -74,7 +78,7 @@ class WorkerTask:
         #
         self._parameters = parameters
         ss = WorkFlowManager.Instance().set_scenario_status
-        if "scenario_id" in parameters:
+        if set_status and "scenario_id" in parameters:
             # set percent done to at least 1% to keep the web page updates active
             ss(0, parameters["scenario_id"], 0, "QUEUED", 1)
 
@@ -199,8 +203,9 @@ class Worker(threading.Thread):
 
 
     def do_task(self,current_task):
-        # set scenario status (processing)
+
         parameters = current_task._parameters
+
         task_type = parameters['task_type']
         if IE_DEBUG > 1:
             self._logger.debug( "do_task: "+task_type )
@@ -280,7 +285,7 @@ class Worker(threading.Thread):
 
             # delete scenario and all associated data from the db 
             scripts = scenario.script_set.all()
-            views.delete_scripts(scripts)
+            delete_scripts(scripts)
 
             scenario.delete()
             scenario_status.delete()
@@ -408,42 +413,75 @@ class AISWorker(threading.Thread):
         self._logger = logging.getLogger('dream.file_logger')
 
     def run(self): # manages auto-ingestion of scenario
+        if IE_DEBUG > 1: self._logger.debug(
+            "AISWorker-%d of Work-Flow Manager started." % self._id)
         while True:
             # read all scenarios
-            if IE_DEBUG > 3: self._logger.debug(
-                "AISWorker-%d of Work-Flow Manager is running." % self._id, \
-                extra={'user':"drtest"})
+            self._wfm.lock_db()
             scenarios = models.Scenario.objects.all()
+
             for scenario in scenarios:
-                if IE_DEBUG > 3: self._logger.debug (
-                    "Scenario: %d starting_date: %s  repeat_interval: %d" \
-                        % (scenario.id, scenario.starting_date,
-                           scenario.repeat_interval))
+
+                if scenario.repeat_interval==0:
+                    continue
+
                 # use the following for tz-aware datetimes
                 #t_now = datetime.datetime.utcnow().replace(tzinfo=utc)
                 t_now = datetime.datetime.utcnow()
-                if scenario.starting_date <= t_now and scenario.repeat_interval!=0:
-                    t_delta = datetime.timedelta(seconds=scenario.repeat_interval)
-                    t_prev = t_now - t_delta
-                    if scenario.starting_date <= t_prev:
-                        scenario.starting_date = t_prev
-                    while scenario.starting_date <= t_now:
-                        scenario.starting_date += t_delta
-                        if IE_DEBUG > 2: self._logger.debug (
-                            "Scenario %d - new time: %s" % \
-                                (scenario.id,scenario.starting_date),
-                            extra={'user':"drtest"})
-                    # put task to queue to process
-                    ingest_scripts = []
-                    scripts = scenario.script_set.all()
-                    for s in scripts:
-                        ingest_scripts.append("%s" % s.script_path)
-                    current_task =  WorkerTask(
-                        {"scenario_id":scenario.id,
-                         "task_type":"INGEST_SCENARIO",
-                         "scripts":ingest_scripts})
-                    scenario.save() # save updated starting_date
-                    self._wfm.put_task_to_queue(current_task)
+
+                if scenario.starting_date > t_now:
+                    continue
+
+                scid = scenario.id
+                scenario_status = models.ScenarioStatus.objects.get(scenario_id=scid)
+                if scenario_status.is_available != 1:
+                    self._logger.warning("Attempt to run auto scenario "
+                                         + `scenario.ncn_id`
+                                         + " but status.is_available = "
+                                         + `scenario_status.is_available`
+                                         + ", will try later.")
+                    continue
+
+                if IE_DEBUG > 1:
+                    self._logger.debug (
+                        "Auto-ingest: Scenario: " + `scenario.id` +
+                        ", starting_date: " + `scenario.starting_date` +
+                        ", repeat_interval: " + `scenario.repeat_interval`
+                        )
+
+                t_now = datetime.datetime.utcnow()
+                
+                # set the next starting date
+                scenario.starting_date = t_now + datetime.timedelta(0, 60*scenario.repeat_interval)
+                scenario.save()
+
+                scenario_status.is_available = 0
+                scenario_status.status = "QUEUED"
+                scenario_status.save()
+
+                submit_scenario(scenario, scid, False)
+
+                    # t_prev = t_now - t_delta
+                    # if scenario.starting_date <= t_prev:
+                    #     scenario.starting_date = t_prev
+                    # while scenario.starting_date <= t_now:
+                    #     scenario.starting_date += t_delta
+                    #     if IE_DEBUG > 2: self._logger.debug (
+                    #         "Scenario %d - new time: %s" % \
+                    #             (scenario.id,scenario.starting_date))
+                    # # put task to queue to process
+                    # ingest_scripts = []
+                    # scripts = scenario.script_set.all()
+                    # for s in scripts:
+                    #     ingest_scripts.append("%s" % s.script_path)
+                    # current_task =  WorkerTask(
+                    #     {"scenario_id":scenario.id,
+                    #      "task_type":"INGEST_SCENARIO",
+                    #      "scripts":ingest_scripts})
+                    # scenario.save() # save updated starting_date
+                    # self._wfm.put_task_to_queue(current_task)
+
+            self._wfm.release_db()
             time.sleep(60) # repeat checking every 1 minute
 
 
@@ -460,6 +498,8 @@ class WorkFlowManager:
         while n < IE_N_WORKFLOW_WORKERS:
             self._workers.append(Worker(self))
             n += 1
+
+        self._AIS_worker = AISWorker(self)
 
         self._lock_db = threading.Lock()
         self._logger = logging.getLogger('dream.file_logger')
@@ -589,6 +629,7 @@ class WorkFlowManager:
         return True
 
     def start(self):
+        self._AIS_worker.start()
         for w in self._workers:
             w.setDaemon(True)
             w.start()

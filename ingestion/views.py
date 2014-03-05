@@ -64,6 +64,8 @@ IE_DEFAULT_USER = r'drtest'
 IE_DEFAULT_PASS = r'1234'
 
 dmcontroller = DownloadManagerController.Instance()
+logger = logging.getLogger('dream.file_logger')
+
 
 def get_scenario_script_paths(scenario):
     # get list of scripts
@@ -77,6 +79,26 @@ def get_scenario_script_paths(scenario):
     return ingest_scripts
 
 
+def submit_scenario(scenario, scenario_id, set_status=True):
+    wfm = work_flow_manager.WorkFlowManager.Instance()
+    scripts = get_scenario_script_paths(scenario)
+    if len(scripts) == 0:
+        msg = "Scenario '%s' name=%s does not have any scripts." \
+            % (scenario.ncn_id, scenario.scenario_name)
+        logger.warning(msg)
+
+    # send request/task to work-flow-manager to run ingestion
+    current_task = work_flow_manager.WorkerTask(
+        {"scenario_id":scenario_id,
+         "task_type":"INGEST_SCENARIO",
+         "scripts":scripts},
+        set_status)
+
+    wfm.put_task_to_queue(current_task)
+    logger.info(
+        'Operation: ingest scenario: id=%d name=%s' \
+            % (scenario.id,scenario.scenario_name))
+
 def get_scenario_id(ncn_id):
     return models.Scenario.objects.get(ncn_id=ncn_id).id
 
@@ -89,7 +111,6 @@ def stop_ingestion_core(scenario_id):
 
 def delete_scenario_core(scenario_id=None, ncn_id=None):
     ret = {}
-    logger = logging.getLogger('dream.file_logger')
 
     if ncn_id:
         ncn_id = ncn_id.encode('ascii','ignore')
@@ -135,7 +156,6 @@ def delete_scenario_core(scenario_id=None, ncn_id=None):
 
 def ingest_scenario_core(scenario_id=None, ncn_id=None):
     # ingest scenario - run all ing. scripts related to the scenario
-    logger = logging.getLogger('dream.file_logger')
     logger.info("Submitting ingest request to Ingestion Engine Worker queue")
     ret = {}
 
@@ -146,6 +166,12 @@ def ingest_scenario_core(scenario_id=None, ncn_id=None):
         scenario = models.Scenario.objects.get(id=int(scenario_id))
         ncn_id   = scenario.ncn_id
 
+    if scenario.repeat_interval > 0:
+        logger.warning("Attempt to manually run Auto-Scenario: " + msg)
+        msg = "Cannot manually run an auto-ingest scneario (repeat interval >0)."
+        ret = {'status':1, 'message':"Error: "+msg}
+        return ret
+        
 
     wfm = work_flow_manager.WorkFlowManager.Instance()
     if not wfm.lock_scenario(scenario_id):
@@ -153,23 +179,8 @@ def ingest_scenario_core(scenario_id=None, ncn_id=None):
         logger.warning("Ingest Scenario refused: " + msg)
         ret = {'status':1, 'message':"Error: "+msg}
     else:
+        submit_scenario(scenario, scenario_id)
 
-        scripts = get_scenario_script_paths(scenario)
-        if len(scripts) == 0:
-            msg = "Scenario '%s' name=%s does not have any scripts." \
-                    % (scenario.ncn_id, scenario.scenario_name)
-            logger.warning(msg)
-
-        # send request/task to work-flow-manager to run ingestion
-        current_task = work_flow_manager.WorkerTask(
-            {"scenario_id":scenario_id,
-             "task_type":"INGEST_SCENARIO",
-             "scripts":scripts})
-
-        wfm.put_task_to_queue(current_task)
-        logger.info(
-            'Operation: ingest scenario: id=%d name=%s' \
-                % (scenario.id,scenario.scenario_name))
         ret = {'status':0,
                "message":"Ingestion Submitted to processing queue."}
 
@@ -187,7 +198,6 @@ def do_post_operation(op, request):
             content_type="application/json")
 
     else:
-        logger = logging.getLogger('dream.file_logger')
         logger.error("Unxexpected GET request on url "+`request.path_info`)
         raise Http404
 
@@ -195,7 +205,6 @@ def auto_login(request):
     if not IE_AUTO_LOGIN:
         return
 
-    logger = logging.getLogger('dream.file_logger')
     new_user = authenticate(
         username=IE_DEFAULT_USER,
         password=IE_DEFAULT_PASS)
@@ -277,7 +286,6 @@ def delete_scripts(scripts):
             script = models.Script.objects.get(script_path=s.script_path)
             script.delete()
         except Exception as e:
-            logger = logging.getLogger('dream.file_logger')
             logger.error("Deletion error: " + `e`, extra={'user':"drtest"})
 
 def delete_all_eoids(scenario):
@@ -291,7 +299,6 @@ def delete_eoids(scenario, del_list):
             eoid = models.Eoid.objects.get(eoid_val=e)
             eoid.delete()
         except Exception as e:
-            logger = logging.getLogger('dream.file_logger')
             logger.error("Internal error housekeeping for EOIDS," + `e`)
         
 def  refresh_dssids_chache(scenario, new_dssids, selected_dssids):
@@ -350,7 +357,6 @@ def handle_eoids(request,scenario):
             reset_dssid_selection(scenario, selected_dssids)
 
     except Exception as e:
-        logger = logging.getLogger('dream.file_logger')
         logger.error(`e`)
 
     finally:
@@ -399,7 +405,6 @@ def handle_uploaded_scripts(request,scenario):
             else:
                 destination.write(f.read())
         except Exception as e:
-            logger = logging.getLogger('dream.file_logger')
             logger.error("Upload error: " + `e`, extra={'user':request.user})
         finally:
             destination.close()
@@ -441,7 +446,6 @@ def init_status(scenario):
 
 def addLocalProductOld(request, sc_id):
     # add local product to the related scenario
-    logger = logging.getLogger('dream.file_logger')
     port = request.META['SERVER_PORT']
 
     msg = "The new product has been successfully added"
@@ -515,7 +519,6 @@ def addLocalProductOld(request, sc_id):
 
 def saveFile(upload_file, path):
     # saves a file
-    logger = logging.getLogger('dream.file_logger')
     filename = upload_file._get_name()
     path_file_name = os.path.join(path, filename)
     logger.info('Saving file: ' + path_file_name)
@@ -527,7 +530,6 @@ def saveFile(upload_file, path):
 def odaAddLocalProductOld(request, ncn_id):
     oda_init(request)
     # add local product to the related scenario
-    logger = logging.getLogger('dream.file_logger')
     logger.info("addLocalProduct to ncn_id "+ncn_id)
 
     msg = "The new product has been successfully added"
@@ -604,12 +606,11 @@ def odaAddLocalProductOld(request, ncn_id):
 
 def getAddProductResult(request, sc_id, error):
 
-    #print `request`
     response_data = []
     response_data.append({'sc_id'          :'%s' % sc_id})
 #       'metadata_file'  :'%s' % request.FILES['metadataFile']._get_name(),
 #       'raster_file'    :'%s' % request.FILES['rasterFile']._get_name()
-    print 'mid getAddProductResult()'
+
     if error != None:
         response_data.append({'status': 1, 'error' : '%s' % error })
     else :
@@ -619,7 +620,6 @@ def getAddProductResult(request, sc_id, error):
 
 def add_local_product_core(request, ncn_id, template, aftersave=None):
     # add local product to the related scenario
-    logger = logging.getLogger('dream.file_logger')
 
     msg = "The new product has been successfully added"
     if request.method == 'POST':
@@ -722,7 +722,6 @@ def edit_scenario_core(request, scenario_id, template, aftersave):
     """ used for both add_scneario and edit_scenario
         for add_scenario the scenario_id is None
     """
-    logger = logging.getLogger('dream.file_logger')
 
     scenario = None
     editing  = False
@@ -861,7 +860,6 @@ def deleteScenario(request, ncn_id):
     delete_scripts(scripts)
     scenario.delete()
 
-    logger = logging.getLogger('dream.file_logger')
     logger.info('Operation: delete scenario: id=%d name=%s' % (scenario.id,scenario.scenario_name) ,extra={'user':request.user})
 
     port = request.META['SERVER_PORT']
@@ -869,62 +867,10 @@ def deleteScenario(request, ncn_id):
         'http://127.0.0.1:'+port+'/scenario/overview/')
 
 def configuration_page(request):
-    if request.method == 'POST':
-
-        for i in request.FILES:
-            print i
-
-        print "L: %d" % len(request.FILES)
-
-        form = forms.UserScriptForm(request.POST,request.FILES)
-        if form.is_valid():
-            # delete form and connection to related scripts and user
-            m = form.save(commit=False)
-            m.user = request.user
-
-            if "button_submit_1" in request.POST: # name of button in template
-                print "AddProduct Form  is valid"
-                m.script_name = "addProduct-script"
-                # delete old scripts from db and media/scripts
-                for old_script in models.UserScript.objects.filter(user_id__exact=2):
-                    if old_script.script_name=="addProduct-script":
-                        old_script.delete()
-                        # TODO exception should be implemented
-                        os.remove("%s/%s" % \
-                                      (MEDIA_ROOT,old_script.script_file)) 
-
-            elif "button_submit_2" in request.POST: # name of button in template
-                print "Delete Form  is valid"
-                m.script_name = "deleteScenario-script"
-                # delete old scripts from db and media/scripts
-                for old_script in models.UserScript.objects.filter(user_id__exact=2):
-                    if old_script.script_name=="deleteScenario-script":
-                        old_script.delete()
-                        # TODO exception should be implemented
-                        os.remove("%s/%s" % \
-                                      (MEDIA_ROOT,old_script.script_file)) 
-            # save UserScript to /<project>/media/{(user.id)_(script_name)}
-            m.save() 
-            port = request.META['SERVER_PORT']
-            return HttpResponseRedirect(
-                'http://127.0.0.1:'+port+'/account/configuration/')
-        else:
-            print "Form is not valid"
-
     user = request.user
-    del_script = None
-    pro_script = None
-    for del_item in models.UserScript.objects.filter(script_name__exact="deleteScenario-script",user_id=user.id):
-        print "query: %s" % del_item.script_name
-        del_script = del_item
-    for pro_item in models.UserScript.objects.filter(script_name__exact="addProduct-script",user_id=user.id):
-        pro_script = pro_item
-
     variables = RequestContext(
         request,
-        {"product_script":pro_script,
-         "delete_script":del_script,
-         "user":user,
+        {"user":user,
          'home_page':IE_HOME_PAGE})
     return render_to_response('configuration.html',variables)
 
@@ -999,7 +945,6 @@ def set_sc_other(scenario, data):
 
 def update_core(data):
     # expected to be called from within a try block
-    logger = logging.getLogger('dream.file_logger')
     ncn_id = data['ncn_id']
     scenario = models.Scenario.objects.get(ncn_id=ncn_id)
     # extra conditions are deleted, they must be re-sent
@@ -1017,7 +962,6 @@ def update_core(data):
 
 def new_sc_core(data):
     # expected to be called from within a try block
-    logger = logging.getLogger('dream.file_logger')
     ncn_id = None
     if 'ncn_id' in data and data['ncn_id']:
         ncn_id = data['ncn_id']
@@ -1189,7 +1133,6 @@ def get_request_json(func,
             else:
                 response_data = op_response
         except Exception as e:
-            logger = logging.getLogger('dream.file_logger')
             logger.error('Error in get_request_json(): ' +`e`)
             response_data[STATUS_KEY] = failure_status
             response_data[ERROR_KEY]  = "%s" % e
@@ -1247,7 +1190,6 @@ def getAddStatus_operation(request, op_id):
 @csrf_exempt
 def darResponse(request,seq_id):
     seq_id = seq_id.encode('ascii','ignore')
-    logger = logging.getLogger('dream.file_logger')
     if request.method == 'GET':
         logger.info("Request to retrieve DAR from" + \
                         `request.META['REMOTE_ADDR']` +\
@@ -1282,7 +1224,6 @@ def dmDARStatus(request):
         response_str = json.dumps(response_data,indent=4)
         return HttpResponse(response_str,content_type="text/plain")
     else:
-        logger = logging.getLogger('dream.file_logger')
         logger.error("Unxexpected POST request on dmDARStatus url,\n" + \
                          `request.META['SERVER_PORT']`)
         raise Http404
