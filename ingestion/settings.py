@@ -81,6 +81,15 @@ except Exception as e:
     print >>sys.stderr, "WARNING: Using default settings." 
     config = {}
 
+# Absolute filesystem path to the directory that will hold user-uploaded files.
+# Example: "/var/www/example.com/media/"
+MEDIA_ROOT = os.path.join(PROJECT_DIR, 'media')
+
+IE_COASTLINE_DATA_DIR = os.path.join(MEDIA_ROOT, 'etc', 'coastline_data')
+IE_30KM_SHPFILE = os.path.join(IE_COASTLINE_DATA_DIR, 'ne_10m_land.shp')
+IE_30KM_PRJFILE = os.path.join(IE_COASTLINE_DATA_DIR, 'ne_10m_land.prj')
+
+
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
 )
@@ -205,10 +214,6 @@ USE_L10N = True
 
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = False
-
-# Absolute filesystem path to the directory that will hold user-uploaded files.
-# Example: "/var/www/example.com/media/"
-MEDIA_ROOT = os.path.join(PROJECT_DIR, 'media')
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.

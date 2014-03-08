@@ -40,7 +40,8 @@ from utils import \
 from settings import \
     IE_DEBUG, \
     DAR_STATUS_INTERVAL,\
-    STOP_REQUEST
+    STOP_REQUEST, \
+    IE_30KM_SHPFILE
 
 from dm_control import \
     DownloadManagerController, \
@@ -59,7 +60,10 @@ from models import \
     AOI_SHPFILE_CHOICE, \
     date_from_iso8601
 
-from coastline_ck import coastline_ck
+from coastline_ck import \
+    coastline_ck, \
+    coastline_cache_from_aoi, \
+    destrory_coastline_cache
 
 # XML metadata parsing
 from ie_xml_parser import \
@@ -240,6 +244,13 @@ def getDssList(scid, eo_dss_list, aoi_toi):
 
     return id_list
 
+def should_check_coastline(params):
+    if not 'coastline_check' in params:
+        return True
+    if params['coastline_check']:
+        return True
+    return False
+
 def get_caps_from_pf(product_facility_url):
     base_url = product_facility_url + "?" + SERVICE_WCS
     url_GetCapabilities = base_url + "&" + WCS_GET_CAPS
@@ -259,12 +270,10 @@ def check_bbox(coverageDescription, req_bbox):
         return False
     return bb.overlaps(req_bbox)
 
-def check_coastline(coverageDescription, params):
-    if not 'coastline_check' in params:
+def check_coastline(coverageDescription, params, ccache):
+    if not should_check_coastline(params):
         return True
-    if params['coastline_check'] == False:
-        return True
-    return coastline_ck(coverageDescription)
+    return coastline_ck(coverageDescription, ccache)
 
 def check_timePeriod(coverageDescription, req_tp, md_src):
     if req_tp == None:     return True
@@ -349,7 +358,7 @@ def check_float_max(cd, req, key, xpath):
         return True
 
 
-def gen_getCov_params(params, aoi_toi, md_url, eoid):
+def gen_getCov_params(params, aoi_toi, md_url, eoid, ccache):
     """ params is the dictionary of input parameters
         aoi_toi is a tuple containing Area-of-interest Bounding-Box and
                 the Time of Interest time range
@@ -359,7 +368,7 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid):
         generated later.
     """
     if IE_DEBUG > 0:
-        logger.debug("Generating getcoverage params from URL '"+md_url+"'")
+        logger.info("Generating getcoverage params from URL '"+md_url+"'")
 
     ret = []
     scid = params['sc_id']
@@ -403,40 +412,40 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid):
                          " Cannot find CoverageId in '"+md_url+"'")
             continue
         if IE_DEBUG > 2:
-            logger.info("  coverage_id="+coverage_id)
+            logger.debug("  coverage_id="+coverage_id)
         
         if check_archived(scid, coverage_id):
             if IE_DEBUG > 0:
-                logger.info("  coverage_id='"+coverage_id+
+                logger.debug("  coverage_id='"+coverage_id+
                             "' is achived, not downloading.")
             continue
 
         if not check_bbox(cd, aoi_toi[0]):
-            if IE_DEBUG > 2: logger.info("  bbox check failed.")
+            if IE_DEBUG > 2: logger.debug("  bbox check failed.")
             continue
         
         if not check_timePeriod(cd, aoi_toi[1], md_url):
-            if IE_DEBUG > 2: logger.info("  TimePeriod check failed.")
+            if IE_DEBUG > 2: logger.debug("  TimePeriod check failed.")
             continue
 
         if not check_text_condition(cd, params, 'sensor_type', SENSOR_XPATH):
-            if IE_DEBUG > 2: logger.info("  sensor type check failed.")
+            if IE_DEBUG > 2: logger.debug("  sensor type check failed.")
             continue
 
         if not check_float_max(cd, params, 'view_angle', INCIDENCEANGLE_XPATH):
-            if IE_DEBUG > 2: logger.info("  incidence angle check failed.")
+            if IE_DEBUG > 2: logger.debug("  incidence angle check failed.")
             continue
 
         if not check_float_max(cd, params, 'cloud_cover', CLOUDCOVER_XPATH):
-            if IE_DEBUG > 2: logger.info("  cloud cover check failed.")
+            if IE_DEBUG > 2: logger.debug("  cloud cover check failed.")
             continue
 
-        if not check_coastline(cd, params):
-            if IE_DEBUG > 2: logger.info("  Coastline check failed.")
+        if not check_coastline(cd, params, ccache):
+            if IE_DEBUG > 2: logger.debug("  coastline check failed.")
             continue
 
         if not check_custom_conditions(cd, params):
-            if IE_DEBUG > 2: logger.info("  custom conds check failed.")
+            if IE_DEBUG > 2: logger.debug("  custom conds check failed.")
             continue
 
         passed = passed+1
@@ -476,6 +485,12 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
     ngc    = 1
     toteocs = float(len(md_urls))
 
+    coastcache = None
+    if should_check_coastline(params):
+        shpfile = IE_30KM_SHPFILE
+        prjfile = None
+        coastcache = coastline_cache_from_aoi(shpfile, prjfile, aoi_toi[0])
+
     for md_url_pair in md_urls:
         md_url = md_url_pair[0]
         eoid   = md_url_pair[1]
@@ -492,12 +507,13 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
             if ndeocs>DEBUG_MAX_DEOCS_URLS: break
             ndeocs += 1
 
-        getCov_params = gen_getCov_params(params, aoi_toi, md_url, eoid)
+        getCov_params = gen_getCov_params(params, aoi_toi, md_url, eoid, coastcache)
         for gc_fragment in getCov_params:
             if 0 != DEBUG_MAX_GETCOV_URLS:
                 if ngc>DEBUG_MAX_GETCOV_URLS: break
                 ngc += 1
             gc_requests.append( base_url +"&"+ gc_fragment +"&"+ subset_str)
+    destrory_coastline_cache(coastcache)
 
     set_status(params["sc_id"], "Create DAR: get MD", 100)
     return gc_requests
@@ -534,17 +550,17 @@ def urls_from_EOWCS(params, eoids):
 
     service_version = extract_ServiceTypeVersion(caps).strip()
 
-    wcseo_dss = extract_DatasetSeriesSummaries(caps)
-
-    caps = None  # no longer needed
     aoi_toi = build_aoi_toi(
         params["aoi_bbox"], params['from_date'], params['to_date'])
     
     if len(eoids) > 0:
         # use only the dssids specified, don't look for more.
         id_list = eoids
+        caps = None  # no longer needed
     else:
         # find all datasets that match the bbox and Toi
+        wcseo_dss = extract_DatasetSeriesSummaries(caps)
+        caps = None  # no longer needed
         id_list = getDssList(params["sc_id"], wcseo_dss, aoi_toi)
 
     md_urls = generate_MD_urls(params, service_version, id_list)
