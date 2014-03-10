@@ -1,5 +1,5 @@
 {
     "ie_server_port"     : 8000,
-    "DownloadManagerDir" : "../ngEO-download-manager",
-    "DM_MaxPortWaitSecs": 40
+    "DownloadManagerDir" : "/home/novacek/dream/proto/ie/ngEO-download-manager",
+    "DM_MaxPortWaitSecs": 4
 }
