@@ -388,7 +388,7 @@
             "repeat_interval": 0,
             "cloud_cover": 5.0,
             "dsrc": "http://data.eox.at/instance00/ows",
-            "oda_server_ingest": 0,
+            "oda_server_ingest": 1,
             "tar_result": 1,
             "cat_registration": 0,
             "coastline_check": 0,
