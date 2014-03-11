@@ -41,7 +41,7 @@ SC_DSRC_LEN        = 1024
 PROD_ERROR_LEN     = 2048
 
 # Scripts are located in IE_SCRIPTS_DIR, defined further on down
-#  Here use only the leaf file name, not the full path
+#  Here only the leaf file name should be used, not the full path
 IE_DEFAULT_INGEST_SCRIPT   = 'def_ingest.sh'
 IE_TAR_RESULT_SCRIPT       = 'tar_result.sh'
 IE_DEFAULT_UQMD_SCRIPT     = 'def_uqmd.sh'
@@ -49,11 +49,14 @@ IE_DEFAULT_ADDPROD_SCRIPT  = 'def_addProduct.sh'
 IE_DEFAULT_DEL_SCRIPT      = 'def_delete.sh'
 IE_DEFAULT_CATREG_SCRIPT   = 'cat_reg.sh'
 IE_DEFAULT_CATDEREG_SCRIPT = 'cat_dereg.sh'
+IE_S2ATM_PREPROCESS_SCRIPT = 's2atm_preproc.sh'
 
 UQMD_SUBDIR = 'uqmd_metadata'
 ADDPRODUCT_SUBDIR = 'added_products'
 
-IE_TAR_FILE_SUFFIX = '.tgz'
+IE_TAR_FILE_SUFFIX  = '.tgz'
+IE_DIMAPMETA_SUFFIX = '.dim'
+IE_S2ATM_OUT_SUFFIX = '_rsurf.tif'
 
 PROJECT_DIR = os.path.dirname(__file__)
 
@@ -110,6 +113,14 @@ if "ie_server_port" in config:
     IE_SERVER_PORT = `config["ie_server_port"]`
 else:
     IE_SERVER_PORT = '8000'
+
+# BEAM_HOME for Sentinel-2 pre-processors
+if "BeamHome" in config:
+    IE_BEAM_HOME = config["BeamHome"]
+else:
+    print >>sys.stderr, "WARNING: 'BeamHome' not found in config." 
+    IE_BEAM_HOME = '/opt/beam-4.11'
+
 
 MANAGERS = ADMINS
 

@@ -492,6 +492,7 @@ def addLocalProductOld(request, sc_id):
                     "task_type": "INGEST_LOCAL_PROD",
                     "scripts"  : scripts,
                     "cat_registration"  : scenario.cat_registration,
+                     "s2_preprocess"    : scenario.s2_preprocess,
                     "dir_path" : full_directory_name,
                     "metadata" : request.FILES['metadataFile']._get_name(),
                     "data"     : request.FILES['rasterFile']._get_name(),
@@ -501,7 +502,7 @@ def addLocalProductOld(request, sc_id):
                 logger.info('Operation: ingest scenario: id=%d name=%s' \
                         % (scenario.id,scenario.scenario_name))
             else:
-                logger.warning("Scenario '%s' name=%s does not have scripts to ingest." \
+                logger.error("NOT INGESTING: Scenario '%s' name=%s does not have scripts to ingest." \
                         % (scenario.ncn_id,scenario.scenario_name))
                 wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
 
@@ -579,6 +580,7 @@ def odaAddLocalProductOld(request, ncn_id):
                     "task_type": "INGEST_LOCAL_PROD",
                     "scripts"  : scripts,
                     "cat_registration"  : scenario.cat_registration,
+                     "s2_preprocess"    : scenario.s2_preprocess,
                     "dir_path" : full_directory_name,
                     "metadata" : request.FILES['metadataFile']._get_name(),
                     "data"     : request.FILES['rasterFile']._get_name(),
@@ -588,7 +590,7 @@ def odaAddLocalProductOld(request, ncn_id):
                 logger.info('Operation: ingest scenario: id=%d name=%s' \
                         % (scenario.id,scenario.scenario_name))
             else:
-                logger.warning("Scenario '%s' name=%s does not have scripts to ingest." \
+                logger.error("NOT INGESTING: Scenario '%s' name=%s does not have scripts to ingest." \
                         % (scenario.ncn_id,scenario.scenario_name))
                 wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
 
@@ -639,36 +641,45 @@ def add_local_product_core(request, ncn_id, template, aftersave=None):
                   full_directory_name = full_directory_name.encode('ascii','ignore')
                   logger.info("Product directory name:" + full_directory_name)
 
-                  saveFile(request.FILES['metadataFile'], full_directory_name)
+                  if 'metadataFile' in request.FILES:
+                      saveFile(request.FILES['metadataFile'], full_directory_name)
+                      meta = request.FILES['metadataFile']._get_name().encode('ascii','ignore')
+
+                  else:
+                      meta = None
+
                   saveFile(request.FILES['rasterFile'], full_directory_name)
+                  data = request.FILES['rasterFile']._get_name().encode('ascii','ignore')
 
                   scripts = get_scenario_script_paths(scenario)
-                  if len(scripts) > 0:
-                      # send request/task to work-flow-manager to run script
-                      current_task = work_flow_manager.WorkerTask(
-                          {"scenario_id": sc_id,
-                           "ncn_id"   : ncn_id,
-                           "task_type": "INGEST_LOCAL_PROD",
-                           "scripts"  : scripts,
-                           "cat_registration"  : scenario.cat_registration,
-                           "dir_path" : full_directory_name,
-                           "metadata" : request.FILES['metadataFile']._get_name(),
-                           "data"     : request.FILES['rasterFile']._get_name(),
-                           })
-
-                      wfm.put_task_to_queue(current_task)
-                      logger.info('Operation: ingest scenario: id=%d ncn_id=%s name=%s' \
-                            % (sc_id, ncn_id, scenario.scenario_name))
-                  else:
-                      logger.warning("Scenario '%s' name=%s does not have scripts to ingest." \
+                  if len(scripts) == 0:
+                      logger.warning("Scenario '%s' name='%s' does not have scripts to ingest, proceeding regardless." \
                           % (ncn_id,scenario.scenario_name))
+
+                  # send request/task to work-flow-manager to run script
+                  current_task = work_flow_manager.WorkerTask(
+                      {"scenario_id": sc_id,
+                       "ncn_id"   : ncn_id,
+                       "task_type": "INGEST_LOCAL_PROD",
+                       "scripts"  : scripts,
+                       "cat_registration" : scenario.cat_registration,
+                       "s2_preprocess"    : scenario.s2_preprocess,
+                       "dir_path" : full_directory_name,
+                       "metadata" : meta,
+                       "data"     : data,
+                       })
+
+                  wfm.put_task_to_queue(current_task)
+                  logger.info("Local ingest scenario - submitted to queue: " +
+                              "id=%d, ncn_id='%s', name='%s'" \
+                            % (sc_id, ncn_id, scenario.scenario_name))
               else:
                   logger.warning('The add product form has not been fully/correctly filled')
 
             except Exception, e:
-                logger.error("Failed to add local product to Scenario '%s' name=%s is busy." \
+                logger.error("Failed to add local product to Scenario '%s' name=%s" \
                                  % (ncn_id, scenario.scenario_name) + \
-                                 'exception = ' + e.message)
+                                 'exception = ' + `e`)
             finally:
                 wfm.set_scenario_status(0, sc_id, 1, 'IDLE', 0)
 

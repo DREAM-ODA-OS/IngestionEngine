@@ -37,9 +37,13 @@ from settings import \
     IE_DEBUG, \
     IE_N_WORKFLOW_WORKERS, \
     STOP_REQUEST, \
+    IE_BEAM_HOME, \
     IE_SCRIPTS_DIR, \
     IE_DEFAULT_CATREG_SCRIPT, \
     IE_DEFAULT_CATDEREG_SCRIPT, \
+    IE_S2ATM_PREPROCESS_SCRIPT, \
+    IE_DIMAPMETA_SUFFIX, \
+    IE_S2ATM_OUT_SUFFIX, \
     IE_TAR_RESULT_SCRIPT, \
     IE_TAR_FILE_SUFFIX
 
@@ -57,7 +61,10 @@ from utils import \
     IngestionError, \
     StopRequest, \
     create_manifest, \
-    split_and_create_mf
+    split_and_create_mf, \
+    ie_unpack_maybe, \
+    get_glob_list, \
+    extract_outfile
 
 worker_id = 0
 
@@ -113,13 +120,55 @@ class Worker(threading.Thread):
             if queue.empty():
                 time.sleep(1)
 
+    def mk_s2pre_scriptandargs(self, s2pre, targetdir, s2meta):
+        if s2pre == 'NO':
+            return []
+
+        if s2pre == 'AT':
+            return self.mk_s2atm_scriptandargs(targetdir, s2meta)
+
+        else:
+            self._logger.error("S2 preprocessing type "+`s2pre`+
+                               " is not implememented")
+            return {}
+
+
+    def mk_s2atm_scriptandargs(self, targetdir, s2meta):
+        metalist = []
+        print "s2meta: " + `s2meta`
+        if s2meta:
+            if not s2meta.endswith(IE_DIMAPMETA_SUFFIX):
+                self._logger.warning(
+                    "metadata file for s2 preprocessing does not end in "
+                    + IE_DIMAPMETA_SUFFIX)
+            metalist = [s2meta]
+        else:
+            metalist = get_glob_list(targetdir, IE_DIMAPMETA_SUFFIX)
+
+        retlist = []
+        s2atm_script = os.path.join(IE_SCRIPTS_DIR, IE_S2ATM_PREPROCESS_SCRIPT)
+        targetdir_str = '-targetdir=' + targetdir
+        beam_home_str = '-beam_home=' + IE_BEAM_HOME
+        for m in metalist:
+            base = os.path.splitext(m)[0]
+            outfile_str = '-outfile=' + base + IE_S2ATM_OUT_SUFFIX
+            meta_str = '-meta=' + m
+            retlist.append((s2atm_script,
+                            targetdir_str,
+                            meta_str,
+                            outfile_str,
+                            beam_home_str))
+        return retlist
 
     def mk_catreg_arg(self):
         return "-catreg=" + \
                 os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_CATREG_SCRIPT)
 
     
-    def mk_scripts_args(self, scripts, mf_name, cat_reg):
+    def mk_scripts_args(self,
+                        scripts,
+                        mf_name,
+                        cat_reg):
         scripts_args = []
         if cat_reg:
             cat_reg_str = self.mk_catreg_arg()
@@ -131,6 +180,8 @@ class Worker(threading.Thread):
         return scripts_args
 
     def run_scripts(self, sc_id, ncn_id, scripts_args):
+        if not scripts_args: return 0
+
         n_errors = 0
         for script_arg in scripts_args:
             if check_status_stopping(sc_id):
@@ -149,6 +200,7 @@ class Worker(threading.Thread):
                               dl_dir,
                               scripts,
                               cat_reg,
+                              s2pre,
                               tar_result):
         # For each product that was downloaded into its seperate
         # directory, generate a product manifest for the ODA server,
@@ -161,6 +213,11 @@ class Worker(threading.Thread):
         n_errors = 0
         i = 1
         for d in dir_list:
+            percent  = 100 * (float(i) / float(n_dirs))
+            # keep percent > 0 to ensure webpage updates
+            if percent < 1.0: percent = 1
+            self._wfm.set_scenario_status(self._id, scid, 0, "RUNNING SCRIPS", percent)
+
             mf_name, metafiles = split_and_create_mf(
                 os.path.join(dl_dir, d), ncn_id, self._logger)
             if not mf_name:
@@ -172,13 +229,10 @@ class Worker(threading.Thread):
             for m in metafiles:
                 archive_metadata(scid, m)
 
-            scripts_args = self.mk_scripts_args(scripts, mf_name, cat_reg)
+            scripts_args = self.mk_scripts_args(
+                scripts, mf_name, cat_reg)
             n_errors += self.run_scripts(scid, ncn_id, scripts_args)
 
-            percent  = 100 * (float(i) / float(n_dirs))
-            # keep percent > 0 to ensure webpage updates
-            if percent < 1.0: percent = 1
-            self._wfm.set_scenario_status(self._id, scid, 0, "INGESTING", percent)
             i += 1
 
         # run the tar script if requested
@@ -307,21 +361,60 @@ class Worker(threading.Thread):
         try:
             sc_id = parameters["scenario_id"]
             self._wfm.set_scenario_status(
-                self._id, sc_id, 0, "LOCAL FILE INGESTION", percent)
+                self._id, sc_id, 0, "LOCAL ING.: UNPACK", percent)
             self._wfm.set_ingestion_pid(sc_id, os.getpid())
-            ncn_id = parameters["ncn_id"]
+            ncn_id = parameters["ncn_id"].encode('ascii','ignore')
+
+            data = parameters["data"]
+            orig_data = None
+            data = ie_unpack_maybe(parameters["dir_path"], data)
+            if not data:
+                raise IngestionError(
+                    "Error unpacking or accessing " +
+                    os.path.join(parameters["dir_path"]), data)
+
+            if 'NO' != parameters["s2_preprocess"]:
+                s2script_args = self.mk_s2pre_scriptandargs(
+                    parameters["s2_preprocess"],
+                    parameters["dir_path"],
+                    parameters["metadata"])
+
+                if s2script_args:
+
+                    self._wfm.set_scenario_status(
+                        self._id, sc_id, 0, "LOCAL ING.: S2-PRE", percent)
+            
+                    s2pre_errors = self.run_scripts(sc_id, ncn_id, s2script_args)
+                    if s2pre_errors > 0:
+                        n_errors += s2pre_errors
+                    else:
+                        orig_data = data
+                        data = extract_outfile(s2script_args[0][3])
+
             mf_name = create_manifest(
-                parameters["dir_path"],
+                self._logger,
                 ncn_id,
-                parameters["metadata"],
-                parameters["data"],
-                self._logger)
+                parameters["dir_path"],
+                metadata=parameters["metadata"],
+                data=data,
+                orig_data=orig_data
+                )
+
+            self._wfm.set_scenario_status(
+                self._id, sc_id, 0, "RUNNING SCRIPTS", percent)
+
             scripts_args = self.mk_scripts_args(
-                parameters["scripts"], mf_name, parameters["cat_registration"])
+                parameters["scripts"],
+                mf_name,
+                parameters["cat_registration"])
+
             n_errors += self.run_scripts(sc_id, ncn_id, scripts_args)
+
             if n_errors > 0:
                 raise IngestionError("Number of errors " +`n_errors`)
             self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
+            self._logger.info("Local ingestion completed, dir: " +
+                              parameters["dir_path"])
 
         except StopRequest as e:
             self._logger.info(`ncn_id`+
@@ -329,7 +422,7 @@ class Worker(threading.Thread):
             self._wfm.set_scenario_status(self._id, sc_id, 1, "IDLE", 0)
 
         except Exception as e:
-            self._logger.error(`ncn_id`+"Error while ingesting local product: " + `e`)
+            self._logger.error(`ncn_id`+" Error while ingesting local product: " + `e`)
             self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
             if IE_DEBUG > 0:
                 traceback.print_exc(12,sys.stdout)
@@ -370,12 +463,19 @@ class Worker(threading.Thread):
                 if None == dar_id:
                     raise IngestionError("No DAR generated")
 
+                s2pre = parameters["s2_preprocess"]
+                if s2pre != 'NO':
+                    # s2pre is functional only for local ingestion
+                    logger.error("S2 Preprocessor is not implemented for data from product facility. Hint: use local ingestion instead")
+                    s2pre = 'NO'
+
                 n_errors = self.post_download_actions(
                     sc_id,
                     ncn_id,
                     dl_dir,
                     parameters["scripts"],
                     cat_reg,
+                    s2pre,
                     scenario.tar_result)
 
             n_errors += dl_errors

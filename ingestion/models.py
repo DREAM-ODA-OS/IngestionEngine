@@ -113,15 +113,11 @@ AOI_CHOICES = (
 )
 
 S2_PRE_NONE = 'NO'
-S2_PRE_A    = 'PA'
-S2_PRE_B    = 'PB'
-S2_PRE_C    = 'PC'
+S2_PRE_ATM  = 'AT'
 
 S2_PRE_CHOICES = (
     (S2_PRE_NONE, 'None'),
-    (S2_PRE_A,    'Type A'),
-    (S2_PRE_B,    'Type B'),
-    (S2_PRE_C,    'Type C')
+    (S2_PRE_ATM,  'AtmosCorr'),
 )
 
 # Data Source

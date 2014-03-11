@@ -12,17 +12,21 @@
 #
 ###########################################################
 
-import time, calendar, random
+import sys
 import os
 import os.path
 from os import open   as osopen
 from os import fdopen
 from os import O_WRONLY, O_CREAT, O_EXCL
 import shutil
+import glob
 import re
 import urllib2
 import traceback
+import time, calendar
+import random
 from math import floor
+import subprocess
 from osgeo import osr
 
 BLK_SZ = 8192
@@ -525,7 +529,12 @@ def write_manifest_file(dir_path, manif_str):
     mf_fp.close()
     return mf_name
 
-def create_manifest(dir_path, ncn_id, metadata, data, logger):
+def create_manifest(logger,
+                    ncn_id,
+                    dir_path,
+                    metadata=None,
+                    data=None,
+                    orig_data=None):
     # the manifest should contain lines according to the following example:
     #    SCENARIO_NCN_ID="ncn_id"
     #    DOWNLOAD_DIR="/path/p_scid0_001"
@@ -533,13 +542,19 @@ def create_manifest(dir_path, ncn_id, metadata, data, logger):
     #    DATA="/path/p_scid0_001/p1.tif"
     #
 
-    full_data     = os.path.join(dir_path, data);
-    full_metadata = os.path.join(dir_path, metadata);
     manif_str = \
         'SCENARIO_NCN_ID="'+ ncn_id        + '"\n' + \
-        'DOWNLOAD_DIR="'   + dir_path      + '"\n' + \
-        'METADATA="'       + full_metadata + '"\n' + \
-        'DATA="'           + full_data     + '"\n'
+        'DOWNLOAD_DIR="'   + dir_path      + '"\n'
+    if metadata:
+        full_metadata = os.path.join(dir_path, metadata)
+        manif_str += 'METADATA="'       + full_metadata + '"\n'
+    if data:
+        full_data = os.path.join(dir_path, data)
+        manif_str += 'DATA="'           + full_data     + '"\n'
+    if orig_data:
+        full_orig = os.path.join(dir_path, orig_data)
+        manif_str += 'ORIG_DATA="'      + full_orig     + '"\n'
+
     mf_name = write_manifest_file(dir_path, manif_str)
     return mf_name
 
@@ -665,6 +680,84 @@ def bbox_to_WGS84(epsg, bbox):
     bbox.ll = (new_ll[0], new_ll[1])
     bbox.ur = (new_ur[0], new_ur[1])
 
+# ------------ untar/unzip  --------------------------
+IE_TARZIP_COMMANDS = {
+    '.tgz'    :  ['tar', 'xzf'],
+    '.gz'     :  ['gunzip'],
+    '.tar'    :  ['tar', 'xf' ],
+    '.zip'    :  ['unzip'],
+#    '.tbz2'   :  
+#    '.tbz'    :  
+    }
+
+def ie_unpack_maybe(targetdir, data):
+    # if data is a tar, zip or gzip file with a known extension,
+    #  ('.tgz' , '.gz' , '.tar', '.zip')
+    # then we atempt to untar, ungzip or unzip data the data.
+    # The resulting unpacked directory or file is assumed to be
+    #  same as the basename of the input file (e.g. 'foo.tgz'
+    #  unpacks to 'foo'.
+    #  The basename of the tar archive is ultimately passed to the
+    #  ODA registration script as the 'data' name.
+    #  If the file has no extension, then no action is performed, except
+    #  to check it the file exists.
+    #  Returns: The unpacked filename is returned, or the original
+    #  name if no unpacking was done.
+    #  If the input data file does not exist, return 'None'.
+    #
+
+    fullpath = os.path.join(targetdir, data)
+    if not os.path.exists(fullpath):
+        return None
+
+    fn, ext = os.path.splitext(data)
+
+    # Don't unpack unless we have a known extension
+    if not ext or not ext in IE_TARZIP_COMMANDS:
+        return data
+
+    # handle the case of '.tar.gz'
+    if '.gz' == ext:
+        fn2, ext2 = os.path.splitext(fn)
+        if '.tar' == ext2:
+            ext = '.tgz'
+            fn = fn2
+
+    cmd = []
+    for c in IE_TARZIP_COMMANDS[ext]:
+        cmd.append(c)
+    cmd.append(data)
+
+    curr_dir = os.getcwd()
+    os.chdir(targetdir)
+    r = subprocess.call(cmd)
+    if 0 == r:
+        os.unlink(data)
+    os.chdir(curr_dir)
+    if 0 != r:
+        print >>sys.stderr, "Non-zero cmd status ie_unpack_maybe: "  + `r`
+        raise IngestionError ("Unpacking failed, status: " + `r`)
+
+    # The basenae of the tar archive is passed to ODA as
+    # the entry 'DATA= ' in the MANIFEST file.
+    return fn
+
+def get_glob_list(targetdir, suffix):
+    curr_dir = os.getcwd()
+    os.chdir(targetdir)
+    glob_list = glob.glob("*"+suffix)
+    os.chdir(curr_dir)
+    return glob_list
+
+def extract_outfile(src_str):
+    outfile_str = ''
+    if src_str.startswith("-outfile="):
+        outfile_str = src_str.split("-outfile=")[1]
+    else:
+        outfile_str = src_str
+    return outfile_str
+
+# ------------ Dummy logger  --------------------------
 
 class DummyLogger():
     def info(self,s):   print "INFO: "+s
@@ -678,5 +771,7 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1: print sys.argv[1]
 
-    print "l="+`len(B60_SYMBOLS)`
-    print letter_encode(int(sys.argv[1]))
+    print " glob: " + `get_glob_list('/mnt/shared/AtCor/C1-AtCorProc/data/s2sim', '.dim')`
+
+
+
