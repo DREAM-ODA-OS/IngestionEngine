@@ -55,7 +55,6 @@ class ScenarioForm(forms.ModelForm):
                   'aoi_file',
                   'dsrc_password',
                   'dsrc_login',
-                  'download_subset',
                   'default_priority',
                   'aoi_poly_lat',
                   'aoi_poly_long']
@@ -164,7 +163,7 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['dsrc_type'        ].label = 'Data Src Type'
 #        self.fields['dsrc_login'       ].label = 'Data Src login'
 #        self.fields['dsrc_password'    ].label = 'Data Src password'
-#        self.fields['download_subset'  ].label = 'Restrict Product DL to AOI subset' 
+        self.fields['download_subset'  ].label = 'Restrict Product DL to AOI subset' 
 #        self.fields['default_priority' ].label = 'Ingestion priority'
         self.fields['starting_date'    ].label = 'Repeat Starting Date'
         self.fields['repeat_interval'  ].label = 'Repeat Interval(mins)'
@@ -183,7 +182,7 @@ class ScenarioForm(forms.ModelForm):
         self.fields['cloud_cover'      ].initial = 50
         self.fields['view_angle'       ].initial = 50
         self.fields['sensor_type'      ].initial = ""
-#        self.fields['download_subset'  ].initial = True
+        self.fields['download_subset'  ].initial = False
         self.fields['oda_server_ingest'].initial = True
 #        self.fields['default_priority' ].initial = 100
         self.fields['repeat_interval'  ].initial = 0
@@ -203,7 +202,7 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['dsrc_type'           ].required = False
 #        self.fields['dsrc_login'          ].required = False
 #        self.fields['dsrc_password'       ].required = False
-#        self.fields['download_subset'     ].required = False
+        self.fields['download_subset'     ].required = False
         self.fields['oda_server_ingest'   ].required = False
 #        self.fields['default_priority'    ].required = False
         self.fields['repeat_interval'     ].required = False
