@@ -749,6 +749,7 @@ def edit_scenario_core(request, scenario_id, template, aftersave):
             if editing:
                 scenario.id = int(scenario_id)
             scenario.user = request.user
+            scenario.default_priority = 100
             scenario.save()
 
             # scenario scripts, eoids, and extras
