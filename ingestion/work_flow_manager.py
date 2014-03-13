@@ -463,10 +463,12 @@ class Worker(threading.Thread):
                 if None == dar_id:
                     raise IngestionError("No DAR generated")
 
-                s2pre = parameters["s2_preprocess"]
+                s2pre = scenario.s2_preprocess
                 if s2pre != 'NO':
                     # s2pre is functional only for local ingestion
-                    logger.error("S2 Preprocessor is not implemented for data from product facility. Hint: use local ingestion instead")
+                    self._logger.error(
+                        "S2 Preprocessor is not implemented for data from product facility."+
+                        " Hint: use local ingestion instead")
                     s2pre = 'NO'
 
                 n_errors = self.post_download_actions(

@@ -165,7 +165,7 @@ class ScenarioForm(forms.ModelForm):
 #        self.fields['dsrc_login'       ].label = 'Data Src login'
 #        self.fields['dsrc_password'    ].label = 'Data Src password'
         self.fields['download_subset'  ].label = 'Restrict Product DL to AOI subset' 
-        self.fields['default_priority' ].label = 'Ingestion priority'
+#        self.fields['default_priority' ].label = 'Ingestion priority'
         self.fields['starting_date'    ].label = 'Repeat Starting Date'
         self.fields['repeat_interval'  ].label = 'Repeat Interval(mins)'
         self.fields['oda_server_ingest'].label = 'Ingest into ODA server'

@@ -23,8 +23,6 @@ import traceback
 import dar_builder
 import work_flow_manager
 
-from ie_xml_parser import parse_file
-
 from utils import \
     Bbox, \
     TimePeriod, \
@@ -67,6 +65,7 @@ from coastline_ck import \
 
 # XML metadata parsing
 from ie_xml_parser import \
+    parse_file, \
     extract_path_text, \
     extract_Id, \
     extract_gml_bbox, \
@@ -76,6 +75,7 @@ from ie_xml_parser import \
     extract_ServiceTypeVersion, \
     extract_DatasetSeriesSummaries, \
     extract_CoverageId, \
+    extract_prods_and_masks, \
     get_coverageDescriptions, \
     SENSOR_XPATH, \
     INCIDENCEANGLE_XPATH, \
@@ -358,7 +358,7 @@ def check_float_max(cd, req, key, xpath):
         return True
 
 
-def gen_getCov_params(params, aoi_toi, md_url, eoid, ccache):
+def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
     """ params is the dictionary of input parameters
         aoi_toi is a tuple containing Area-of-interest Bounding-Box and
                 the Time of Interest time range
@@ -367,8 +367,9 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid, ccache):
         This function generates parameters for the get_coverage request
         generated later.
     """
+
     if IE_DEBUG > 0:
-        logger.info("Generating getcoverage params from URL '"+md_url+"'")
+        logger.info("Generating DL-URLS from DescribeEOCoverageSet: '"+md_url+"'")
 
     ret = []
     scid = params['sc_id']
@@ -398,7 +399,7 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid, ccache):
     if len(cds) < 1:
         logger.warning("No CoverageDescriptions found in '"+md_url+"'")
 
-    if IE_DEBUG > 1: logger.info(" EOID "+`eoid`+": checking coditions")
+    failed = set()
     passed = 0
     for cd in cds:
 
@@ -422,41 +423,56 @@ def gen_getCov_params(params, aoi_toi, md_url, eoid, ccache):
 
         if not check_bbox(cd, aoi_toi[0]):
             if IE_DEBUG > 2: logger.debug("  bbox check failed.")
+            if IE_DEBUG > 0: failed.add('bbox')
             continue
         
         if not check_timePeriod(cd, aoi_toi[1], md_url):
             if IE_DEBUG > 2: logger.debug("  TimePeriod check failed.")
+            failed.add('TimePeriod')
             continue
 
         if not check_text_condition(cd, params, 'sensor_type', SENSOR_XPATH):
             if IE_DEBUG > 2: logger.debug("  sensor type check failed.")
+            if IE_DEBUG > 0: failed.add('sensor_type')
             continue
 
         if not check_float_max(cd, params, 'view_angle', INCIDENCEANGLE_XPATH):
             if IE_DEBUG > 2: logger.debug("  incidence angle check failed.")
+            if IE_DEBUG > 0: failed.add('view_angle')
             continue
 
         if not check_float_max(cd, params, 'cloud_cover', CLOUDCOVER_XPATH):
             if IE_DEBUG > 2: logger.debug("  cloud cover check failed.")
+            if IE_DEBUG > 0: failed.add('cloud_cover')
             continue
 
         if not check_coastline(cd, params, ccache):
             if IE_DEBUG > 2: logger.debug("  coastline check failed.")
+            if IE_DEBUG > 0: failed.add('coastline check')
             continue
 
         if not check_custom_conditions(cd, params):
             if IE_DEBUG > 2: logger.debug("  custom conds check failed.")
+            if IE_DEBUG > 0: failed.add('custom conditions')
             continue
 
         passed = passed+1
-        ret.append("CoverageId="+coverage_id)
+        ret.append(base_url+"&CoverageId="+coverage_id)
+        ret.extend( extract_prods_and_masks(cd) )
 
     if None != fp: fp.close()
     cd_tree = None
-    if IE_DEBUG > 1:
+    if IE_DEBUG > 0:
         logger.info( "EOID " + `eoid` +
-                     " conditions passed: "+`passed`+" / "+`len(cds)`)
+                     " cov descriptions passed: "+`passed`+" / "+`len(cds)`)
+    if IE_DEBUG > 0 and IE_DEBUG < 3:
+        logger.info( "EOID " + `eoid` +" summary of conditions failed: " +
+                     `[f for f in failed]`)
         
+    if IE_DEBUG > 1:
+        dbg_gen_urls = "\n    ".join(ret)
+        logger.info( "EOID " + `eoid` + " generated URLs:\n    " + dbg_gen_urls)
+    del cd_tree
     return ret
     
 
@@ -473,16 +489,19 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
     logger.info("Processing "+`len(md_urls)`+
                 " EOCoverageSetDescription urls.")
 
-    subset_str = \
-        "subset=Lat," +EPSG_4326+"("+`aoi_toi[0].ll[1]`+","+`aoi_toi[0].ur[1]`+")"+\
-        "&subset=Long,"+EPSG_4326+"("+`aoi_toi[0].ll[0]`+","+`aoi_toi[0].ur[0]`+")"
     base_url = params['dsrc'] + \
         "?" + SERVICE_WCS + \
         '&version=' + service_version + \
-        "&" + WCS_GET_COVERAGE
-    gc_requests = []
+        "&" + WCS_GET_COVERAGE +\
+        "&" + WCS_IMAGE_FORMAT
+    if params['download_subset']:
+        base_url += \
+            "&subset=Lat," +EPSG_4326+"("+`aoi_toi[0].ll[1]`+","+`aoi_toi[0].ur[1]`+")"+\
+            "&subset=Long,"+EPSG_4326+"("+`aoi_toi[0].ll[0]`+","+`aoi_toi[0].ur[0]`+")"
+
+    dl_reqests = []
     ndeocs = 0    # number of DescribeEOCoverageSet urls processed
-    ngc    = 1
+
     toteocs = float(len(md_urls))
 
     coastcache = None
@@ -507,16 +526,20 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
             if ndeocs>DEBUG_MAX_DEOCS_URLS: break
             ndeocs += 1
 
-        getCov_params = gen_getCov_params(params, aoi_toi, md_url, eoid, coastcache)
-        for gc_fragment in getCov_params:
-            if 0 != DEBUG_MAX_GETCOV_URLS:
-                if ngc>DEBUG_MAX_GETCOV_URLS: break
-                ngc += 1
-            gc_requests.append( base_url +"&"+ gc_fragment +"&"+ subset_str)
+        dl_reqests = gen_dl_urls(
+            params,
+            aoi_toi,
+            base_url,
+            md_url,
+            eoid,
+            coastcache)
+        if 0 != DEBUG_MAX_GETCOV_URLS and dl_reqests:
+            dl_requests = dl_requests[:DEBUG_MAX_GETCOV_URLS]
+
     destrory_coastline_cache(coastcache)
 
     set_status(params["sc_id"], "Create DAR: get MD", 100)
-    return gc_requests
+    return dl_reqests
 
 
 def generate_MD_urls(params, service_version, id_list):
@@ -566,14 +589,14 @@ def urls_from_EOWCS(params, eoids):
     md_urls = generate_MD_urls(params, service_version, id_list)
     if IE_DEBUG>1:
         logger.debug("Qualified "+`len(md_urls)`+" md_urls")
-    gc_requests = process_csDescriptions(
+    dl_requests = process_csDescriptions(
         params, aoi_toi, service_version, md_urls)
-    return gc_requests
+    return dl_requests
 
-    
-def get_coverage_URLs(params, eoids):
+
+def get_download_URLs(params, eoids):
     if IE_DEBUG > 1:
-        logger.debug ("   get_coverage_URLs: params=" + `params`)
+        logger.debug ("   get_download_URLs: params=" + `params`)
     
     url_parts = params['dsrc'].split(":", 1)
     if len(url_parts) < 2:
@@ -594,11 +617,7 @@ def get_coverage_URLs(params, eoids):
     else:
         raise IngestionError("bad dsrc_type:" + params['dsrc_type'])
 
-    ret = []
-    for url in urls:
-        full_url =  url + "&" + WCS_IMAGE_FORMAT
-        ret.append(full_url)
-    return ret
+    return urls
 
 
 def check_archived(scid, coverage_id):
@@ -608,7 +627,7 @@ def check_archived(scid, coverage_id):
     scenario = Scenario.objects.get(id=int(scid))
     archived = Archive.objects.filter(scenario=scenario,eoid=coverage_id)
     if len(archived)==0:
-        if IE_DEBUG > 1:
+        if IE_DEBUG > 2:
             logger.info("Not in archive: " + `coverage_id`)
         return False
 
@@ -868,18 +887,18 @@ def ingestion_logic(scid, scenario_data):
     scenario_data["sc_id"]  = scid
     scenario_data["custom"] = custom
     ncn_id = scenario_data["ncn_id"]
-    gc_requests = get_coverage_URLs(scenario_data, eoids)
-    if not gc_requests or 0 == len(gc_requests):
+    dl_requests = get_download_URLs(scenario_data, eoids)
+    if not dl_requests or 0 == len(dl_requests):
         logger.warning(`ncn_id`+": no GetCoverage requests generated")
         retval = (0, None, None, None, "NO_ACTION")
     else:
         if check_status_stopping(scid):
             raise StopRequest("Stop Request")
 
-        nreqs = len(gc_requests)
+        nreqs = len(dl_requests)
         logger.info(`ncn_id`+": Submitting "+`nreqs`+" URLs to the Download Manager")
         dl_dir, dar_url, dar_id = \
-            request_download(scenario_data["ncn_id"], scid, gc_requests)
+            request_download(scenario_data["ncn_id"], scid, dl_requests)
         dl_errors = wait_for_download(scid, dar_url, dar_id)
         logger.info("Products for scenario " + ncn_id +
                     " downloaded to " + dl_dir)

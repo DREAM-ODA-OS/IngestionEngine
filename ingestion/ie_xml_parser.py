@@ -16,7 +16,13 @@ import logging
 import xml.etree.ElementTree as ET
 import xml.parsers.expat
 
-from settings import IE_DEBUG
+if __name__ == '__main__':
+    IE_DEBUG=2
+    from utils import DummyLogger
+    logger = DummyLogger()
+else:
+    from settings import IE_DEBUG
+    logger = logging.getLogger('dream.file_logger')
 
 from utils import \
     bbox_to_WGS84, \
@@ -36,6 +42,8 @@ GMLCOV_NS= '{http://www.opengis.net/gmlcov/1.0}'
 EOP_NS   = '{http://www.opengis.net/eop/2.0}'
 OM_NS    = '{http://www.opengis.net/om/2.0}'
 OPT_NS   = '{http://www.opengis.net/opt/2.0}' 
+
+XLINK_NS = '{http://www.w3.org/1999/xlink}'
 
 EXCEPTION_TAG      = "ExceptionReport"
 DEFAULT_SERVICE_VERSION = "2.0.1"
@@ -113,13 +121,16 @@ EO_EQUIPMENT_XPATH = \
 #   </gmlcov:Extension>
 # </gmlcov:metadata>
 
-CLOUDCOVER_XPATH = \
+EORESULT_XPATH = \
     EO_METADATA_XPATH + \
     EOP_NS   + "EarthObservation/" + \
     OM_NS    + "result/"           + \
-    OPT_NS   + "EarthObservationResult/" + \
+    OPT_NS   + "EarthObservationResult"
+
+CLOUDCOVER_XPATH = \
+    EORESULT_XPATH + '/' + \
     OPT_NS   + "cloudCoverPercentage"
-    
+   
 
 # sensor type XML example:
 # <gmlcov:metadata>
@@ -167,8 +178,29 @@ INCIDENCEANGLE_XPATH = \
     EOP_NS   + "Acquisition/" + \
     EOP_NS   + "incidenceAngle"
 
+# <eop:product>
+#   <eop:ProductInformation>
+#     <eop:fileName>
+#       <ows:ServiceReference xlink:href="http://some.url">
+#         <ows:RequestMessage/>
+#       </ows:ServiceReference>
+#     </eop:fileName>
+#   </eop:ProductInformation>
+# </eop:product>
 
-logger = logging.getLogger('dream.file_logger')
+# <eop:mask>
+#   <eop:MaskInformation>
+#     <eop:type>CLOUD</eop:type>
+#     <eop:format>RASTER</eop:format>
+#     <eop:fileName>
+#       <ows:ServiceReference xlink:href="http://some.url">
+#         <ows:RequestMessage/>
+#       </ows:ServiceReference>
+#     </eop:fileName>
+#   </eop:MaskInformation>
+# </eop:mask>
+
+EO_SERVICEREF_XPATH = EOP_NS + "fileName/" + OWS_NS + "ServiceReference"
 
 
 # ------------ XML metadata parsing --------------------------
@@ -195,6 +227,29 @@ def is_nc_tag(qtag, nctag):
 def tree_is_exception(tree):
     return is_nc_tag(tree.tag, EXCEPTION_TAG)
 
+
+def extract_refs(eoresult, node_str):
+    # looking for:
+    # //eop:product//eop:fileName/ows:ServiceReference[@xlink:href]
+    # //eop:mask//eop:fileName/ows:ServiceReference[@xlink:href]
+    refs = []
+    els = eoresult.findall(".//" + EOP_NS + node_str)
+    for e in els:
+        file_name_els = e.findall(".//" + EOP_NS +"fileName")
+        for f in file_name_els:
+            sr = f.find('./' + OWS_NS + "ServiceReference")
+            if sr:
+                href = sr.attrib.get(XLINK_NS+'href')
+                refs.append(href)
+    return refs
+
+def extract_prods_and_masks(cd):
+    prods_and_masks = []
+    eoresults = cd.findall(".//" + OPT_NS   + "EarthObservationResult")
+    for eor in eoresults:
+        prods_and_masks.extend ( extract_refs(eor, "product") )
+        prods_and_masks.extend ( extract_refs(eor, "mask") )
+    return prods_and_masks
 
 def extract_path_text(cd, path):
     ret = None
@@ -342,10 +397,11 @@ def parse_file(src_data, expected_root, src_name):
             if IE_DEBUG > 0:
                 logger.info(ET.tostring(result))
         elif expected_root and not is_nc_tag(result.tag, expected_root):
-            msg = "'"+src_name+"' does not contain expected root '"+ \
-                   `expected_root`, "'. In xml: "+`result.tag`
+            msg = "'"+src_name+"' does not contain expected root "+ \
+                `expected_root` + ". In xml: "+`result.tag`
             logger.error(msg)
             result = None
+        pass
     except IOError as e:
         loger.error("Cannot open/parse md source '"+src_name+"': " + `e`)
         return None
@@ -358,3 +414,14 @@ def parse_file(src_data, expected_root, src_name):
 
     return result
 
+if __name__ == '__main__':
+    print "ie_xmlparser test"
+    caps = parse_file("/mnt/shared/Archive-2014-03-12/eox-caps-with-links.xml",
+                      "CoverageDescriptions",
+                      "test_data: eox-caps-with-links.xml")
+    if not caps:
+        print "ERROR - no caps!"
+    else:
+        p,m = extract_prods_and_masks(caps)
+        print " prods: " + `p`
+        print " masks: " + `m`
