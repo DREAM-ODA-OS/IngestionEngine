@@ -330,7 +330,10 @@ INSTALLED_APPS = (
 # Settable by the user in the browser, then saved by the
 # browser locally as cookie.
 BROWSER_N_LOGLINES = 35
-LOGGING_DIR = os.path.join(os.path.dirname(PROJECT_DIR), "logs")
+if "ie_logging_dir" in config:
+    LOGGING_DIR = config["ie_logging_dir"]
+else:
+    LOGGING_DIR = os.path.join(os.path.dirname(PROJECT_DIR), "logs")
 LOGGING_FILE = os.path.join(LOGGING_DIR,"ingestion_engine.log")
 LOGGING = {
     'version': 1,

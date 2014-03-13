@@ -88,6 +88,7 @@ def read_logging(request, message_type, max_log_lines):
     else:
         maxll = int(max_log_lines)
     mtype = message_type.encode('ascii','ignore')
+    f = None
     try:
         f = open(LOGGING_FILE,'r')
         for line in f:
@@ -99,10 +100,15 @@ def read_logging(request, message_type, max_log_lines):
             messages = messages[-maxll:]
         return simplejson.dumps({'message':messages})
     except Exception as e:
-        logging.getLogger('dream.file_logger').error(
-            "read_logging error: " + `e`)
+        if f: f.close()
+        try:
+            logger = logging.getLogger('dream.file_logger')
+            logger.error("read_logging error: " + `e`)
+        except Exception:
+            pass
         return simplejson.dumps(
-            {'message':[['','','Error accessing the log file.','']]})
+            {'message':[['','','Error accessing the log file.',
+                         LOGGING_FILE]]})
 
 @dajaxice_register(method='POST')
 def ingest_scenario_wfm(request, ncn_id):
