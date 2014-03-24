@@ -32,14 +32,28 @@ import subprocess
 from settings import \
     IE_SCRIPTS_DIR, \
     IE_DEFAULT_ADDPROD_SCRIPT, \
-    ADDPRODUCT_SUBDIR
+    ADDPRODUCT_SUBDIR, \
+    IE_MAX_ADDPRODOPS, \
+    IE_PURGE_ADDPRODOPS, \
+    IE_ADDPRODOPS_AGE
 
-from ingestion_logic import create_dl_dir
-from utils import get_base_fname, mkFname
+from ingestion_logic import \
+    create_dl_dir, \
+    download_urls, \
+    wait_for_download
+
+from utils import \
+    get_base_fname, \
+    mkFname, \
+    split_wcs_raw
+
 import work_flow_manager
 import models
 
 logger = logging.getLogger('dream.file_logger')
+
+# Max number of seconds to wait for download
+IE_AP_MAX_DL_WAIT = 800
 
 #
 # Exception for local use within this file.
@@ -53,10 +67,49 @@ class AddProductError(Exception):
         self.msg=str
 
 
-def get_data_item(src_d, key):
-    if not key in src_d:
-        raise AddProductError("Missing '" + key + "' spec.")
-    return src_d[key]
+def download_rem_product(dl_dir, rel_path, url):
+    urls_with_dirs = [(rel_path, url)]
+    logger.info("add_product: requesting download for\n"+`url`)
+    dar_url, dar_id = download_urls(urls_with_dirs)
+    if None == dar_id:
+        raise AddProductError("No DAR generated")
+    dl_errors = wait_for_download(None, dar_url, dar_id, IE_AP_MAX_DL_WAIT)
+    if 0 != dl_errors:
+        raise AddProductError("Download via DM failed.")
+
+    files = os.listdir(dl_dir)
+    len_files = len(files)
+    if len_files == 0:
+        raise AddProductError("Nothing downloaded.")
+    if len_files > 1:
+        logger.warning(
+            "Found "+`len_files`+" in "+dl_dir+", expect 1.")
+
+    f = files[0]
+    logger.info("add_product: processing "+`f`)
+    ret_str, metadata, product = split_wcs_raw(dl_dir, f, logger)
+    if not ret_str:
+        raise AddProductError("Failed to split file '"+f+"'.")
+
+    return metadata, product
+
+
+def prepare_local_product(dl_dir, metadata, product):
+
+    if not os.path.isfile(product):
+        logger.error("Product data Not found: "+product)
+        raise AddProductError("Product not found or is not a file.")
+
+    if not os.path.isfile(metadata):
+        logger.error("Metadata Not found: "+metadata)
+        raise AddProductError("Metadata not found or is not a file.")
+        
+    # move data and metadata to a permanent directory
+    shutil.move(metadata, dl_dir)
+    shutil.move(product, dl_dir)
+
+    return metadata, product
+
 
 def parse_response_file(db_ref, fname):
     #
@@ -96,6 +149,13 @@ def parse_response_file(db_ref, fname):
 
     return resp["productId"]
 
+def purge_old_ops():
+    # This function should remove old entries in the database
+    # and ensure that the max id number is less than IE_PURGE_ADDPRODOPS
+    logger.info("add_product: purging _old ops.")
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(IE_ADDPRODOPS_AGE)
+    models.ProductInfo.objects.filter(info_date__lt=cutoff).delete()
+
 
 def add_product_wfunc(parameters):
     #
@@ -105,28 +165,36 @@ def add_product_wfunc(parameters):
     #       "addProduct_id",
     #       "metadata",
     #       "product",
+    #       "url"
     #       "covId"
+    #
+    # One of product or url are required
     #
 
     try:
+
         addProduct = models.ProductInfo.objects.filter(
             id=parameters["addProduct_id"])[0]
         addProduct.info_status = "processing"
 
-        metadata = parameters["metadata"]
-        product  = parameters["product"]
+        dl_dir, rel_path = create_dl_dir("ap_", ADDPRODUCT_SUBDIR)
+        metadata = None
+        product = None
+        if 'url' in parameters:
+            metadata, product = download_rem_product(
+                dl_dir, rel_path, parameters["url"])
+        elif 'product' in parameters:
+            metadata, product = prepare_local_product(
+                dl_dir, parameters["metadata"], parameters["product"])
+        else:
+            raise AddProductError("Neither product nor url in input.")
 
-        if not os.path.isfile(product):
-            logger.error("Product data Not found: "+product)
-            raise AddProductError("Product not found or is not a file.")
-        if not os.path.isfile(metadata):
-            logger.error("Metadata Not found: "+metadata)
-            raise AddProductError("Metadata not found or is not a file.")
-        
-        # move data and metadata to a permanent directory
-        dl_dir, rp = create_dl_dir("ap_", ADDPRODUCT_SUBDIR)
-        shutil.move(metadata, dl_dir)
-        shutil.move(product, dl_dir)
+        if not metadata or not product:
+            raise AddProductError(
+                "internal error: Could not determine base names.")
+
+        meta_base = get_base_fname(metadata)
+        data_base = get_base_fname(product)
 
         # Set up parameters for the script
         # The shell script is invoked by the IE with the following params:
@@ -144,9 +212,6 @@ def add_product_wfunc(parameters):
         # The response filename is where the script writes the new prodID,
         #  assuming all goes well.
         #
-
-        meta_base = get_base_fname(metadata)
-        data_base = get_base_fname(product)
 
         script = os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_ADDPROD_SCRIPT)
 
@@ -213,14 +278,24 @@ def add_product_submit(postData):
             )
         ap.save()
 
+        if not 'data' in args and not 'url' in args:
+            raise AddProductError(
+                "Missing url or data; at least one is required")
+            
         # Set up to pass input data to the worker task
         params = {
             "task_type"       : "ADD_PRODUCT",
             "addProduct_id"   : ap.id,
 
-             # pathname of the product data for the product
-            "product"        : get_data_item(args,"data")
             }
+
+        # pathname of the product data for the product
+        if "data" in args:
+            params['product'] = args["data"]
+
+        # or url if any
+        if 'url' in args:
+            params["url"] = args["url"]
 
         # pathname of the metadata for the product
         if "metadata" in args:
@@ -230,6 +305,7 @@ def add_product_submit(postData):
         if "productID" in args:
             params["covId"] = args["productID"]
 
+            
         # for time-zone aware dates use this one instead:
         #   ap.info_date = datetime.datetime.utcnow().replace(tzinfo=utc)
 
@@ -240,6 +316,18 @@ def add_product_submit(postData):
 
         resp['opId'] = ap.id
         resp['status'] = 0
+
+        if ap.id > IE_MAX_ADDPRODOPS:
+            error_str = ("Internal Error in add_product: " +
+                         "ap.id exceeded max (" +
+                         `IE_MAX_ADDPRODOPS` + ")")
+            status = 103
+            logger.error(error_str)
+            
+        if ap.id > IE_PURGE_ADDPRODOPS:
+            purge_old_ops()
+
+        purge_old_ops()
 
     except AddProductError as ap_err:
         logger.error("AddProductError in add_product: " + ap_err.msg)

@@ -206,9 +206,9 @@ class Scenario(models.Model):
         choices=AOI_CHOICES,
         default=AOI_BBOX_CHOICE)
     coastline_check      = models.BooleanField()
-    aoi_file             = models.CharField(max_length=1024)
-    aoi_poly_lat         = models.CommaSeparatedIntegerField(max_length=1024)
-    aoi_poly_long        = models.CommaSeparatedIntegerField(max_length=1024)
+#    aoi_file             = models.CharField(max_length=1024)
+#    aoi_poly_lat         = models.CommaSeparatedIntegerField(max_length=1024)
+#    aoi_poly_long        = models.CommaSeparatedIntegerField(max_length=1024)
     bb_lc_long           = models.FloatField()
     bb_lc_lat            = models.FloatField()
     bb_uc_long           = models.FloatField()

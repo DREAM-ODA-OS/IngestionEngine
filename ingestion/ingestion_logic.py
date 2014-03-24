@@ -39,7 +39,8 @@ from settings import \
     IE_DEBUG, \
     DAR_STATUS_INTERVAL,\
     STOP_REQUEST, \
-    IE_30KM_SHPFILE
+    IE_30KM_SHPFILE, \
+    IE_DM_MAXWAIT2
 
 from dm_control import \
     DownloadManagerController, \
@@ -136,6 +137,7 @@ def get_dssids_from_pf(product_facility, aoi_toi):
 
 
 def check_status_stopping(scid):
+    if None == scid: return False
     status = ScenarioStatus.objects.get(scenario_id=scid).status
     return status == STOP_REQUEST
 
@@ -189,6 +191,7 @@ def create_dl_dir(leaf_name_root, extradir=None):
 
 # ------------ status reporting  -------------------
 def set_status(sc_id, st_text, percentage):
+    if None == sc_id: return
     work_flow_manager.WorkFlowManager.Instance().set_scenario_status(
         0, sc_id, 0, st_text, percentage)
 
@@ -364,8 +367,14 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
                 the Time of Interest time range
         md_url  is the metadata url
 
-        This function generates parameters for the get_coverage request
-        generated later.
+        This function generates Download URLs:
+           1. get_coverage requests based on metadata from the
+              DescribeEOCoverageSet request - depending if the metadata
+              matches the scenario params, and
+           2. Other ULR refs found in the metadata the product and mask
+              elements:
+                //eop:product//eop:fileName/ows:ServiceReference[@xlink:href]
+                //eop:mask//eop:fileName/ows:ServiceReference[@xlink:href]
     """
 
     if IE_DEBUG > 0:
@@ -634,6 +643,15 @@ def check_archived(scid, coverage_id):
     return True
 
 
+def download_urls(urls_with_dirs):
+    dar = dar_builder.build_DAR(urls_with_dirs)
+    dmcontroller = DownloadManagerController.Instance()
+    status, dar_url, dm_dar_id = dmcontroller.submit_dar(dar)
+    if status != "OK":
+        raise DMError("DAR submit problem, status:" + status)
+    return dar_url, dm_dar_id 
+
+
 def request_download(sc_ncn_id, scid, urls):
 
     #create tmp dir for downloads
@@ -651,13 +669,10 @@ def request_download(sc_ncn_id, scid, urls):
         urls_with_dirs.append(  (os.path.join(rel_path, fmt % i), url) )
         i += 1
     urls = None
-    dar = dar_builder.build_DAR(urls_with_dirs)
-    urls_with_dirs = None
 
-    dmcontroller = DownloadManagerController.Instance()
-    status, dar_url, dm_dar_id = dmcontroller.submit_dar(dar)
-    if status != "OK":
-        raise DMError("DAR submit problem, status:" + status)
+    dar_url, dm_dar_id = download_urls(urls_with_dirs)
+
+    urls_with_dirs = None
     wfm_set_dar(scid, dm_dar_id)
 
     return full_path, dar_url, dm_dar_id
@@ -684,10 +699,23 @@ def get_dar_list():
     dmcontroller = DownloadManagerController.Instance()
     dm_url = dmcontroller._dm_url
     url = dm_url+DM_DAR_STATUS_COMMAND
-    try:
-        dar_status = json.loads(read_from_url(url))
-    except urllib2.URLError as e:
-        raise DMError("Unable to get DAR status from DM, error=" + `e`)
+    waiting = True
+    ts = time.time()
+    tdiff = 0
+    dar_status = []
+    err = None
+    while waiting:
+        tdiff = time.time() - ts
+        if tdiff > IE_DM_MAXWAIT2:
+            raise DMError(
+                "Unable to get DAR, timeout waiting for DM, "+`err`)
+        try:
+            dar_status = json.loads(read_from_url(url))
+            waiting = False
+        except urllib2.HTTPError as e:
+            err = e
+            time.sleep(2)
+
     if not "dataAccessRequests" in dar_status:
         raise DMError(
             "Bad DAR status from DM; no 'dataAccessRequests' found.")
@@ -742,10 +770,14 @@ def get_dar_status(dar_url):
             break
     return request
 
-def wait_for_download(scid, dar_url, dar_id):
-    """ blocks until the DM reports that the DAR with this dar_url
-        has completed all constituent individual product downloads
+def wait_for_download(scid, dar_url, dar_id, max_wait=None):
     """
+    scid may be None
+
+    blocks until the DM reports that the DAR with this dar_url
+    has completed all constituent individual product downloads
+    """
+
     set_status(scid, "Downloading", 1)
 
     request = get_dar_status(dar_url)
@@ -760,7 +792,7 @@ def wait_for_download(scid, dar_url, dar_id):
             time.sleep(1)
             request = get_dar_status(dar_url)
         if None == request:
-            wfm_clear_dar(scid)
+            if None != scid: wfm_clear_dar(scid)
             raise DMError(
                 "Bad DAR status from DM; no 'dataAccessRequests' found.")
 
@@ -776,8 +808,15 @@ def wait_for_download(scid, dar_url, dar_id):
     total_size = 0
     n_errors = 0
     try:
+        ts = time.time()
+        tdiff = 0
         while not all_done:
+            tdiff = time.time() - ts
             all_done = True
+            if None != max_wait and tdiff > max_wait:
+                n_errors += 1
+                logger.warning("Time-out waiting for download")
+                break
             part_percent = 0
             n_done = 0
             n_errors = 0
@@ -858,7 +897,7 @@ def wait_for_download(scid, dar_url, dar_id):
             traceback.print_exc(12,sys.stdout)
 
     finally:
-        wfm_clear_dar(scid)
+        if None != scid: wfm_clear_dar(scid)
 
     return n_errors
 

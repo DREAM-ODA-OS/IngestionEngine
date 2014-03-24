@@ -60,8 +60,18 @@ IE_S2ATM_OUT_SUFFIX = '_rsurf.tif'
 
 PROJECT_DIR = os.path.dirname(__file__)
 
-# ../ingestion_config.json contains:
-# DownloadManagerDir and DM_MaxPortWaitSecs
+# Seconds to wait if DM is not available during ingestion.
+IE_DM_MAXWAIT2 = 300
+
+# maximum op.id for add_product
+IE_MAX_ADDPRODOPS   = 8796093022207
+IE_PURGE_ADDPRODOPS = 67106816
+# days
+IE_ADDPRODOPS_AGE = 3
+
+# ../ingestion_config.json contains among others:
+# DownloadManagerDir,
+# MaxPortWaitSecs  - initial wait time for DM on start-up
 #
 # Example:
 #

@@ -355,7 +355,7 @@ def read_headers(fp):
     return headers
 
 
-def split_wcs_tmp(path, f, logger):
+def split_wcs_raw(path, f, logger):
     """ TEMPORARY: splits a file into mime/multipart parts.
         path is the directory where the product is dowloaded to and
              also where the new metadata, and data files are to be
@@ -500,7 +500,7 @@ def split_wcs_tmp(path, f, logger):
             'DATA="'+data_fname     + '"\n' + \
             extra_manifest
         
-        return manif_str, meta_fname
+        return manif_str, meta_fname, data_fname
 
     except Exception as e:
         fp.close()
@@ -576,7 +576,7 @@ def split_and_create_mf(dir_path, ncn_id, logger):
         if f.startswith(MANIFEST_FN) or f.endswith(META_SUFFIX) or f.endswith(DATA_SUFFIX):
             logger.warning("Ingestion: ignoring "+f)
             continue
-        ret_str, metafile = split_wcs_tmp(dir_path, f, logger)
+        ret_str, metafile, df = split_wcs_raw(dir_path, f, logger)
         if not ret_str:
             logger.error("Failed to split file '"+f+"'.")
             continue
