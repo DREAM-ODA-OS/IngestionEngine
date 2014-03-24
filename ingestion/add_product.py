@@ -327,8 +327,6 @@ def add_product_submit(postData):
         if ap.id > IE_PURGE_ADDPRODOPS:
             purge_old_ops()
 
-        purge_old_ops()
-
     except AddProductError as ap_err:
         logger.error("AddProductError in add_product: " + ap_err.msg)
         status = 101
