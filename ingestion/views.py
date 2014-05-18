@@ -898,7 +898,7 @@ def getListScenarios(request):
         response_data.append(
             {'ncn_id':'%s' % s.ncn_id,
              'name': '%s' % s.scenario_name,
-             'decription':'%s' % s.scenario_description})
+             'description':'%s' % s.scenario_description})
     return "scenarios", response_data
 
 def getAjaxScenariosList(request):
@@ -975,6 +975,7 @@ def update_core(data):
 
 def new_sc_core(data):
     # expected to be called from within a try block
+    
     ncn_id = None
     if 'ncn_id' in data and data['ncn_id']:
         ncn_id = data['ncn_id']

@@ -132,14 +132,25 @@ DSRC_CHOICES = (
 )
 
 TIME_FORMAT_8601   = "%Y-%m-%dT%H:%M:%S"
+TIME_FORMAT_f8601   = "%Y-%m-%dT%H:%M:%S.%f"
+TIME_FORMAT_Z8601  = "%Y-%m-%dT%H:%M:%S"
 
 # ------------ conversion utilities  --------------------------
 def date_to_iso8601(src_date):
     return DateFormat(src_date).format("c")
 
 def date_from_iso8601(src_str):
-    return datetime.datetime.strptime(
-        src_str, TIME_FORMAT_8601)
+    l = src_str[-1]
+    if not l.isdigit():
+        if l=='Z':
+            src_str = src_str[:-1]
+        else:
+            raise ValueError("Bad data format or non-UTC timezone: " + src_str)
+    try:
+        a = datetime.datetime.strptime(src_str, TIME_FORMAT_f8601)
+    except:
+        a = datetime.datetime.strptime(src_str, TIME_FORMAT_8601)
+    return a
 
 def scenario_dict(db_model):
     """ creates a dictionary from a database model record,
