@@ -268,6 +268,10 @@ def add_product_submit(postData):
     error_str = None
     status    = 0
 
+    from settings import IE_DEBUG
+    if IE_DEBUG > 1:
+        logger.debug("addProduct data:  " + `args`)
+
     try:
         ap = models.ProductInfo(
             info_date      = datetime.datetime.utcnow(),
@@ -289,21 +293,38 @@ def add_product_submit(postData):
 
             }
 
+        if 'data' in args and 'url' in args:
+             logger.warning(
+                 "add_product: only one of 'data' or 'url' should be used")
+
         # pathname of the product data for the product
-        if "data" in args:
-            params['product'] = args["data"]
+        if 'data' in args:
+            req_data = args["data"]
+            if not req_data or None == req_data or len(req_data) < 1:
+                logger.warning("add_product: empty 'data' in input")
+            else:
+                params['product'] = req_data.encode('ascii','ignore')
+
 
         # or url if any
         if 'url' in args:
-            params["url"] = args["url"]
+            req_url = args["url"]
+            if not req_url or req_url == None or len(req_url) < 2:
+                logger.warning("add_product: empty 'url' in input")
+            else:
+                params["url"] = req_url.encode('ascii','ignore')
 
         # pathname of the metadata for the product
         if "metadata" in args:
-            params["metadata"] = args["metadata"]
+            params["metadata"] = args["metadata"].encode('ascii','ignore')
 
         # The coverage ID of an existing product, to be replaced
         if "productID" in args:
-            params["covId"] = args["productID"]
+            productID = args["productID"]
+            if not productID or None == productID or len(productID) < 1:
+                logger.warning("add_product: empty 'productID'")
+            else:
+                params["covId"] = productID.encode('ascii','ignore')
 
             
         # for time-zone aware dates use this one instead:
@@ -358,5 +379,4 @@ def add_product_submit(postData):
             logger.warning("addProduct: No opId nor error string, " +\
                                "status: "+`status`)
     return resp
-
 

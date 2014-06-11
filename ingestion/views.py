@@ -187,6 +187,7 @@ def ingest_scenario_core(scenario_id=None, ncn_id=None):
     return ret
 
 
+@csrf_exempt
 def do_post_operation(op, request):
     # must be a POST request
     response_data = {}

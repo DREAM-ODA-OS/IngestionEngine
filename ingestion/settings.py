@@ -21,13 +21,10 @@ DEBUG = True
 TEMPLATE_DEBUG = False
 IE_AUTO_LOGIN  = True
 
-# set to 0 for no debugging
-IE_DEBUG = 2
-
 IE_N_WORKFLOW_WORKERS = 8
 
 # set to 0 for no debugging
-IE_DEBUG       = 2
+IE_DEBUG = 2
 
 #Ingestion Engine Constants
 IE_PROJECT   = 'ingestion'
@@ -294,7 +291,7 @@ TEMPLATE_CONTEXT_PROCESSORS = ( # add because of DAJAX
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+#    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     # Uncomment the next line for simple clickjacking protection:
