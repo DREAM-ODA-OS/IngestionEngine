@@ -95,19 +95,39 @@ def download_rem_product(dl_dir, rel_path, url):
 
 
 def prepare_local_product(dl_dir, metadata, product):
+    # move data and metadata to a permanent directory
 
-    if not os.path.isfile(product):
+    # MP: Allow data as unpacked directories.
+    if os.path.isfile(product) or os.path.isdir(product):
+        try:
+            logger.info("moving: %s --> %s"%(product, dl_dir))
+            shutil.move(product, dl_dir)
+        except OSError: #MP: If it cannot be moved try to copy them at least.
+            logger.warning("Failed to move the data to the permanent location!")
+            logger.info("copying: %s --> %s"%(product, dl_dir))
+            if os.path.isdir(product):
+                shutil.copytree(product, dl_dir)
+            else:
+                shutil.copy(product, dl_dir)
+    else:
         logger.error("Product data Not found: "+product)
         raise AddProductError("Product not found or is not a file.")
 
-    if not os.path.isfile(metadata):
-        logger.error("Metadata Not found: "+metadata)
-        raise AddProductError("Metadata not found or is not a file.")
+    # MP: Metadata are required to be a file.
+    if metadata and os.path.isfile(metadata):
+        try:
+            logger.info("moving: %s --> %s"%(metadata, dl_dir))
+            shutil.move(metadata, dl_dir)
+        except OSError: #MP: If it cannot be moved try to copy them at least.
+            logger.warning("Failed to move the metadata to the permanent location!")
+            logger.info("copying: %s --> %s"%(metadata, dl_dir))
+            shutil.copy(metadata, dl_dir)
+    else:
+        #MP: Be less strict and allow missing metadata.
+        logger.warning("Metadata Not found: %s"%metadata)
+        #raise AddProductError("Metadata not found or is not a file.")
+        metadata = None
         
-    # move data and metadata to a permanent directory
-    shutil.move(metadata, dl_dir)
-    shutil.move(product, dl_dir)
-
     return metadata, product
 
 
@@ -185,16 +205,13 @@ def add_product_wfunc(parameters):
                 dl_dir, rel_path, parameters["url"])
         elif 'product' in parameters:
             metadata, product = prepare_local_product(
-                dl_dir, parameters["metadata"], parameters["product"])
+                dl_dir, parameters.get("metadata"), parameters["product"])
         else:
             raise AddProductError("Neither product nor url in input.")
 
-        if not metadata or not product:
+        if not product or (not metadata and 'url' in parameters):
             raise AddProductError(
                 "internal error: Could not determine base names.")
-
-        meta_base = get_base_fname(metadata)
-        data_base = get_base_fname(product)
 
         # Set up parameters for the script
         # The shell script is invoked by the IE with the following params:
@@ -218,19 +235,20 @@ def add_product_wfunc(parameters):
         resp_fname      = mkFname("addProdResp_")
         resp_full_fname = os.path.join(dl_dir,resp_fname)
 
-        action = None
-        if "covId" in parameters:
-            action="-replace="+parameters["covId"]
-        else:
-            action="-add"
+        command = [script]
 
-        process_status = subprocess.call(
-            [script,
-             action,
-             "-dldir="+dl_dir,
-             "-response="+resp_fname,
-             "-meta="+meta_base,
-             "-data="+data_base])
+        if "covId" in parameters:
+            command.append("-replace="+parameters["covId"])
+        else:
+            command.append("-add")
+
+        command.append("-dldir="+dl_dir)
+        command.append("-response="+resp_fname)
+        if metadata is not None:
+            command.append("-meta="+get_base_fname(metadata))
+        command.append("-data="+get_base_fname(product))
+
+        process_status = subprocess.call(command)
 
         if 0 != process_status:
             error_str ='AddProduct script returned status:'+`process_status`
@@ -255,7 +273,7 @@ def add_product_wfunc(parameters):
         addProduct.info_status = "failed"
         from settings import IE_DEBUG
         if IE_DEBUG>0:
-            traceback.print_exc(4,sys.stdout)
+            logger.debug(traceback.format_exc(4))
 
     finally:
             addProduct.save()
