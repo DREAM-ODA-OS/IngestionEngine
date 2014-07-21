@@ -61,8 +61,7 @@ from models import \
 
 from coastline_ck import \
     coastline_ck, \
-    coastline_cache_from_aoi, \
-    destrory_coastline_cache
+    coastline_cache_from_aoi
 
 # XML metadata parsing
 from ie_xml_parser import \
@@ -273,10 +272,10 @@ def check_bbox(coverageDescription, req_bbox):
         return False
     return bb.overlaps(req_bbox)
 
-def check_coastline(coverageDescription, params, ccache):
+def check_coastline(coverageDescription, cid, params, ccache):
     if not should_check_coastline(params):
         return True
-    return coastline_ck(coverageDescription, ccache)
+    return coastline_ck(coverageDescription, cid, ccache)
 
 def check_timePeriod(coverageDescription, req_tp, md_src):
     if req_tp == None:     return True
@@ -455,7 +454,7 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
             if IE_DEBUG > 0: failed.add('cloud_cover')
             continue
 
-        if not check_coastline(cd, params, ccache):
+        if not check_coastline(cd, coverage_id, params, ccache):
             if IE_DEBUG > 2: logger.debug("  coastline check failed.")
             if IE_DEBUG > 0: failed.add('coastline check')
             continue
@@ -517,7 +516,11 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
     if should_check_coastline(params):
         shpfile = IE_30KM_SHPFILE
         prjfile = None
-        coastcache = coastline_cache_from_aoi(shpfile, prjfile, aoi_toi[0])
+        coastcache = None
+        try:
+            coastcache = coastline_cache_from_aoi(shpfile, prjfile, aoi_toi[0])
+        except Exception as e:
+            logger.error("NOT checking coastline due to Error initialising coastline:\n"+`e`)
 
     for md_url_pair in md_urls:
         md_url = md_url_pair[0]
@@ -545,7 +548,7 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
         if 0 != DEBUG_MAX_GETCOV_URLS and dl_reqests:
             dl_requests = dl_requests[:DEBUG_MAX_GETCOV_URLS]
 
-    destrory_coastline_cache(coastcache)
+    coastcache = None
 
     set_status(params["sc_id"], "Create DAR: get MD", 100)
     return dl_reqests

@@ -19,12 +19,8 @@ last one ('cc_and_incidence') for a first test.
 ## Installation and Configuration
 
 ### Notes
-0. the s/w is meant to be used by members of the DREAM consortium 
-   and ESA, therefore some components are not necessarily publicly available.
-
-0. The Ingestion Engine has been lightly tested to be
-   launched with django's development server.
-
+0. The s/w uses the DREAM-adaptation of the ngEO_Download_Manager
+    for getting the products from the product facilities. 
 
 ### Prerequisites
 

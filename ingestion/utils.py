@@ -36,6 +36,11 @@ META_SUFFIX = ".meta"
 DATA_SUFFIX = ".data"
 
 
+# ------------ osr Init  ------------
+SPATIAL_REF_WGS84 = osr.SpatialReference()
+SPATIAL_REF_WGS84.SetWellKnownGeogCS( "EPSG:4326" )
+
+
 # ------------ Exceptions  --------------------------
 class NoEPSGCodeError(Exception):
     pass
@@ -191,6 +196,45 @@ def get_dm_config(
             "BASE_DOWNLOAD_FOLDER_ABSOLUTE not found in properties, fn="+dm_config_file)
 
     return (dm_port, dm_dir)
+
+# ------------ Coordinates -------------------
+def coords_from_text(coord_string, srs=None):
+    """
+     input is a text containing x y pairs with just whitespace separating
+     all values, e.g.:
+       42.802 -1.8192  42.804 -1.762
+     epsg is the coorsystem to convert to, this is done on the fly
+     to improve efficiency.  No conversion is done if srsNumber is None.
+     returns a list containing the (x, y) pairs
+     No error checking is done; simply throws an exception in case
+     of problems.
+    """
+    ret = []
+    if not coord_string: return ret
+
+    if srs and not srs_is_WGS84(srs):
+        srcRef = get_spatialReference(srs)
+        ct = osr.CoordinateTransformation(srcRef, SPATIAL_REF_WGS84)
+    else:
+        ct = None
+
+    vals = coord_string.split()
+    n = len(vals)
+    i = 0
+    while i < n:
+        x = float(vals[i])
+        y = float(vals[i+1])
+
+        if ct:
+            xy = ct.TransformPoint(x, y)
+        else:
+            xy = (x, y)
+
+        ret.append(xy)
+        i += 2
+
+    return ret
+
 
 # ------------ Bbox --------------------------
 class Bbox:
@@ -650,30 +694,37 @@ def check_listening_port(port):
         if None != proc: proc.close()
     return found
    
-# ------------ osr Init  ------------
-SPATIAL_REF_WGS84 = osr.SpatialReference()
-SPATIAL_REF_WGS84.SetWellKnownGeogCS( "EPSG:4326" )
-
-
 # ------------ spatial references cache --------------------------
 
 spatial_refs = {}
 
-def get_spatialReference(epsg):
+def get_spatialReference(srsName):
     ref = None
     try:
-        ref = spatial_refs[epsg]
+        ref = spatial_refs[srsName]
     except KeyError:
+        if srsName.startswith("http://www.opengis.net/def/crs/EPSG"):
+            epsg = (srsName.split('/')[-1])
+            srsName = 'EPSG:'+epsg
         ref = osr.SpatialReference()
-        ret = ref.ImportFromEPSG(epsg)
+        ret = ref.SetFromUserInput(srsName)
         if 0 != ret:
-            raise NoEPSGCodeError("Unknown EPSG code "+epsg)
-        spatial_refs[epsg] = ref
+            raise NoEPSGCodeError("Unknown EPSG code "+srsName)
+        spatial_refs[srsName] = ref
     return ref
 
-def bbox_to_WGS84(epsg, bbox):
-    if 4326==epsg: return
-    srcRef = get_spatialReference(epsg)
+def srs_is_WGS84(srs):
+    try:
+        ref = get_spatialReference(srs)
+        return ref.IsSame(SPATIAL_REF_WGS84)
+
+    except Exception as e:
+        return False
+   
+
+def bbox_to_WGS84(srs, bbox):
+    if srs_is_WGS84(srs): return
+    srcRef = get_spatialReference(srs)
     ct=osr.CoordinateTransformation(srcRef, SPATIAL_REF_WGS84)
     new_ll = ct.TransformPoint(bbox.ll[0], bbox.ll[1])
     new_ur = ct.TransformPoint(bbox.ur[0], bbox.ur[1])

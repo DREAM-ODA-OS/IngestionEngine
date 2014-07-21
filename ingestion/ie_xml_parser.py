@@ -16,18 +16,21 @@ import logging
 import xml.etree.ElementTree as ET
 import xml.parsers.expat
 
+
+from utils import DummyLogger
+
 if __name__ == '__main__':
     IE_DEBUG=2
-    from utils import DummyLogger
     logger = DummyLogger()
 else:
     from settings import IE_DEBUG
     logger = logging.getLogger('dream.file_logger')
 
 from utils import \
-    bbox_to_WGS84, \
     Bbox, \
+    bbox_to_WGS84, \
     bbox_from_strings, \
+    coords_from_text, \
     TimePeriod, \
     NoEPSGCodeError, \
     IngestionError
@@ -87,21 +90,20 @@ EO_METADATA_XPATH = \
     GMLCOV_NS + "Extension/" + \
     WCSEO_NS  + "EOMetadata/"
 
+EO_EARTHOBSERVATION_XPATH = EO_METADATA_XPATH + EOP_NS+"EarthObservation/"
+
 EO_PHENOMENONTIME = \
-    EO_METADATA_XPATH + \
-    EOP_NS+"EarthObservation/" + \
+    EO_EARTHOBSERVATION_XPATH + \
     OM_NS+"phenomenonTime"
 
 EO_IDENTIFIER_XPATH = \
-    EO_METADATA_XPATH + \
-    EOP_NS+"EarthObservation/" + \
+    EO_EARTHOBSERVATION_XPATH + \
     EOP_NS+"metaDataProperty/" + \
     EOP_NS+"EarthObservationMetaData/" + \
     EOP_NS+"identifier/"
 
 EO_EQUIPMENT_XPATH = \
-    EO_METADATA_XPATH + \
-    EOP_NS   + "EarthObservation/" + \
+    EO_EARTHOBSERVATION_XPATH + \
     OM_NS    + "procedure/"        + \
     EOP_NS   + "EarthObservationEquipment/"
 
@@ -202,6 +204,35 @@ INCIDENCEANGLE_XPATH = \
 
 EO_SERVICEREF_XPATH = EOP_NS + "fileName/" + OWS_NS + "ServiceReference"
 
+# footprint:
+#<eop:EarthObservation >
+# <om:featureOfInterest>
+#   <eop:Footprint gml:id="footprint_id">
+#     <eop:multiExtentOf>
+#       <gml:MultiSurface gml:id="multisurface_id" srsName="EPSG:4326">
+#         <gml:surfaceMember>
+#           <gml:Polygon gml:id="polygon_id">
+#             <gml:exterior>
+#               <gml:LinearRing>
+#                 <gml:posList>
+#                   42.835816 -1.005626 42.837949 -0.948104
+#                   42.835816 -1.005626
+#                 </gml:posList>
+#
+EO_MULTISURFACE_XPATH = \
+    EO_EARTHOBSERVATION_XPATH + \
+    OM_NS   + "featureOfInterest/" + \
+    EOP_NS  + "Footprint/"    + \
+    EOP_NS + "multiExtentOf/" + \
+    GML_NS + "MultiSurface"
+
+EO_POLYPOSLIST_XPATH = \
+    GML_NS + "surfaceMember/" + \
+    GML_NS + "Polygon/"  + \
+    GML_NS + "exterior/" + \
+    GML_NS + "LinearRing/" + \
+    GML_NS + "posList/"
+    
 
 # ------------ XML metadata parsing --------------------------
 
@@ -210,12 +241,7 @@ def get_coverageDescriptions(cd_tree):
                                WCS_NS + "CoverageDescriptions" + "/" +\
                                WCS_NS + "CoverageDescription")
 
-def srsName_to_Number(srsName):
-    if not srsName.startswith("http://www.opengis.net/def/crs/EPSG"):
-        raise NoEPSGCodeError("Unknown SRS: '" + srsName +"'")
-    return int(srsName.split('/')[-1])
-
-def is_nc_tag(qtag, nctag):
+def is_nc_tag(qtag, nctag): 
     parts=qtag.split("}")
     if len(parts)==1:
         return qtag==nctag
@@ -228,10 +254,51 @@ def tree_is_exception(tree):
     return is_nc_tag(tree.tag, EXCEPTION_TAG)
 
 
+def extract_footprintpolys(cd):
+    ms = cd.find("./" + EO_MULTISURFACE_XPATH)
+    if not ms:
+        logger.error("extract_footprintpoly: MultiSurface not found")
+        return None
+    try:
+        srsName = ms.attrib['srsName']
+    except KeyError:
+        logger.error("extract_footprintpoly: srsName not found")
+        return None
+
+    coords = None
+    ps = None
+    lr = ms.findall("./" +
+                 GML_NS + "surfaceMember/" +
+                 GML_NS + "Polygon/" +
+                 GML_NS + "exterior/" +
+                 GML_NS + "LinearRing/")
+
+    if not lr:
+        logger.warning("extract_footprintpoly: LinearRing not found," +
+                       " using bbox instead.")
+        bb = extract_gml_bbox(cd)
+        coords = [(bb.ll[0], bb.ll[1]), (bb.ur[0], bb.ur[1])]
+
+    if len(lr) > 1:
+        logger.warning("extract_footprintpoly: Multiple LinearRing found")
+
+    for l in lr:
+        ps = l.find("./"+GML_NS + "posList/")
+        posList = ps.text
+        coords = coords_from_text(posList, srsName)
+        break  # support only one LR for now
+
+    return coords
+
+
 def extract_refs(eoresult, node_str):
+    #
     # looking for:
     # //eop:product//eop:fileName/ows:ServiceReference[@xlink:href]
     # //eop:mask//eop:fileName/ows:ServiceReference[@xlink:href]
+    #   node_str is either "product" or "mask"
+    #
+
     refs = []
     els = eoresult.findall(".//" + EOP_NS + node_str)
     for e in els:
@@ -297,7 +364,6 @@ def extract_gml_bbox(cd):
     try:
         axisLabels = envelope.attrib['axisLabels']
         srsName = envelope.attrib['srsName']
-        srsNumber = srsName_to_Number(srsName)
     except KeyError:
         logger.error("Error: srsName or axisLabels not found")
         return None
@@ -314,7 +380,7 @@ def extract_gml_bbox(cd):
         return None
 
     bb = bbox_from_strings(lc.text, uc.text, is_x_axis_first(axisLabels))
-    bbox_to_WGS84(srsNumber, bb)
+    bbox_to_WGS84(srsName, bb)
     return bb
 
 
@@ -413,6 +479,12 @@ def parse_file(src_data, expected_root, src_name):
         return None
 
     return result
+
+# ----------------- Stand-alone test/debug --------------------------
+def set_logger(l):
+    global logger
+    logger = l
+    print "ie_xml_parser.logger set to " + `logger`
 
 if __name__ == '__main__':
     print "ie_xmlparser test"
