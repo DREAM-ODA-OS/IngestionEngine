@@ -521,7 +521,6 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
             coastcache = coastline_cache_from_aoi(shpfile, prjfile, aoi_toi[0])
         except Exception as e:
             logger.error("NOT checking coastline due to Error initialising coastline:\n"+`e`)
-
     for md_url_pair in md_urls:
         md_url = md_url_pair[0]
         eoid   = md_url_pair[1]

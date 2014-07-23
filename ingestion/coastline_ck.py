@@ -27,20 +27,133 @@ import json
 import os.path
 import traceback
 
-DBG_GEOM_FILE = None
-dbg_geom      = None
+#debugging support
+have_tk = False
+tk_root = None
+grdbg   = None
+LOCAL_DEBUG = False
+
+class Grdbg:
+    CANVAS_W = 1024
+    CANVAS_H =  768
+    x_offset = 0.0
+    y_offset = 0.0
+    scale = 1.0
+
+    _minx = 0.0
+    _maxx = CANVAS_H
+    _miny = 0.0
+    _maxy = CANVAS_W
+
+    def __init__(self, master):
+
+        frame = Tk.Frame(master)
+        frame.pack()
+
+        self.button = Tk.Button(frame, text="QUIT", fg="red", command=frame.quit )
+        self.button.pack(side=Tk.LEFT)
+
+        self.canvas = Tk.Canvas(master, width=self.CANVAS_W, height=self.CANVAS_H)
+        self.canvas.pack(side=Tk.LEFT)
+
+
+    def add_line(self, x1, y1, x2, y2, color=None):
+
+        x1 =                  (x1+self.x_offset) * self.scale
+        y1 = self.CANVAS_H - ((y1+self.y_offset) * self.scale)
+        x2 =                  (x2+self.x_offset) * self.scale
+        y2 = self.CANVAS_H - ((y2+self.y_offset) * self.scale)
+        if None == color:
+            self.canvas.create_line(x1, y1, x2, y2)
+        else:
+            self.canvas.create_line(x1, y1, x2, y2, fill=color)
+
+
+    def reset_xform(self, minX, maxX, minY, maxY):
+
+        is_adjusted = False
+        adj_minx = self._minx
+        adj_miny = self._miny
+        adj_maxx = self._maxx
+        adj_maxy = self._maxy
+
+        if minX < self._minx:
+            adj_minx = minX
+            is_adjusted = True
+
+        if minY < self._miny:
+            adj_miny = minY
+            is_adjusted = True
+
+        if maxX > self._maxx:
+            adj_maxx = maxX
+            is_adjusted = True
+
+        if maxY > self._maxy:
+            adj_maxy = maxY
+            is_adjusted = True
+
+        if is_adjusted:
+            self.set_xform(adj_minx, adj_maxx, adj_miny, adj_maxy)
+
+
+    def set_xform(self, minX, maxX, minY, maxY):
+
+        print " setting xform for ( (" + \
+            `minX` + " " + \
+            `minY` + "), (" + \
+            `maxX` + " " + \
+            `maxY` + ") )"
+
+        self._minx = minX
+        self._maxx = maxX
+        self._miny = minY
+        self._maxy = maxY
+
+        x_extent = abs(maxX - minX)
+        if x_extent < 0.01: x_extent = 0.5
+        else: x_extent *= 1.05
+        x_scale = float(self.CANVAS_W) / x_extent
+
+        y_extent = abs(maxY - minY)
+        if y_extent < 0.01: y_extent = 0.5
+        else: y_extent *= 1.05
+        y_scale = float(self.CANVAS_H) / y_extent
+
+        if x_scale > y_scale :
+            self.scale = y_scale
+        else:
+            self.scale = x_scale
+
+        self.x_offset = (0.025*x_extent) - minX
+        self.y_offset = (0.025*y_extent) - minY
+
+        print "x_off: "  + `self.x_offset`
+        print "y_off: "  + `self.y_offset`
+        print "scale: "  + `self.scale`
+
+
+if LOCAL_DEBUG or __name__ == '__main__':
+    try:
+        import Tkinter as Tk
+        have_tk = True
+    except Exception as e1:
+        try:
+            import tkinter as Tk
+            have_tk = True
+        except Exception as e2:
+            print `e1`
+            print `e2`
+            print "\n *** No Tkinter nor tkinter - graphical debug is disabled ***\n"
+    if have_tk:
+        tk_root = Tk.Tk()
+        grdbg = Grdbg(tk_root)
 
 if __name__ == '__main__':
     # Enable stand-alone testing without django
-    IE_DEBUG = 3
+    IE_DEBUG = 1
     from utils import DummyLogger
     logger = DummyLogger()
-    DBG_GEOM_FILE = "tmp_dbg_geom.txt"
-
-    class Dbg_geom:
-        pass
-
-    dbg_geom = Dbg_geom()
 
 else:
     from settings import \
@@ -70,8 +183,13 @@ except Exception as e:
     logger.error("ERROR: cannot import/initialise osgeo/ogr; coastline check will fail")
     is_ie_c_check = False
 
+#--------------------------------------------------------------------
+# Create an ogr polygon from the data in the Coverage Desr.
+# In the cov. descr, the order of coordinate points is N, E
+# The returned OGR geometry points have the order x,y (E,N).
+#
 def extract_geom(coverageDescription, cid):
-   # create an ogr polygon from the data in the Cov.Desr.
+   
     coords = extract_footprintpolys(coverageDescription)
     if not coords or len(coords) == 0:
         logger.warning("No polygon in coverageDescription for "+`cid`+
@@ -80,7 +198,7 @@ def extract_geom(coverageDescription, cid):
 
     ring = ogr.Geometry(ogr.wkbLinearRing)
     for xy in coords:
-        ring.AddPoint(xy[0], xy[1])
+        ring.AddPoint(xy[1], xy[0])
     coverage_ftprint = ogr.Geometry(ogr.wkbPolygon)
     coverage_ftprint.AddGeometry(ring)
     if IE_DEBUG > 2:
@@ -88,26 +206,30 @@ def extract_geom(coverageDescription, cid):
 
     return coverage_ftprint
 
+#--------------------------------------------------------------------
+# Check if the polygon contained in the coverageDescription
+# intesects with or is within the ccache polygon.
+#
 def coastline_ck(coverageDescription, cid, ccache):
     if not ccache:
         logger.warning('No coastline cache - not checking.')
         return True
 
-    # IE_DEBUG = 3
     if IE_DEBUG > 0:
         logger.info('  performing coastline_check')
 
     # create an ogr polygon from the data in the Coverage Description
     coverage_ftprint = extract_geom(coverageDescription, cid)
 
-    #print " ----- coverage_ftprint ----- "
-    #print coverage_ftprint.ExportToWkt()
+    if IE_DEBUG > 1:
+        logger.debug("    coastline_ck(): coverage_ftprint.env: " + `coverage_ftprint.GetEnvelope()`)
+        print_geom(coverage_ftprint)
 
     cclayer = ccache.GetLayer()
-    cclayer.ResetReading()
     if None == cclayer:
         return True
 
+    cclayer.ResetReading()
     feature = cclayer.GetNextFeature()
     if not feature:
         logger.warning("coastline_ck: NO FEATURE in coastline cache layer. Not checking.")
@@ -131,6 +253,7 @@ def coastline_ck(coverageDescription, cid, ccache):
                 poly = geom.GetGeometryRef(i)
                 if IE_DEBUG > 2:
                     logger.debug("    env:" + `poly.GetEnvelope()`)
+                    #print_poly(poly)
                 if poly.Intersects(coverage_ftprint) or \
                         poly.Contains(coverage_ftprint) or \
                         coverage_ftprint.Contains(poly):
@@ -147,7 +270,7 @@ def coastline_ck(coverageDescription, cid, ccache):
         return True
 
     if IE_DEBUG > 0:
-        if checking and intersects:
+        if checking and not intersects:
             logger.debug("  coastline check failed.")
             
     return intersects
@@ -155,7 +278,7 @@ def coastline_ck(coverageDescription, cid, ccache):
 
 def create_clipped_layer(src_layer, aoi, ogr_bbox, shpfile):
 
-    src_layer.SetSpatialFilter(ogr_bbox)
+    #src_layer.SetSpatialFilter(ogr_bbox)
 
     feature = src_layer.GetNextFeature()
     if not feature:
@@ -171,6 +294,9 @@ def create_clipped_layer(src_layer, aoi, ogr_bbox, shpfile):
     wgs84srs.ImportFromEPSG(4326)
     clipped_multipoly.AssignSpatialReference(wgs84srs)
 
+    if LOCAL_DEBUG:
+        print " LOCAL-- aoi: "+`aoi`
+
     total_vertices = 0
     while feature:
         geom = feature.GetGeometryRef()
@@ -182,15 +308,16 @@ def create_clipped_layer(src_layer, aoi, ogr_bbox, shpfile):
             #first get rid of all polys completely outside our AOI
             # env returns (minN,maxN, minE,maxE)
             envelope = poly.GetEnvelope()
-            
+
             if envelope[0] > aoi.ur[0] or envelope[1] < aoi.ll[0]: continue
             if envelope[2] > aoi.ur[1] or envelope[3] < aoi.ll[1]: continue
 
             debug_clip = False
-            #if i == 3895: debug_clip = True
+            #if i == 3895:  debug_clip = True
 
             # clip those that remain.
             clipped_vertices = clip_poly(aoi, poly, debug_clip)
+
             total_vertices += len(clipped_vertices)
             if debug_clip:
                 print "     n clipped_vertices : " + `len(clipped_vertices)`
@@ -210,10 +337,11 @@ def create_clipped_layer(src_layer, aoi, ogr_bbox, shpfile):
 
     if 0 == total_vertices:
         logger.warning("Created Empty Coastline Cache; will not check coastline.")
-        
+
     return clipped_source
 
 def coastline_cache_from_aoi(shpfile, prjfile, aoi):
+
     if not is_ie_c_check:
         logger.error("Coastline check is not enabled:"+
                      " could not import osgeo.")
@@ -242,17 +370,9 @@ def coastline_cache_from_aoi(shpfile, prjfile, aoi):
     out_multipoly = ogr.Geometry(ogr.wkbGeometryCollection)
     wgs84srs = osr.SpatialReference()
     wgs84srs.ImportFromEPSG(4326)
-    #wgs84srs.SetFromUserInput("WGS84")
     out_multipoly.AssignSpatialReference(wgs84srs)
 
     # create AOI bbox as an ogr polygon
-    # wkt = "POLYGON ((%f %f, %f %f, %f %f, %f %f , %f %f ))" % ( \
-    #     aoi.ll[0], aoi.ll[1],
-    #     aoi.ll[0], aoi.ur[1],
-    #     aoi.ur[0], aoi.ur[1],
-    #     aoi.ur[0], aoi.ll[1],
-    #     aoi.ll[0], aoi.ll[1] )
-    # ogr_bbox = ogr.CreateGeometryFromWkt(wkt)
     ring = ogr.Geometry(ogr.wkbLinearRing)
     ring.AddPoint(aoi.ll[0], aoi.ll[1])
     ring.AddPoint(aoi.ll[0], aoi.ur[1])
@@ -281,13 +401,17 @@ def coastline_cache_from_aoi(shpfile, prjfile, aoi):
         for i in range(count):
             keep = False
             poly = geom.GetGeometryRef(i)
+
             if poly.Contains(ogr_bbox):
                 n_inside += 1
                 keep = True
-            if poly.Intersects(ogr_bbox):
+
+            #if points_coincide(aoi, poly) or poly.Intersects(ogr_bbox):
+            if not keep and poly.Intersects(ogr_bbox):
                 n_intesects += 1
                 keep = True
-            if ogr_bbox.Contains(poly):
+
+            if not keep and ogr_bbox.Contains(poly):
                 n_bb_contains += 1
                 keep = True
 
@@ -342,72 +466,86 @@ class Isection:
         self.is_on_bound = is_on_bound
 
     def __str__(self):
-        return "("+`self.pt[0]` +","+ `self.pt[1]`+"), "+ `is_on_bound`
+        return "("+`self.pt[0]` +","+ `self.pt[1]`+"): "+ `self.is_on_bound`
 
     def __repr__(self):
-        return "("+`self.pt[0]` +","+ `self.pt[1]`+"), "+ `is_on_bound`
-
+        return "("+`self.pt[0]` +","+ `self.pt[1]`+"): "+ `self.is_on_bound`
 
 
 
 #--------------------------------------------------------------------
 # Create an OGR polygon from a list of vertices
-def ogrPolyFromVertices(vertices):
+#
+def ogrPolyFromVertices(vertices, is_x_first=True):
+
     ring = ogr.Geometry(ogr.wkbLinearRing)
-    for v in vertices:
-        ring.AddPoint(v[0], v[1])
+
+    if is_x_first:
+        for v in vertices:
+            ring.AddPoint(v[0], v[1])
+    else:
+        for v in vertices:
+            ring.AddPoint(v[1], v[0])
+        
     poly = ogr.Geometry(ogr.wkbPolygon)
     poly.AddGeometry(ring)
+
     return poly
+
 
 #--------------------------------------------------------------------
 # Determine if a point pt is inside a bbox
+#
 def is_pt_in_BB(bb, pt):
-    minN = bb.ll[0]
-    maxN = bb.ur[0]
-    minE = bb.ll[1]
-    maxE = bb.ur[1]
-    return pt[0] >= minN and pt[0] <= maxN and pt[1] >= minE and pt[1] <= maxE
+    minN = bb.ll[1]
+    maxN = bb.ur[1]
+    minE = bb.ll[0]
+    maxE = bb.ur[0]
+    return \
+        pt[0] >= minE and pt[0] <= maxE and \
+        pt[1] >= minN and pt[1] <= maxN 
 
 
 #--------------------------------------------------------------------
-# Calculate the x (E) coordinate corresponding to Ni on
+# Calculate the x (E) coordinate corresponding to northing Ni on
 #  the line segment (p0,p1)
+# Points format is (E, N)
 # Assumes an intersection does exist,
 #   i.e. y0 < Ni < y1  or y1 < Ni < y0
 #
 def calc_xi(p0, p1, Ni):
 
     # x is Easting, y is Northing.
-    # Points format is (N, E)
-    dy = p1[0] - p0[0]
+    # Points format is (E, N)
+    dy = p1[1] - p0[1]
 
     if abs(dy) < NEARZEROTOL:
-        xi = (p1[1] + p0[1]) / 2.0
+        xi = (p1[0] + p0[0]) / 2.0
     else:
-        dx = p1[1] - p0[1]
+        dx = p1[0] - p0[0]
         r  = dx / dy
-        xi = p0[1] + ( (Ni - p0[0]) * r )
+        xi = p0[0] + ( (Ni - p0[1]) * r )
 
     return xi
 
 
 #--------------------------------------------------------------------
-# Calculate the y (N) coordinate corresponding to Ei on
+# Calculate the y (N) coordinate corresponding to easting Ei on
 #  the line segment (p0,p1)
+# Points format is (E, N)
 # Assumes there is an intersection,
 #  i.e. x0 < Ei < x1 or x1 < Ei < x0
 #
 def calc_yi(p0, p1, Ei):
 
-    dx = p1[1] - p0[1]
+    dx = p1[0] - p0[0]
 
     if abs(dx) < NEARZEROTOL:
-        yi = (p1[0] + p0[0]) / 2.0
+        yi = (p1[1] + p0[1]) / 2.0
     else:
-        dy = p1[0] - p0[0]
+        dy = p1[1] - p0[1]
         s = dy / dx
-        yi = p0[0] + ( (Ei - p0[1]) * s )
+        yi = p0[1] + ( (Ei - p0[0]) * s )
 
     return yi
 
@@ -418,12 +556,12 @@ def calc_yi(p0, p1, Ei):
 def insert_ordered_E_inc( target, ipt ):
 
     # X is Easting
-    int_x = ipt.pt[1]
+    int_x = ipt.pt[0]
 
     i = 0
     inserted = False
     for item in target:
-        pt_x = item.pt[1]
+        pt_x = item.pt[0]
         if int_x < pt_x:
             target.insert(i, ipt)
             inserted = True
@@ -440,12 +578,12 @@ def insert_ordered_E_inc( target, ipt ):
 def insert_ordered_E_dec( target, ipt ):
 
     # X is Easting
-    int_x = ipt.pt[1]
+    int_x = ipt.pt[0]
 
     i = 0
     inserted = False
     for item in target:
-        pt_x = item.pt[1]
+        pt_x = item.pt[0]
         if int_x > pt_x:
             target.insert(i, ipt)
             inserted = True
@@ -467,39 +605,41 @@ def insert_ordered_E_dec( target, ipt ):
 # There may be up to 4 intersections, up to two may be 'True'. 
 # The intersections are ordered on increasing distance from p0.
 #
-def find_intersections(bb, p0, p1):
+def find_intersections(bb, p0, p1, debug=False):
 
     ipoints = []
 
-    minN = bb.ll[0]
-    minE = bb.ll[1]
-    maxN = bb.ur[0]
-    maxE = bb.ur[1]
+    minE = bb.ll[0]
+    minN = bb.ll[1]
+    maxE = bb.ur[0]
+    maxN = bb.ur[1]
 
-    n = minN
-    def insert_with_constN(n):
+    if debug: print "find_intersections() - bb: " + `bb`
+
+    def isect_with_constN(n):
         # proceed only if there is indeed an intersection
-        if (p0[0] < n and p1[0] > n) or \
-                ( p0[0] > n and p1[0] < n):
-            ei = calc_xi(p0, p1, n)
-            is_on_bound = (ei >= minE and ei <= maxE)
-            intersection =  Isection( (n, ei), is_on_bound )
+        if      (p0[1] < n and p1[1] > n) or \
+                (p0[1] > n and p1[1] < n):
+            xi = calc_xi(p0, p1, n)
+            is_on_bound = (xi >= minE and xi <= maxE)
+            intersection =  Isection( (xi, n), is_on_bound )
             # keep the intersections ordered
-            if len(ipoints) == 0 or ( abs(p0[1] - ei) > abs(p0[1] - ipoints[0].pt[1]) ):
+            if len(ipoints) == 0 or \
+                    ( abs(p0[0] - xi) > abs(p0[0] - ipoints[0].pt[0]) ):
                 ipoints.append (intersection )
             else:
                 ipoints.insert(0, intersection)
 
-    insert_with_constN(minN)
-    insert_with_constN(maxN)
+    isect_with_constN(minN)
+    isect_with_constN(maxN)
 
     for x in (minE, maxE):
         # proceed only if there is indeed an intersection
-        if (p0[1] < x and p1[1] > x) or \
-                ( p0[1] > x and p1[1] < x):
-            ni = calc_yi(p0, p1, x)
-            is_on_bound = (ni >= minN and ni <= maxN)
-            ipt =  Isection((x, ni), is_on_bound)
+        if      (p0[0] < x and p1[0] > x) or \
+                (p0[0] > x and p1[0] < x):
+            yi = calc_yi(p0, p1, x)
+            is_on_bound = (yi >= minN and yi <= maxN)
+            ipt =  Isection((x, yi), is_on_bound)
 
             if p0[0] < p0[1]:
                 insert_ordered_E_inc( ipoints, ipt )
@@ -521,31 +661,53 @@ def find_corner(bb, ipt):
             return bb1
 
     pt = ipt.pt
+
+    minx = bb.ll[0]
+    maxx = bb.ur[0]
+    miny = bb.ll[1]
+    maxy = bb.ur[1]
+
     # X is Easting, Y is Northing
-    minx = bb.ll[1]
-    maxx = bb.ur[1]
-    miny = bb.ll[0]
-    maxy = bb.ur[0]
+    corner_E = closest(pt[0], minx, maxx)
+    corner_N = closest(pt[1], miny, maxy)
 
-    corner_E = closest(pt[1], minx, maxx)
-    corner_N = closest(pt[0], miny, maxy)
-
-    return (corner_N, corner_E)
+    return (corner_E, corner_N)
 
 
 #--------------------------------------------------------------------
 # Is point in polygon
+#
 def is_pt_in_poly(poly, pt):
     ogr_pt = ogr.Geometry(ogr.wkbPoint)
+#    ogr_pt.AddPoint_2D(pt[1], pt[0])  MN XXX
     ogr_pt.AddPoint_2D(pt[0], pt[1])
     return ogr_pt.Within(poly)
 
 #--------------------------------------------------------------------
 # Do the two 2D points have the same coordiantes.
+#
 def same_point(p0, p1):
     return \
         p0[0] == p1[0] and p0[1] == p1[1]
 
+
+#--------------------------------------------------------------------
+# Append pt to clipped list if pt is not the same as eithr of the
+#  last two points already in the list.
+#
+def append_if_not_same(clipped, pt):
+
+    len_clipped = len(clipped)
+    if 0 == len_clipped:
+        clipped.append(pt)
+    elif 1 == len_clipped:
+        if not same_point(clipped[0], pt):
+            clipped.append(pt)
+    else:
+        if not same_point(clipped[-1], pt) and \
+                not same_point(clipped[-2], pt):
+            clipped.append(pt)
+                            
 
 #--------------------------------------------------------------------
 # Clips a polygon against a bounding box.
@@ -560,6 +722,9 @@ def same_point(p0, p1):
 #
 def clip_poly(bb, poly, debug=False):
 
+    #MN XXX
+    #plot_poly(grdbg.add_line, poly, is_x_first=True)
+
     clipped = []
     gcount = poly.GetGeometryCount()
     if gcount == 0: return clipped
@@ -568,9 +733,10 @@ def clip_poly(bb, poly, debug=False):
     ring = poly.GetGeometryRef(0)
     n = ring.GetPointCount()
         
-
     p0 = ring.GetPoint(0)
+    # x is first, but we use norting first
     p0_is_inside = is_pt_in_BB(bb, p0)
+
 
     if debug:
         print " cccc n poly points (outer-ring): "+`n`
@@ -584,13 +750,12 @@ def clip_poly(bb, poly, debug=False):
 
         p1 = ring.GetPoint(i)
         p1_is_inside = is_pt_in_BB(bb, p1)
-        prt_debug = False
-        if debug and (i < 12 or 0 == i % 200):
-            if (p1_is_inside and not p0_is_inside) or (p0_is_inside and not p1_is_inside):
-                prt_debug = True
 
-        if prt_debug:
-            print "p: "+`p1` + ", p-in: "+`p1_is_inside` + ",  p0-in: "+`p0_is_inside`
+        #prt_debug = False
+        #if debug and (i < 12 or 0 == i % 4000):
+        #    prt_debug = True
+        #if prt_debug:
+        #    print "p: "+`p1` + ", p-in: "+`p1_is_inside` + ",  p0-in: "+`p0_is_inside`
 
         if p0_is_inside and p1_is_inside:
             clipped.append(p1)
@@ -600,12 +765,19 @@ def clip_poly(bb, poly, debug=False):
             # one of both of p0 or p1 is/are outside
             ipts = find_intersections(bb, p0, p1)
 
-            # MN XX
-            if prt_debug and len(ipts)>0:
-                print " Ipts:" ,
-                for ii in ipts:
-                    print "  "+`ii`,
-                print
+            # MN XXX
+            dd = i<6 and LOCAL_DEBUG
+            if dd and (\
+                (    p0[0]<bb.ll[0] and p1[0]>bb.ll[0]) or \
+                    (p1[0]<bb.ll[0] and p0[0]>bb.ll[0]) ):
+                print "p0: " + `p0` + ", p1:" + `p1`,
+                if len(ipts)==0:
+                    print " NO INT"
+                else:
+                    print ", Ipts:" ,
+                    for ii in ipts:
+                        print "  "+`ii`,
+                    print
 
             # ipts are ordered starting with the one closest to p0
             for ipt in ipts:
@@ -626,9 +798,13 @@ def clip_poly(bb, poly, debug=False):
                     # the candidate corner point must be inside the original
                     # polygon.
                     corner = find_corner(bb, ipt)
+                    if LOCAL_DEBUG: print " --> corner: "+`corner`,
                     if is_pt_in_poly(poly, corner):
-                        if len(clipped) > 0 and not same_point(clipped[-1], corner):
-                            clipped.append(corner)
+                        if LOCAL_DEBUG: print "  INSIDE"
+                        append_if_not_same(clipped, corner)
+                    else:
+                        if LOCAL_DEBUG: print " OUT"
+                            
 
         p0 = p1
         p0_is_inside = p1_is_inside
@@ -641,40 +817,69 @@ def clip_poly(bb, poly, debug=False):
     return clipped
 
 
+#--------------------------------------------------------------------
+# Does the aoi have any points in common with poly.
+#
+def points_coincide(aoi, poly):
+
+    aoi_pts = (
+        (aoi.ll[0], aoi.ll[1]),
+        (aoi.ll[0], aoi.ur[1]),
+        (aoi.ur[0], aoi.ur[1]),
+        (aoi.ur[0], aoi.ll[1]) )
+
+    g_count = poly.GetGeometryCount()
+
+    for apt in aoi_pts:
+
+        for j in range(g_count):
+
+            g1 = poly.GetGeometryRef(j)
+            n_points = g1.GetPointCount()
+
+            for p in range(n_points):
+                ppt = g1.GetPoint(p)
+
+                if same_point(apt, ppt):
+                    return True
+
+    return False
+
 
 #####################################################################
 # ----------------- Stand-alone test/debug --------------------------
 #####################################################################
 #
 def plot_bb(plotter, bb, color=None):
-    p0x = bb.ll[1];  p0y = bb.ll[0]
-    p1x = bb.ur[1];  p1y = bb.ll[0]
-    p2x = bb.ur[1];  p2y = bb.ur[0]
-    p3x = bb.ll[1];  p3y = bb.ur[0]
+    p0x = bb.ll[0];  p0y = bb.ll[1]
+    p1x = bb.ur[0];  p1y = bb.ll[1]
+    p2x = bb.ur[0];  p2y = bb.ur[1]
+    p3x = bb.ll[0];  p3y = bb.ur[1]
     plotter(p0x,p0y, p1x,p1y, color)
     plotter(p1x,p1y, p2x,p2y, color)
     plotter(p2x,p2y, p3x,p3y, color)
     plotter(p3x,p3y, p0x,p0y, color)
 
-def plot_poly(plotter, poly, color=None):
+def plot_poly(plotter, poly, color=None, is_x_first=True):
     g_count = poly.GetGeometryCount()
-    print "  "+`poly.GetGeometryName()`+" g_count: "+`g_count`
+    print " "+`poly.GetGeometryName()`+" g_count: "+`g_count`+", pt_counts:",
     for j in range(g_count):
         g1 = poly.GetGeometryRef(j)
         n_points = g1.GetPointCount()
         if n_points < 2:
-            print "    **** less than 2 points"
+            print "    **** <2 pts, ",
             break
 
-        if j < 64:
-            print "      n_points: " + `n_points`
+        if j < 32:
+            print `n_points`+", ",
 
         p0 = g1.GetPoint(0)
         for p in range(1,n_points):
             p1 = g1.GetPoint(p)
-            #plotter(p0[0],p0[1], p1[0],p1[1], color)
-            plotter(p0[1],p0[0], p1[1],p1[0], color)
+            if is_x_first: plotter(p0[0],p0[1], p1[0],p1[1], color)
+            else: plotter(p0[1],p0[0], p1[1],p1[0], color)
             p0 = p1
+    print
 
 
 def plot_geom(plotter, geom, color=None):
@@ -698,6 +903,49 @@ def plot_feature_data(plotter, layer, color=None):
             break
         plot_geom(plotter, geom, color)
         feature = layer.GetNextFeature()
+
+
+def print_ring(ring):
+    pt_count = ring.GetPointCount()
+    print " ring pt_count: "+`pt_count`
+    if pt_count > 55:
+        print "    *** printing only first 55 points"
+        pt_count = 55
+    for p in range(pt_count):
+        pt = ring.GetPoint(p)
+        print `pt`
+
+
+def print_geom(geom):
+    count = geom.GetGeometryCount()
+    for i in range(count):
+        ring  = geom.GetGeometryRef(i)
+        print_ring(ring)
+
+
+def print_poly(poly, max_points=50):
+    g_count = poly.GetGeometryCount()
+    print "  "+`poly.GetGeometryName()`+" g_count: "+`g_count`
+    for j in range(g_count):
+        g1 = poly.GetGeometryRef(j)
+        n_points = g1.GetPointCount()
+        if n_points < 2:
+            print "    **** less than 2 points"
+            break
+
+        if j < 54:
+            print "      n_points: " + `n_points`
+
+        k = 0
+        if n_points > max_points:
+            print " Too many points ("+`n_points`+"), showing first "+`max_points`
+            n_points = max_points
+        for p in range(n_points):
+            pt = g1.GetPoint(p)
+            print `pt`+", ",
+            k += 1
+            if 0 == k%2: print
+        print
 
 
 def print_feature_data(layer):
@@ -755,8 +1003,7 @@ def check_feature_data(layer):
 def mem_test(shpfile, aoi_bb):
     # test freeing of memory
     print "test freeing of memory"
-    global IE_DEBUG
-    IE_DEBUG=0
+
     import time, resource, sys
     i = 0
     usage=resource.getrusage(resource.RUSAGE_SELF)
@@ -777,26 +1024,12 @@ def mem_test(shpfile, aoi_bb):
         i += 1
     print "done"
 
+
 if __name__ == '__main__':
 
     import xml.etree.ElementTree as ET
     from ie_xml_parser import set_logger
     set_logger(logger)
-
-    have_tk = False
-    tk_root = None
-    grdbg   = None
-
-    try:
-        import Tkinter as Tk
-        have_tk = True
-    except Exception as e1:
-        try:
-            import tkinter as Tk
-        except Exception as e2:
-            print `e1`
-            print `e2`
-            print "\n *** No Tkinter nor tkinter - graphical debug is disabled ***\n"
 
     test_cd_xml_template = """<?xml version="1.0" encoding="ISO-8859-1"?>
     <drtest>
@@ -835,189 +1068,151 @@ if __name__ == '__main__':
     </eop:multiExtentOf>
     """
 
-    if have_tk:
-        class Grdbg:
-            CANVAS_W = 1024
-            CANVAS_H =  768
-            x_offset = 0.0
-            y_offset = 0.0
-            scale = 1.0
-
-            _minx = 0.0
-            _maxx = CANVAS_H
-            _miny = 0.0
-            _maxy = CANVAS_W
-
-            def __init__(self, master):
-
-                frame = Tk.Frame(master)
-                frame.pack()
-
-                self.button = Tk.Button(frame, text="QUIT", fg="red", command=frame.quit )
-                self.button.pack(side=Tk.LEFT)
-
-                self.canvas = Tk.Canvas(master, width=self.CANVAS_W, height=self.CANVAS_H)
-                self.canvas.pack(side=Tk.LEFT)
-
-
-            def add_line(self, x1, y1, x2, y2, color=None):
-
-                x1 =                  (x1+self.x_offset) * self.scale
-                y1 = self.CANVAS_H - ((y1+self.y_offset) * self.scale)
-                x2 =                  (x2+self.x_offset) * self.scale
-                y2 = self.CANVAS_H - ((y2+self.y_offset) * self.scale)
-                if None == color:
-                    self.canvas.create_line(x1, y1, x2, y2)
-                else:
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color)
-
-
-            def reset_xform(self, minX, maxX, minY, maxY):
-
-                is_adjusted = False
-                adj_minx = self._minx
-                adj_miny = self._miny
-                adj_maxx = self._maxx
-                adj_maxy = self._maxy
-
-                if minX < self._minx:
-                    adj_minx = minX
-                    is_adjusted = True
-
-                if minY < self._miny:
-                    adj_miny = minY
-                    is_adjusted = True
-
-                if maxX > self._maxx:
-                    adj_maxx = maxX
-                    is_adjusted = True
-
-                if maxY > self._maxy:
-                    adj_maxy = maxY
-                    is_adjusted = True
-
-                if is_adjusted:
-                    self.set_xform(adj_minx, adj_maxx, adj_miny, adj_maxy)
-
-
-            def set_xform(self, minX, maxX, minY, maxY):
-
-                print " setting xform for ( (" + \
-                    `minX` + " " + \
-                    `minY` + "), (" + \
-                    `maxX` + " " + \
-                    `maxY` + ") )"
-
-                self._minx = minX
-                self._maxx = maxX
-                self._miny = minY
-                self._maxy = maxY
-
-                x_extent = abs(maxX - minX)
-                if x_extent < 0.01: x_extent = 0.5
-                else: x_extent *= 1.05
-                x_scale = float(self.CANVAS_W) / x_extent
-                
-                y_extent = abs(maxY - minY)
-                if y_extent < 0.01: y_extent = 0.5
-                else: y_extent *= 1.05
-                y_scale = float(self.CANVAS_H) / y_extent
-
-                if x_scale > y_scale :
-                    self.scale = y_scale
-                else:
-                    self.scale = x_scale
-
-                self.x_offset = (0.025*x_extent) - minX
-                self.y_offset = (0.025*y_extent) - minY
-
-                print "x_off: "  + `self.x_offset`
-                print "y_off: "  + `self.y_offset`
-                print "scale: "  + `self.scale`
-
-        tk_root = Tk.Tk()
-        grdbg = Grdbg(tk_root)
-
-    n_errors = 0
 
     data_dir = os.path.join( os.getcwd(), 'media', 'etc', 'coastline_data' )
     shpfile  = os.path.join( data_dir, 'ne_10m_land.shp' )
-    # around Denmark
-    #dk_ll =  (50.282,  5.60656)
-    #dk_ur =  (59.71651, 13.7335)
-    dk_ll =  (50.0, 8.0)
-    dk_ur =  (55.0, 12.3)
-    # test2 - TODO delete this
-    #dk_ll =  (49.853678, 14.123)
-    #dk_ur =  (50.71651,  15.369 )
-    
-    aoi_bb = Bbox(dk_ll, dk_ur)
 
-    ccoastline = coastline_cache_from_aoi(shpfile, None, aoi_bb)
-    cclayer = ccoastline.GetLayer()
+    def test_isect():
 
-    # extent is returned as ( MinN, MaxN, MinE, MaxE)
+        bb1_ll =  (48.0, 1.0)
+        bb1_ur =  (49.0, 2.0)
+        aoi_bb = Bbox(bb1_ll, bb1_ur)
+
+        print "test_isect, bb: " + `aoi_bb`
+
+        p0 = (45, 1.7)
+        p1 = (48.2, 3.5)
+
+        ii = find_intersections(aoi_bb, p0, p1, True)
+        print "ii: " + `ii`
+        ii = find_intersections(aoi_bb, p1, p0, True)
+        print "ii-2: " + `ii`
+
+
+    def test_live(aoi_bb):
+
+        print "test_live, bb: " + `aoi_bb`
+
+        ccoastline = coastline_cache_from_aoi(shpfile, None, aoi_bb)
+        cclayer = ccoastline.GetLayer()
+
+        # extent is returned as ( MinN, MaxN, MinE, MaxE)
+        if have_tk:
+            extent = cclayer.GetExtent()
+            print 'test_live - cclayer extent: '+`extent`
+            plot_feature_data(grdbg.add_line, cclayer)
+       
+        print
+
+    def test_dk(aoi_bb):
+
+        n_errors = 0
+
+        ccoastline = coastline_cache_from_aoi(shpfile, None, aoi_bb)
+        cclayer = ccoastline.GetLayer()
+
+        # extent is returned as ( MinN, MaxN, MinE, MaxE)
+        if have_tk:
+            extent = cclayer.GetExtent()
+            print 'cclayer extent: '+`extent`
+            plot_feature_data(grdbg.add_line, cclayer)
+        else:
+            print "Cache Extent: " + `cclayer.GetExtent()`
+            print "Cache content:"
+            print_feature_data(cclayer)
+
+        # polygon outside of the cache region:
+        print " ------ polygon outside coastline cache -----"
+        #    "56.7572 3.4195 56.9073 4.4739 56.4406 4.2201 56.7572 3.4195 56.7572 3.4195"
+        out_poly_coords = \
+            "53.92 8.06 " + \
+            "53.92 8.3 " + \
+            "54.1  8.3 " + \
+            "54.1  8.06 " + \
+            "53.92 8.06 "
+        out_poly_xml = test_cd_xml_template % out_poly_coords
+        cd = ET.fromstring(out_poly_xml)
+        if have_tk:
+            out_geom = extract_geom(cd, 'outside')
+            print "out_geom:  " + `out_geom.GetEnvelope()`
+            out_env = out_geom.GetEnvelope()
+            plot_poly(grdbg.add_line, out_geom, "red")
+
+        if not coastline_ck(cd, 'outside', ccoastline):
+            print "outside chck OK"
+        else:
+            print "outside chck FAILED"
+            n_errors += 1
+        print
+
+        # polygon inside of the cache region:
+        print " ------ polygon inside coastline cache -----"
+        in_poly_coords = \
+            "52.6 8.4 "+\
+            "52.6 8.7 "+\
+            "53.0 8.7 "+\
+            "53.0 8.4 "+\
+            "52.6 8.4"
+        in_poly_xml = test_cd_xml_template % in_poly_coords
+        cd = ET.fromstring(in_poly_xml)
+        if have_tk:
+            in_geom = extract_geom(cd, 'inside')
+            plot_poly(grdbg.add_line, in_geom, "blue")
+
+        if coastline_ck(cd, 'inside', ccoastline):
+            print "inside chck OK"
+        else:
+            print "inside chck FAILED"
+            n_errors += 1
+        print
+
+        if n_errors:
+            print "Errors: " + `n_errors`
+        else:
+            print "   ---- DK Tests OK ---- \n"
+
+
     if have_tk:
-        extent = cclayer.GetExtent()
-        print 'cclayer extent: '+`extent`
-        grdbg.set_xform(7.0, 11.0, 49.5, 56.5)
-        plot_feature_data(grdbg.add_line, cclayer)
-    else:
-        print "Cache Extent: " + `cclayer.GetExtent()`
-        print "Cache content:"
-        print_feature_data(cclayer)
 
-    # polygon outside of the cache region:
-    print " ------ polygon outside coastline cache -----"
-    #    "56.7572 3.4195 56.9073 4.4739 56.4406 4.2201 56.7572 3.4195 56.7572 3.4195"
-    out_poly_coords = \
-        "53.62 8.3 " + \
-        "53.62 8.6 " + \
-        "53.8  8.6 " + \
-        "53.8  8.3 " + \
-        "53.62 8.3 "
-    out_poly_xml = test_cd_xml_template % out_poly_coords
-    cd = ET.fromstring(out_poly_xml)
-    if have_tk:
-        out_geom = extract_geom(cd, 'outside')
-        print "out_geom:  " + `out_geom.GetEnvelope()`
-        out_env = out_geom.GetEnvelope()
-        plot_poly(grdbg.add_line, out_geom, "red")
+        grdbg.set_xform(
+            minX=  0.8, maxX=9.5,
+            minY= 47.5, maxY=56.5)
 
-    if not coastline_ck(cd, 'outside', ccoastline):
-        print "outside chck OK"
-    else:
-        print "outside chck failed"
-        n_errors += 1
+        #test_isect()
 
-    # polygon inside of the cache region:
-    print " ------ polygon inside coastline cache -----"
-    in_poly_coords = \
-        "50.6 11.105 "+\
-        "50.6 11.5   "+\
-        "51.0 11.5   "+\
-        "51.0 11.105 "+\
-        "50.6 11.105"
-    in_poly_xml = test_cd_xml_template % in_poly_coords
-    cd = ET.fromstring(in_poly_xml)
-    if have_tk:
-        in_geom = extract_geom(cd, 'inside')
-        plot_poly(grdbg.add_line, in_geom, "blue")
+        # around Denmark
+        #dk_ll =  (50.282,  5.60656)
+        #dk_ur =  (59.71651, 13.7335)
+        # test2 
+        #dk_ll =  (49.853678, 14.123)
+        #dk_ur =  (50.71651,  15.369 )
 
-    if coastline_ck(cd, 'inside', ccoastline):
-        print "inside chck OK"
-    else:
-        print "inside chck failed"
-        n_errors += 1
+        dk_ll =  (8.0, 50.0)
+        dk_ur =  (12.3, 55.0)
 
-    if n_errors:
-        print "Errors: " + `n_errors`
-    else:
-        print "Tests OK"
+        bb = Bbox(dk_ll, dk_ur)
 
-    if have_tk:
-        plot_bb(grdbg.add_line, aoi_bb, "green")
+        plot_bb(grdbg.add_line, bb, "green")
+        test_dk(bb)
+
+        bb1_ll =  (2.5, 48.9495)
+        bb1_ur =  (3.1, 51.2)
+        bb = Bbox(bb1_ll, bb1_ur)
+        plot_bb(grdbg.add_line, bb, "blue")
+
+        test_live(bb)
+
+        #(1.55, 48.8504),(1.6, 48.95)
+
+        bb1_ll =  (1.55, 48.8504)
+        bb1_ur =  (1.603, 48.9495)
+        bb = Bbox(bb1_ll, bb1_ur)
+        plot_bb(grdbg.add_line, bb, "blue")
+
+        test_live(bb)
+
         print "Starting tk main loop"
         tk_root.mainloop()
+
 
     print "Done"
