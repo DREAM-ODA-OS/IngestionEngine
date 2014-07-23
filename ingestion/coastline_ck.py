@@ -221,9 +221,9 @@ def coastline_ck(coverageDescription, cid, ccache):
     # create an ogr polygon from the data in the Coverage Description
     coverage_ftprint = extract_geom(coverageDescription, cid)
 
-    if IE_DEBUG > 1:
+    if IE_DEBUG > 2:
         logger.debug("    coastline_ck(): coverage_ftprint.env: " + `coverage_ftprint.GetEnvelope()`)
-        print_geom(coverage_ftprint)
+        #print_geom(coverage_ftprint)
 
     cclayer = ccache.GetLayer()
     if None == cclayer:
@@ -265,17 +265,19 @@ def coastline_ck(coverageDescription, cid, ccache):
         feature = cclayer.GetNextFeature()
 
     cclayer.ResetReading()
-    if not checking:
-        logger.warning("  Coastline not checked.")
-        return True
+    if IE_DEBUG > 0 and not checking:
+        logger.debug("  Coastline was empty - automatic fail.")
 
     if IE_DEBUG > 0:
-        if checking and not intersects:
+        if not intersects:
             logger.debug("  coastline check failed.")
             
     return intersects
 
 
+#--------------------------------------------------------------------
+# Create an OGR layer with the clipped polygon data.
+#
 def create_clipped_layer(src_layer, aoi, ogr_bbox, shpfile):
 
     #src_layer.SetSpatialFilter(ogr_bbox)
@@ -335,8 +337,8 @@ def create_clipped_layer(src_layer, aoi, ogr_bbox, shpfile):
     clipped_feature.SetGeometry(clipped_multipoly)
     clipped_layer.CreateFeature(clipped_feature)
 
-    if 0 == total_vertices:
-        logger.warning("Created Empty Coastline Cache; will not check coastline.")
+    if IE_DEBUG > 0 and 0 == total_vertices:
+        logger.warning("Created Empty Coastline Cache.")
 
     return clipped_source
 
@@ -1172,8 +1174,7 @@ if __name__ == '__main__':
             print "   ---- DK Tests OK ---- \n"
 
 
-    if have_tk:
-
+    def std_tests():
         grdbg.set_xform(
             minX=  0.8, maxX=9.5,
             minY= 47.5, maxY=56.5)
@@ -1210,6 +1211,64 @@ if __name__ == '__main__':
         plot_bb(grdbg.add_line, bb, "blue")
 
         test_live(bb)
+
+    def special_tests():
+
+        grdbg.set_xform(
+            minX=  -3.5, maxX=2.5,
+            minY= 42.0, maxY=48.0)
+
+        bb1_ll =  (-2.16, 44.379)
+        bb1_ur =  (-1.67, 44.795)
+        bb = Bbox(bb1_ll, bb1_ur)
+        plot_bb(grdbg.add_line, bb, "blue")
+
+        ccoastline = coastline_cache_from_aoi(shpfile, None, bb)
+        cclayer = ccoastline.GetLayer()
+
+        # extent is returned as ( MinN, MaxN, MinE, MaxE)
+        if have_tk:
+            extent = cclayer.GetExtent()
+            print 'cclayer extent: '+`extent`
+            plot_feature_data(grdbg.add_line, cclayer)
+        else:
+            print "Cache Extent: " + `cclayer.GetExtent()`
+            print "Cache content:"
+            print_feature_data(cclayer)
+
+
+        # polygon inside of the cache region:
+        print " ------ polygon inside coastline cache -----"
+        in_poly_coords = \
+            "44.5 -2.0 "+\
+            "44.5 -1.8 "+\
+            "44.7 -1.8 "+\
+            "44.7 -2.0 "+\
+            "44.5 -2.0"
+        in_poly_xml = test_cd_xml_template % in_poly_coords
+        cd = ET.fromstring(in_poly_xml)
+        if have_tk:
+            in_geom = extract_geom(cd, 'inside')
+            plot_poly(grdbg.add_line, in_geom, "blue")
+
+        if coastline_ck(cd, 'inside', ccoastline):
+            print " Special Test: FAILED - expected coastline_ck to return false."
+        else:
+            print " Special Test: OK"
+        print
+
+
+#------------ main --------------
+#
+    if have_tk:
+
+        special = False
+
+        if  special:
+            special_tests()
+        else:
+            std_tests()
+            
 
         print "Starting tk main loop"
         tk_root.mainloop()
