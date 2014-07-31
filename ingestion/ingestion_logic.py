@@ -100,9 +100,6 @@ EPSG_4326 = 'http://www.opengis.net/def/crs/EPSG/0/4326'
 # 0 means unlimited
 DEBUG_MAX_DEOCS_URLS  = 0
 DEBUG_MAX_GETCOV_URLS = 0
-if IE_DEBUG>0:
-    DEBUG_MAX_DEOCS_URLS  = 0
-    DEBUG_MAX_GETCOV_URLS = 0
 
 
 logger = logging.getLogger('dream.file_logger')
@@ -521,6 +518,7 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
             coastcache = coastline_cache_from_aoi(shpfile, prjfile, aoi_toi[0])
         except Exception as e:
             logger.error("NOT checking coastline due to Error initialising coastline:\n"+`e`)
+
     for md_url_pair in md_urls:
         md_url = md_url_pair[0]
         eoid   = md_url_pair[1]
@@ -537,13 +535,14 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
             if ndeocs>DEBUG_MAX_DEOCS_URLS: break
             ndeocs += 1
 
-        dl_reqests = gen_dl_urls(
+        dl_reqests += gen_dl_urls(
             params,
             aoi_toi,
             base_url,
             md_url,
             eoid,
             coastcache)
+
         if 0 != DEBUG_MAX_GETCOV_URLS and dl_reqests:
             dl_requests = dl_requests[:DEBUG_MAX_GETCOV_URLS]
 

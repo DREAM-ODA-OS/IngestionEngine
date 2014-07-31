@@ -548,19 +548,24 @@ class AISWorker(threading.Thread):
                     self._logger.debug (
                         "Auto-ingest: Scenario: " + `scenario.id` +
                         ", starting_date: " + `scenario.starting_date` +
-                        ", repeat_interval: " + `scenario.repeat_interval`
+                        ", repeat_interval: " + `scenario.repeat_interval` + " minutes"
                         )
 
                 t_now = datetime.datetime.utcnow()
                 
                 # set the next starting date
-                scenario.starting_date = t_now + datetime.timedelta(0, 60*scenario.repeat_interval)
+                next_start = t_now + datetime.timedelta(0, 60*scenario.repeat_interval)
+                scenario.starting_date = next_start
                 scenario.save()
 
                 scenario_status.is_available = 0
                 scenario_status.status = "QUEUED"
                 scenario_status.save()
 
+                if IE_DEBUG > 0:
+                    self._logger.debug (
+                        "Auto-ingest: Submitting scenario '%s' to queue" % scenario.ncn_id
+                        )
                 submit_scenario(scenario, scid, False)
 
                     # t_prev = t_now - t_delta
