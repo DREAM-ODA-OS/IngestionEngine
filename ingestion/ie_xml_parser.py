@@ -291,12 +291,27 @@ def extract_footprintpolys(cd):
     return coords
 
 
-def extract_refs(eoresult, node_str):
+def add_missing_mediatype(href):
     #
-    # looking for:
+    #  Adds media type if it is not in href already
+    #
+    #
+
+    MEDIATYPE_STRING = "mediatype=multipart/mixed"
+
+    if MEDIATYPE_STRING not in href:
+        href += '&' +  MEDIATYPE_STRING
+
+    return href
+
+def extract_refs(eoresult, node_str, fix_missing_mtype=False):
+    #
+    #    node_str is either "product" or "mask"
+    #
+    # looking for either of:
     # //eop:product//eop:fileName/ows:ServiceReference[@xlink:href]
-    # //eop:mask//eop:fileName/ows:ServiceReference[@xlink:href]
-    #   node_str is either "product" or "mask"
+    #    //eop:mask//eop:fileName/ows:ServiceReference[@xlink:href]
+    #
     #
 
     refs = []
@@ -307,15 +322,17 @@ def extract_refs(eoresult, node_str):
             sr = f.find('./' + OWS_NS + "ServiceReference")
             if sr:
                 href = sr.attrib.get(XLINK_NS+'href')
+                if fix_missing_mtype:
+                    href = add_missing_mediatype(href)
                 refs.append(href)
     return refs
 
-def extract_prods_and_masks(cd):
+def extract_prods_and_masks(cd, fix_missing_mtype=False):
     prods_and_masks = []
     eoresults = cd.findall(".//" + OPT_NS   + "EarthObservationResult")
     for eor in eoresults:
-        prods_and_masks.extend ( extract_refs(eor, "product") )
-        prods_and_masks.extend ( extract_refs(eor, "mask") )
+        prods_and_masks.extend ( extract_refs(eor, "product", fix_missing_mtype) )
+        prods_and_masks.extend ( extract_refs(eor, "mask",    fix_missing_mtype) )
     return prods_and_masks
 
 def extract_path_text(cd, path):

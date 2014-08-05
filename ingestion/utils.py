@@ -34,7 +34,8 @@ MAX_MANIF_FILES = 750000
 MANIFEST_FN = "MANIFEST"
 META_SUFFIX = ".meta"
 DATA_SUFFIX = ".data"
-
+TIFF_SUFFIX = '.tiff'
+TIF_SUFFIX  = '.tif'
 
 # ------------ osr Init  ------------
 SPATIAL_REF_WGS84 = osr.SpatialReference()
@@ -432,15 +433,13 @@ def split_wcs_raw(path, f, logger):
 
     try:
         l1 = fp.readline()
-        l2 = fp.readline()
-        l3 = fp.readline()
-        l4 = fp.readline()
 
-        if (not l2.startswith("Content-Type:")) or \
-                None == re.match('\r?\n',l3) or \
-                not l4.startswith('<?xml'):
-            # The file is not what we expect.
-            raise IngestionError("Unexpected file contents in: "+fn)
+        top_hdrs = read_headers(fp)
+        
+        if len(top_hdrs) < 1:
+            raise IngestionError("No HTTP/mime headers found - Unexpected file contents in: "+fn)
+        if not "Content-Type" in top_hdrs:
+            raise IngestionError("No Content-Type header found in "+fn)
 
         boundary = None
         m = re.match('--wcs\r?\n', l1)
@@ -453,7 +452,7 @@ def split_wcs_raw(path, f, logger):
             raise IngestionError("Initial boundary not found, f=: "+fn)
 
         # create meta-data file
-        meta_type = l2.split('Content-Type:')[1].strip()
+        meta_type = top_hdrs['Content-Type'].strip()
         meta_fname = fn + META_SUFFIX
         if os.path.exists(meta_fname):
             # something is wrong if this name already exists,
@@ -461,7 +460,9 @@ def split_wcs_raw(path, f, logger):
             raise IngestionError("File exists: "+meta_fname)
 
         meta_fp = open(meta_fname,"w")
-        l = l4
+        l = fp.readline()
+        if not l.startswith('<?xml'):
+            logger.warning("No xml start tag found in "+fn)
         while l != boundary:
             meta_fp.write(l)
             l = fp.readline()
@@ -620,6 +621,10 @@ def split_and_create_mf(dir_path, ncn_id, logger):
         if f.startswith(MANIFEST_FN) or f.endswith(META_SUFFIX) or f.endswith(DATA_SUFFIX):
             logger.warning("Ingestion: ignoring "+f)
             continue
+        if f.endswith(TIFF_SUFFIX) or f.endswith(TIF_SUFFIX):
+            logger.warning("Ingestion: Unexpected TIFF file, ignoring: "+f)
+            continue
+
         ret_str, metafile, df = split_wcs_raw(dir_path, f, logger)
         if not ret_str:
             logger.error("Failed to split file '"+f+"'.")

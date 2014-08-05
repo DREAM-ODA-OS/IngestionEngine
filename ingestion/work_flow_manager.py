@@ -218,10 +218,14 @@ class Worker(threading.Thread):
             if percent < 1.0: percent = 1
             self._wfm.set_scenario_status(self._id, scid, 0, "RUNNING SCRIPS", percent)
 
-            mf_name, metafiles = split_and_create_mf(
-                os.path.join(dl_dir, d), ncn_id, self._logger)
+            try:
+                mf_name, metafiles = split_and_create_mf(
+                    os.path.join(dl_dir, d), ncn_id, self._logger)
+            except Exception as e:
+                self._logger.info("Exception" + `e`)
+                mf_name = None
             if not mf_name:
-                logger.info("Error processing download directry " + `d`)
+                self._logger.info("Error processing download directry " + `d`)
                 n_errors += 1
                 continue
 
@@ -493,7 +497,7 @@ class Worker(threading.Thread):
             self._wfm.set_scenario_status(self._id, sc_id, 1, "STOPPED, IDLE", 0)
 
         except Exception as e:
-            self._logger.error(`ncn_id`+"Error while ingesting: " + `e`)
+            self._logger.error(`ncn_id`+" Error while ingesting: " + `e`)
             self._wfm.set_scenario_status(self._id, sc_id, 1, "INGEST ERROR", 0)
             if IE_DEBUG > 0:
                 traceback.print_exc(12,sys.stdout)

@@ -463,7 +463,11 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
 
         passed = passed+1
         ret.append(base_url+"&CoverageId="+coverage_id)
-        ret.extend( extract_prods_and_masks(cd) )
+        ret.extend( extract_prods_and_masks(cd, True) )
+
+
+        print " IIIIIIII cid: " + `extract_CoverageId(cd)` + ", ret:"+`ret`
+    
 
     if None != fp: fp.close()
     cd_tree = None
@@ -544,7 +548,7 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
             coastcache)
 
         if 0 != DEBUG_MAX_GETCOV_URLS and dl_reqests:
-            dl_requests = dl_requests[:DEBUG_MAX_GETCOV_URLS]
+            dl_reqests = dl_reqests[:DEBUG_MAX_GETCOV_URLS]
 
     coastcache = None
 
@@ -811,6 +815,7 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
     try:
         ts = time.time()
         tdiff = 0
+        last_status = {}
         while not all_done:
             tdiff = time.time() - ts
             all_done = True
@@ -847,8 +852,11 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
                             prod_uuid = product['uuid']
                         else:
                             prod_uuid = 'unknown'
-                        logger.debug("Status from DM: " + `dl_status` +
-                                     ", prod. uuid="+`prod_uuid`)
+                        if not (prod_uuid in last_status and \
+                                last_status[prod_uuid] == dl_status):
+                            logger.debug("Status from DM: " + `dl_status` +
+                                         ", prod. uuid="+`prod_uuid`)
+                            last_status[prod_uuid] = dl_status
                     all_done = False
                 if "progressPercentage" not in progress:
                     part_percent += 100
@@ -856,7 +864,7 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
                     part_percent += progress["progressPercentage"]
                 if "downloadedSize" in progress:
                     total_size += progress["downloadedSize"]
-        
+
             percent_done = int( (float(part_percent)/float(total_percent))*100 )
             if percent_done < 1: percent_done = 1
             if all_done:
@@ -883,11 +891,15 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
                 raise StopRequest("Stop Request")
             
             product_list = request["productList"]
-            
+
+
         # all done
+
+        last_status = None
+
         if n_errors > 0:
             logger.info("Completed download with " + `n_errors` + " errors")
-
+    
     except StopRequest:
         logger.info("StopRequest while waiting for download") 
         raise
