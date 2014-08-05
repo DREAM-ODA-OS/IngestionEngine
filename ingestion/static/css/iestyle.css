@@ -93,6 +93,7 @@ input.StopButton,
 input.IngestButton,
 input.LocalIngestButton,
 input.EditButton,
+input.RefreshButton,
 input.DeleteButton
 {
     background-color: transparent; /* make the button transparent */
@@ -104,6 +105,11 @@ input.DeleteButton
     width:32px;             /* make this the size of your image */
     padding-left: 0px;      /* make text start to the right of the image */
     vertical-align: middle; /* align the text vertically centered */
+}
+
+input.RefreshButton
+{
+    background-image: url("/static/images/RefreshIcon.png");
 }
 
 input.StopButton

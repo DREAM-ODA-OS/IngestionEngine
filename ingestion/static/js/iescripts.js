@@ -298,12 +298,18 @@ function sync_scenarios() {
              }
              select_html += '</select>';
              refresh_html =
+                 '&nbsp; <INPUT title="Refresh available Data Set Ids from Product Facility"'+
+                 'class="RefreshButton"' +
+                 ' onClick="get_available_dssids()" />';
+             /*
+             refresh_html =
                  '&nbsp; <INPUT type="BUTTON" class="cl_ref_eoids"'+
                  ' id="id_but_ref_eoids"'+
                  ' title="Refresh available Data Set Ids from Product Facility"'+
                  ' onClick="get_available_dssids()"' +
                  ' value="<-- Refresh" />';
-             $('#id_eoids').html(select_html+refresh_html);
+             */
+             $('#id_eoids').html(refresh_html+select_html);
         }
     };
 
