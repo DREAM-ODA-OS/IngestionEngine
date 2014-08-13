@@ -21,7 +21,7 @@ DEBUG = True
 TEMPLATE_DEBUG = False
 IE_AUTO_LOGIN  = True
 
-IE_N_WORKFLOW_WORKERS = 8
+IE_N_WORKFLOW_WORKERS = 10
 
 # set to 0 for no debugging
 IE_DEBUG = 2

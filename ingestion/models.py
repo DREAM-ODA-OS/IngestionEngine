@@ -65,8 +65,16 @@ EXT_PUT_SCENARIO_KEYS  = EXT_GET_SCENARIO_KEYS + (
 #                  Scenario                       *
 #**************************************************
 def make_ncname(root):
-    sc_latest =  Scenario.objects.latest('id')
-    n = sc_latest.id
+    n = 0
+    try:
+        sc_latest = Scenario.objects.latest('id')
+        if sc_latest:
+            n = sc_latest.id
+        else:
+            n = 0
+    except Scenario.DoesNotExist:
+        n = 0
+
     candidate = root+`n`
     exists = False
     try:

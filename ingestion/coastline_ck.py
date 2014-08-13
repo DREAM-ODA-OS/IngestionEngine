@@ -768,18 +768,18 @@ def clip_poly(bb, poly, debug=False):
             ipts = find_intersections(bb, p0, p1)
 
             # MN XXX
-            dd = i<6 and LOCAL_DEBUG
-            if dd and (\
-                (    p0[0]<bb.ll[0] and p1[0]>bb.ll[0]) or \
-                    (p1[0]<bb.ll[0] and p0[0]>bb.ll[0]) ):
-                print "p0: " + `p0` + ", p1:" + `p1`,
-                if len(ipts)==0:
-                    print " NO INT"
-                else:
-                    print ", Ipts:" ,
-                    for ii in ipts:
-                        print "  "+`ii`,
-                    print
+            # dd = i<6 and LOCAL_DEBUG
+            # if dd and (\
+            #     (    p0[0]<bb.ll[0] and p1[0]>bb.ll[0]) or \
+            #         (p1[0]<bb.ll[0] and p0[0]>bb.ll[0]) ):
+            #     print "p0: " + `p0` + ", p1:" + `p1`,
+            #     if len(ipts)==0:
+            #         print " NO INT"
+            #     else:
+            #         print ", Ipts:" ,
+            #         for ii in ipts:
+            #             print "  "+`ii`,
+            #         print
 
             # ipts are ordered starting with the one closest to p0
             for ipt in ipts:

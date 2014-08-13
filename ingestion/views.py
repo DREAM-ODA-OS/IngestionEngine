@@ -1169,7 +1169,6 @@ def getListScenarios_operation(request):
 @csrf_exempt
 def addOdaLocalProduct_operation(request, ncn_id):
     # expect a GET request
-    print `request.body`
     return get_request_json(addOdaLocalProduct, request, (ncn_id,) )
 
 @csrf_exempt

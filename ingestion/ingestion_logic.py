@@ -463,11 +463,10 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
 
         passed = passed+1
         ret.append(base_url+"&CoverageId="+coverage_id)
-        ret.extend( extract_prods_and_masks(cd, True) )
 
+        #  disabled, not supported by ODA server for now:
+        #ret.extend( extract_prods_and_masks(cd, True) )
 
-        print " IIIIIIII cid: " + `extract_CoverageId(cd)` + ", ret:"+`ret`
-    
 
     if None != fp: fp.close()
     cd_tree = None
@@ -846,22 +845,25 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
                 elif dl_status == "COMPLETED":
                     n_done += 1
                 else:
-                    if IE_DEBUG > 1:
-                        prod_uuid = None
-                        if 'uuid' in product:
-                            prod_uuid = product['uuid']
-                        else:
-                            prod_uuid = 'unknown'
-                        if not (prod_uuid in last_status and \
-                                last_status[prod_uuid] == dl_status):
-                            logger.debug("Status from DM: " + `dl_status` +
-                                         ", prod. uuid="+`prod_uuid`)
-                            last_status[prod_uuid] = dl_status
                     all_done = False
+
+                if IE_DEBUG > 0:
+                    prod_uuid = None
+                    if 'uuid' in product:
+                        prod_uuid = product['uuid']
+                    else:
+                        prod_uuid = 'unknown'
+                    if not (prod_uuid in last_status and \
+                            last_status[prod_uuid] == dl_status):
+                        logger.debug("Status from DM: " + `dl_status` +
+                                     ", prod. uuid="+`prod_uuid`)
+                        last_status[prod_uuid] = dl_status
+
                 if "progressPercentage" not in progress:
                     part_percent += 100
                 else:
                     part_percent += progress["progressPercentage"]
+
                 if "downloadedSize" in progress:
                     total_size += progress["downloadedSize"]
 

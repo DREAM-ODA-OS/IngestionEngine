@@ -510,6 +510,10 @@ class Worker(threading.Thread):
 #      Auto-Ingest-Scenario-Worker                *
 #**************************************************
 class AISWorker(threading.Thread):
+    #
+    # manages auto-ingestion of scenario
+    #
+
     def __init__(self,work_flow_manager):
         threading.Thread.__init__(self)
         global worker_id
@@ -518,7 +522,11 @@ class AISWorker(threading.Thread):
         self._wfm = work_flow_manager
         self._logger = logging.getLogger('dream.file_logger')
 
-    def run(self): # manages auto-ingestion of scenario
+    def run(self):
+        #
+        # manages auto-ingestion of scenar
+        #
+
         if IE_DEBUG > 1: self._logger.debug(
             "AISWorker-%d of Work-Flow Manager started." % self._id)
         while True:
@@ -551,7 +559,7 @@ class AISWorker(threading.Thread):
                 if IE_DEBUG > 1:
                     self._logger.debug (
                         "Auto-ingest: Scenario: " + `scenario.id` +
-                        ", starting_date: " + `scenario.starting_date` +
+                        ", starting_date: " + scenario.starting_date.isoformat() +
                         ", repeat_interval: " + `scenario.repeat_interval` + " minutes"
                         )
 
