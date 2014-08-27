@@ -1129,6 +1129,8 @@ def get_request_json(func,
     STATUS_KEY = 'status'
     ERROR_KEY  = 'error'
 
+    oda_init(request)
+
     if string_error:
         failure_status = 'failed'
         success_status = 'errorString'
@@ -1148,13 +1150,17 @@ def get_request_json(func,
             else:
                 response_data = op_response
         except Exception as e:
-            logger.error('Error in get_request_json(): ' +`e`)
+            logger.error('Error in get_request_json(' + \
+                             "func=" + `func`+', args=' + `args`+\
+                             '): ' + \
+                             `e`)
             response_data[STATUS_KEY] = failure_status
             response_data[ERROR_KEY]  = "%s" % e
     else:
         # method was not GET or POST
         response_data[STATUS_KEY] = failure_status
         response_data[ERROR_KEY]  = "Request method is not GET or POST."
+
     ret = HttpResponse(
         json.dumps(response_data),
         content_type="application/json")
