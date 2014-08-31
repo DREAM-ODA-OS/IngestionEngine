@@ -301,35 +301,41 @@ class TimePeriod:
     TIME_FORMAT_8601   = "%Y-%m-%dT%H:%M:%S"
     TIME_FORMAT_SIMPLE = "%Y-%m-%d %H:%M:%S"
 
+    def to_timegm(self, timestr):
+
+        TF = None
+
+        if timestr[-1]  == 'Z'     : timestr = timestr[:-1]
+        if timestr[-6:] == "+00:00": timestr = timestr[:-6]
+
+        # Look for a possible fraction on seconds
+        # if we find one, then drop the fractions.
+        time_dot_i = timestr.rfind('.')
+        if time_dot_i < 0:
+            time_dot_i = timestr.rfind(',')
+
+        if time_dot_i > 0:
+            timestr = timestr[:time_dot_i-len(timestr)]
+
+        if timestr[10]  == ' ':
+            TF = self.TIME_FORMAT_SIMPLE
+        else:
+            TF = self.TIME_FORMAT_8601
+
+        return calendar.timegm( time.strptime(timestr, TF) )
+        
+
     def __init__(self, begin, end=None):
 
-        BTF = None
-        ETF = None
-
-        if begin[-1]  == 'Z'     : begin = begin[:-1]
-        if begin[-6:] == "+00:00": begin = begin[:-6]
-        if begin[10]  == ' ':
-            BTF = self.TIME_FORMAT_SIMPLE
-        else:
-            BTF = self.TIME_FORMAT_8601
-
         self.begin_str  = begin
-        self.begin_time = calendar.timegm(
-            time.strptime(begin, BTF))
+        self.begin_time = self.to_timegm(begin)
 
         if None==end:
             self.end_str  = begin
             self.end_time = self.begin_time
         else:
-            if end[-1]  == 'Z'     : end = end[:-1]
-            if end[-6:] == "+00:00": end = end[:-6]
-            if end[10]  == ' ':
-                ETF = self.TIME_FORMAT_SIMPLE
-            else:
-                ETF = self.TIME_FORMAT_8601
             self.end_str  = end
-            self.end_time = calendar.timegm(
-                time.strptime(end, ETF))
+            self.end_time = self.to_timegm(end)
 
         if self.begin_time > self.end_time:
             tmp = self.begin_time
@@ -827,7 +833,32 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1: print sys.argv[1]
 
-    print " glob: " + `get_glob_list('/mnt/shared/AtCor/C1-AtCorProc/data/s2sim', '.dim')`
+    #print " glob: " + `get_glob_list('/mnt/shared/AtCor/C1-AtCorProc/data/s2sim', '.dim')`
 
+    #time string examples:
+    #2011-12-29T00:00:00
+    #2014-08-30T14:57:18Z
+    #2014-08-30T14:57:18.123456Z
 
+    ts = "2011-12-29T00:00:00"
+    tp = TimePeriod(ts)
+    print ts
+    print "   " + `tp` + ",   " + `time.ctime(tp.begin_time)`
+    print 
 
+    ts = "2014-08-30T14:57:18Z"
+    tp = TimePeriod(ts)
+    print ts
+    print "   " + `tp` + ",   " + `time.ctime(tp.begin_time)`
+    print 
+    
+    ts = "2014-08-30T14:57:18.12345"
+    tp = TimePeriod(ts)
+    print ts
+    print "   " + `tp` + ",   " + `time.ctime(tp.begin_time)`
+    print 
+
+    ts = "2014-08-30T14:57:18.123456Z"
+    tp = TimePeriod(ts)
+    print ts
+    print "   " + `tp` + ",   " + `time.ctime(tp.begin_time)`
