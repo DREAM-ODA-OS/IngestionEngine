@@ -536,9 +536,13 @@ def split_wcs_raw(path, f, logger):
             data_fp.write(rests[0])
 
         data_fp.close()
+        fp.close()
 
         if delete_orig:
-            os.unlink(fn)
+            try:
+                os.unlink(fn)
+            except Exception as e:
+                logger.warning("Exception unlinking file '"+f+"': "+`e`)
 
         extra_manifest = ''
         for h in disclose_headers:
@@ -559,7 +563,7 @@ def split_wcs_raw(path, f, logger):
         if data_fp != None: data_fp.close()
         logger.error("Exception while splitting file '"+f+"': "+`e`)
         logger.debug(traceback.format_exc(4))
-        return None, None
+        return None, None, None
 
 def write_manifest_file(dir_path, manif_str):
     mf_name = os.path.join(dir_path, MANIFEST_FN)

@@ -444,7 +444,7 @@ class Worker(threading.Thread):
         percent = 1
         sc_id = parameters["scenario_id"]
         ncn_id = None
-        final_status = "IDLE"
+        final_status = "OK"
         self._wfm.set_scenario_status(
             self._id, sc_id, 0, "GENERATING URLS", percent)
         try:
@@ -489,6 +489,9 @@ class Worker(threading.Thread):
                 raise IngestionError(`ncn_id`+": ingestion encountered "+ `n_errors` +" errors")
 
             # Finished
+            if "OK" == final_status:
+                d_str = time.strftime('%Y-%m-%d %H:%M', time.gmtime())
+                final_status += ' ' + d_str
             self._wfm.set_scenario_status(self._id, sc_id, 1, final_status, 0)
             self._logger.info(`ncn_id`+": ingestion completed.")
 

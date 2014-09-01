@@ -333,7 +333,7 @@ def check_text_condition(cd, req, key, xpath):
     return req_item == md_item
 
 
-def check_float_max(cd, req, key, xpath):
+def check_float_max(cd, req, key, xpath, use_abs=False):
     if not key in req:
         return True
     req_item = req[key]
@@ -345,12 +345,16 @@ def check_float_max(cd, req, key, xpath):
     md_item  = extract_path_text(cd, xpath)
     if not md_item:
         return True
+
     try:
         md_float = float(md_item)
+        if use_abs:
+            md_float = abs(md_float)
     except Exception as e:
         logger.warning("unexpected error converting value from metadata"+\
                            "for "+`key`+"', exception: " + `e`)
         return True
+
     if md_float <= req_float:
         if IE_DEBUG>1:
             logger.info("Accepted " + key + " MD value " + `md_float`)
@@ -441,7 +445,7 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
             if IE_DEBUG > 0: failed.add('sensor_type')
             continue
 
-        if not check_float_max(cd, params, 'view_angle', INCIDENCEANGLE_XPATH):
+        if not check_float_max(cd, params, 'view_angle', INCIDENCEANGLE_XPATH, True):
             if IE_DEBUG > 2: logger.debug("  incidence angle check failed.")
             if IE_DEBUG > 0: failed.add('view_angle')
             continue
