@@ -105,6 +105,20 @@ def get_scenario_id(ncn_id):
 def get_scenario_ncn_id(scenario_id):
     return models.Scenario.objects.get(id=int(scenario_id)).ncn_id
 
+def get_or_create_scenario_status(s):
+    sstat = None
+    try:
+        sstat = s.scenariostatus
+    except models.ScenarioStatus.DoesNotExist:
+        sstat = models.ScenarioStatus(
+            scenario=s,
+            is_available=1,
+            status='IDLE',
+            ingestion_pid=os.getpid(),
+            done=0.0)
+        sstat.save()
+    return sstat
+
 def stop_ingestion_core(scenario_id):
     wfm = work_flow_manager.WorkFlowManager.Instance()
     wfm.set_stop_request(scenario_id)
@@ -258,17 +272,9 @@ def overviewScenario(request):
     scenarios = user.scenario_set.all()
     scenario_status = []
     for s in scenarios:
-        try:
-            scenario_status.append(s.scenariostatus)
-        except models.ScenarioStatus.DoesNotExist:
-            sstat = models.ScenarioStatus(
-                scenario=s,
-                is_available=1,
-                status='IDLE',
-                ingestion_pid=os.getpid(),
-                done=0.0)
-            sstat.save()
-            scenario_status.append(sstat)
+        sstat = get_or_create_scenario_status(s)
+        scenario_status.append(sstat)
+
     variables = RequestContext(
         request,
         {'scenarios':scenarios,
@@ -908,7 +914,7 @@ def getAjaxScenariosList(request):
     for s in scenarios:
         auto_ingest = 0;
         if s.repeat_interval > 0 : auto_ingest = 1;
-        ss = s.scenariostatus
+        ss = get_or_create_scenario_status(s)
         response_data.append(
             {
                 'id'                  : '%s' % s.id,

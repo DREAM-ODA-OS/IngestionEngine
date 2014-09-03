@@ -117,6 +117,7 @@ def get_dssids_from_pf(product_facility, aoi_toi):
     caps = get_caps_from_pf(product_facility)
 
     if None == caps:
+        logger.warning("No capabilities were obtained from: "+`product_facility`)
         return ids_from_pf
 
     try:
@@ -125,9 +126,18 @@ def get_dssids_from_pf(product_facility, aoi_toi):
     except Exception as e:
         logger.error("Exception in get_dssids_from_pf: " + `e`)
 
+    if IE_DEBUG > 0:
+        logger.debug("get_dssids_from_pf: dss_list len="+`len(wcseo_dss_list)`)
+
     caps = None  # no longer needed
 
     ids_from_pf = getDssList(None, wcseo_dss_list, aoi_toi)
+
+    if IE_DEBUG > 0:
+        logger.debug("get_dssids_from_pf: num ids="+`len(ids_from_pf)`)
+
+    if len(ids_from_pf) < 1:
+        logger.warning("No DSS-IDs matching the criteria are available from the PF")
 
     return service_version, ids_from_pf
 
@@ -408,6 +418,9 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
     if len(cds) < 1:
         logger.warning("No CoverageDescriptions found in '"+md_url+"'")
 
+    should_check_archived = True
+    if 'check_arch' in params:
+        should_check_archived = params['check_arch']
     failed = set()
     passed = 0
     for cd in cds:
@@ -424,7 +437,7 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
         if IE_DEBUG > 2:
             logger.debug("  coverage_id="+coverage_id)
         
-        if check_archived(scid, coverage_id):
+        if should_check_archived and check_archived(scid, coverage_id):
             if IE_DEBUG > 0:
                 logger.debug("  coverage_id='"+coverage_id+
                             "' is achived, not downloading.")
@@ -941,7 +954,6 @@ def ingestion_logic(scid, scenario_data):
 
     nreqs = 0
     retval = (0, None, None, None, "")
-    
     scenario_data["sc_id"]  = scid
     scenario_data["custom"] = custom
     ncn_id = scenario_data["ncn_id"]

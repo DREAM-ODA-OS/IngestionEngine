@@ -200,6 +200,14 @@ def scenario_dict(db_model):
         dssids.append(dssid.eoid_val.encode('ascii','ignore'))
     response_data['dssids'] = dssids
 
+    # Forebugging: ignore the archive_check so that we can
+    #  re-ingest an already-ingested dataset without needing
+    #  to reload a new clean database.  The trigger is if
+    #  the description starts wiht the string 'RRR'.
+    if db_model.scenario_description.startswith('RRR'):
+        logger = logging.getLogger('dream.file_logger')
+        logger.warning("DEBUG back-door trigger: RRR means ignore archive check.")
+        response_data['check_arch'] = False
     return response_data
 
 # ------------  scenario model definition  --------------------------

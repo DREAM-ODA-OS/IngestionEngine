@@ -2,301 +2,28 @@
     { "pk": 1, "model": "sites.site", 
         "fields": { "domain": "esa.int", "name": "esa.int"  }
     }, 
-    { "pk": 19, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_logentry", "name": "Can add log entry", 
-            "content_type": 7
-        }
-    }, 
-    { "pk": 20, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_logentry", "name": "Can change log entry", 
-            "content_type": 7
-        }
-    }, 
-    { "pk": 21, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_logentry", "name": "Can delete log entry", 
-            "content_type": 7
-        }
-    }, 
-    { "pk": 4, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_group", "name": "Can add group", 
-            "content_type": 2
-        }
-    }, 
-    { "pk": 5, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_group", "name": "Can change group", 
-            "content_type": 2
-        }
-    }, 
-    { "pk": 6, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_group", "name": "Can delete group", 
-            "content_type": 2
-        }
-    }, 
-    { "pk": 1, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_permission", "name": "Can add permission", 
-            "content_type": 1
-        }
-    }, 
-    { "pk": 2, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_permission", "name": "Can change permission", 
-            "content_type": 1
-        }
-    }, 
-    { "pk": 3, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_permission", "name": "Can delete permission", 
-            "content_type": 1
-        }
-    }, 
-    { "pk": 7, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_user", "name": "Can add user", 
-            "content_type": 3
-        }
-    }, 
-    { "pk": 8, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_user", "name": "Can change user", 
-            "content_type": 3
-        }
-    }, 
-    { "pk": 9, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_user", "name": "Can delete user", 
-            "content_type": 3
-        }
-    }, 
-    { "pk": 10, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_contenttype", "name": "Can add content type", 
-            "content_type": 4
-        }
-    }, 
-    { "pk": 11, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_contenttype", "name": "Can change content type", 
-            "content_type": 4
-        }
-    }, 
-    { "pk": 12, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_contenttype", "name": "Can delete content type", 
-            "content_type": 4
-        }
-    }, 
-    { "pk": 28, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_productinfo", "name": "Can add product info", 
-            "content_type": 10
-        }
-    }, 
-    { "pk": 29, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_productinfo", "name": "Can change product info", 
-            "content_type": 10
-        }
-    }, 
-    { "pk": 30, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_productinfo", "name": "Can delete product info", 
-            "content_type": 10
-        }
-    }, 
-    { "pk": 22, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_scenario", "name": "Can add scenario", 
-            "content_type": 8
-        }
-    }, 
-    { "pk": 23, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_scenario", "name": "Can change scenario", 
-            "content_type": 8
-        }
-    }, 
-    { "pk": 24, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_scenario", "name": "Can delete scenario", 
-            "content_type": 8
-        }
-    }, 
-    { "pk": 34, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_scenariostatus", "name": "Can add scenario status", 
-            "content_type": 12
-        }
-    }, 
-    { "pk": 35, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_scenariostatus", "name": "Can change scenario status", 
-            "content_type": 12
-        }
-    }, 
-    { "pk": 36, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_scenariostatus", "name": "Can delete scenario status", 
-            "content_type": 12
-        }
-    }, 
-    { "pk": 25, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_script", "name": "Can add script", 
-            "content_type": 9
-        }
-    }, 
-    { "pk": 26, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_script", "name": "Can change script", 
-            "content_type": 9
-        }
-    }, 
-    { "pk": 27, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_script", "name": "Can delete script", 
-            "content_type": 9
-        }
-    }, 
-    { "pk": 31, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_userscript", "name": "Can add user script", 
-            "content_type": 11
-        }
-    }, 
-    { "pk": 32, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_userscript", "name": "Can change user script", 
-            "content_type": 11
-        }
-    }, 
-    { "pk": 33, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_userscript", "name": "Can delete user script", 
-            "content_type": 11
-        }
-    }, 
-    { "pk": 13, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_session", "name": "Can add session", 
-            "content_type": 5
-        }
-    }, 
-    { "pk": 14, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_session", "name": "Can change session", 
-            "content_type": 5
-        }
-    }, 
-    { "pk": 15, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_session", "name": "Can delete session", 
-            "content_type": 5
-        }
-    }, 
-    { "pk": 16, "model": "auth.permission", 
-        "fields": {
-            "codename": "add_site", "name": "Can add site", 
-            "content_type": 6
-        }
-    }, 
-    { "pk": 17, "model": "auth.permission", 
-        "fields": {
-            "codename": "change_site", "name": "Can change site", 
-            "content_type": 6
-        }
-    }, 
-    { "pk": 18, "model": "auth.permission", 
-        "fields": {
-            "codename": "delete_site", "name": "Can delete site", 
-            "content_type": 6
-        }
-    }, 
-    { "pk": 1, "model": "auth.user", 
-        "fields": {
-            "username": "dreamer", 
-            "first_name": "", 
-            "last_name": "", 
-            "is_active": true, 
-            "is_superuser": false, 
-            "is_staff": false, 
-            "last_login": "2013-11-25T11:33:54.393", 
-            "groups": [], 
-            "user_permissions": [], 
-            "password": "pbkdf2_sha256$10000$UW7dUlE4PicQ$j+xbswOKoeCvyOHPoFAO8JL/xTKmYY6QKQrVYH7fSOs=", 
-            "email": "", 
-            "date_joined": "2013-08-23T09:30:02"
-        }
-    }, 
-    { "pk": 2, "model": "auth.user", 
-        "fields": {
-            "username": "dr.adm", 
-            "first_name": "Dream", 
-            "last_name": "Admin", 
-            "is_active": true, 
-            "is_superuser": true, 
-            "is_staff": true, 
-            "last_login": "2013-10-31T11:12:23", 
-            "groups": [], 
-            "user_permissions": [], 
-            "password": "pbkdf2_sha256$10000$EJzGr9aee1Av$HmrT2jmvL9ztdqFKt0fkShvCRwnb5Wcpsgre5M/2XJw=", 
-            "email": "", 
-            "date_joined": "2013-10-31T11:12:23"
-        }
-    }, 
-    { "pk": 3, "model": "auth.user", 
-        "fields": {
-            "username": "drtest", 
-            "first_name": "Dream", 
-            "last_name": "TestAccount", 
-            "is_active": true, 
-            "is_superuser": false, 
-            "is_staff": false, 
-            "last_login": "2013-11-01T14:46:09.723", 
-            "groups": [], 
-            "user_permissions": [], 
-            "password": "pbkdf2_sha256$10000$7oNoMf9cVInI$i6CQRa2imJd35+2PGL9Cnxiy3q5x3j+g0AX4B6tF4tc=", 
-            "email": "", 
-            "date_joined": "2013-10-31T11:13:59"
-        }
-    }, 
-    { "pk": 1, "model": "ingestion.scenariostatus", 
-        "fields": {
-            "status": "IDLE", 
-            "is_available": 1, 
-            "done": 0.0,
-            "active_dar": "",
-            "ingestion_pid": 0,
-            "scenario": 1
-        }
-    }, 
-    { "pk": 2, "model": "ingestion.scenariostatus", 
-        "fields": {
-            "status": "IDLE", 
-            "is_available": 1, 
-            "done": 0.0,
-            "active_dar": "",
-            "ingestion_pid": 0,
-            "scenario": 2
+    {   "pk": 1, "model": "ingestion.scenario", "fields": {
+            "ncn_id": "confidenceTest", 
+            "scenario_name": "Basic Confidence Test", 
+            "scenario_description": "A very simple ingestion to verify that the installation is ok.", 
+            "dsrc_type": "EO", 
+            "s2_preprocess": "NO", 
+            "download_subset": 1, 
+            "aoi_type": "BB", 
+            "sensor_type": "", 
+            "bb_lc_long": 12.44,   "bb_lc_lat": 49.1225, 
+            "bb_uc_long": 12.528,  "bb_uc_lat": 49.2258, 
+            "from_date": "2000-04-08T01:00:00", 
+            "to_date":   "2000-10-14T21:00:00",
+            "cloud_cover": 22.0, "view_angle": 50.0, 
+            "dsrc": "http://data.eox.at/instance00/ows", 
+            "dsrc_password": "", "dsrc_login": "", 
+            "cat_registration": false, "coastline_check": false, 
+            "oda_server_ingest": true, "tar_result": false, 
+            "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
+            "default_priority": 100, "user": 3 
     }}, 
-    {"pk": 3, "model": "ingestion.scenariostatus",
-        "fields":  {
-            "status": "IDLE",
-            "is_available": 1,
-            "done": 0.0,
-            "active_dar": "",
-            "ingestion_pid": 0,
-            "scenario": 3
-    }}, 
-    {   "pk": 1, 
-        "model": "ingestion.scenario", 
-        "fields": {
+    {   "pk": 2,  "model": "ingestion.scenario",  "fields": {
             "ncn_id": "scenario_B", 
             "scenario_name": "Test-Case TC-T5-02: Scenario B - Sentinel 2 L1C", 
             "scenario_description": "Test of Sentinel 2 L1C ingestion as per SVP TC-T5-02.", 
@@ -313,55 +40,24 @@
             "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
             "user": 3, "default_priority": 100
     }}, 
-    {   "pk": 2,   "model": "ingestion.scenario", "fields": {
+    {   "pk": 3,   "model": "ingestion.scenario", "fields": {
             "ncn_id": "scenario_C", 
             "scenario_name": "Test-Case TC-T5-03: Scenario C - repeat ingestion.", 
             "scenario_description": "Test of repeated Sentinel 2 L1C ingestion as per SVP TC-T5-03. To include an additional dataset change the AOI Lower corner long to 3.6.", 
+            "aoi_type":        "BB", 
             "bb_lc_long": 4.1,   "bb_lc_lat":  43.4,
             "bb_uc_long": 4.3,   "bb_uc_lat":  43.7,
             "from_date": "2013-03-14T01:00:00", 
             "to_date":   "2013-03-20T21:00:00",
-            "dsrc_type":       "EO", 
-            "s2_preprocess":   "NO", 
-            "download_subset": false, 
-            "aoi_type":        "BB", 
             "sensor_type": "OPTICAL", 
-            "cloud_cover": 66.0, 
-            "tar_result": false, 
-            "dsrc": "http://data.eox.at/instance00/ows", 
-            "cat_registration": false, 
-            "coastline_check": false, 
+            "cloud_cover": 66.0, "view_angle": 50.0, 
+            "tar_result": false, "oda_server_ingest": true, "cat_registration": false, 
+            "coastline_check": false, "s2_preprocess":   "NO",  "download_subset": false, 
+            "dsrc_type":  "EO",  "dsrc": "http://data.eox.at/instance00/ows", 
             "dsrc_password": "", "dsrc_login": "", "user": 3, 
-            "view_angle": 50.0, 
-            "oda_server_ingest": true, 
             "default_priority":  100, 
             "starting_date":   "2013-11-11T11:22:33", "repeat_interval": 0
     }}, 
-    {   "pk": 3,   "model": "ingestion.scenario", "fields": {
-            "ncn_id": "coastline-neg", 
-            "scenario_name": "Coastline reject test.", 
-            "scenario_description": "Use this to test the coastline check. The AOI is over the ocean with a valid dataset; turning on the coastline check should reject the data. Turning off the coastline check should accept it.", 
-            "aoi_type": "BB", 
-            "bb_lc_long": -2.008,  "bb_lc_lat": 44.5655, 
-            "bb_uc_long": -1.9755, "bb_uc_lat": 44.5989, 
-            "from_date": "2009-04-01T14:10:21", 
-            "to_date": "2009-05-16T14:10:21",
-            "sensor_type": "", 
-            "cloud_cover": 2.0, 
-            "tar_result": false, 
-            "s2_preprocess": "NO", 
-            "download_subset": true, 
-            "dsrc": "http://data.eox.at/instance00/ows", "dsrc_type": "EO", 
-            "cat_registration": false, 
-            "coastline_check": true, 
-            "dsrc_password": "", 
-            "dsrc_login": "", 
-            "user": 3, 
-            "view_angle": 50.0, 
-            "oda_server_ingest": false, 
-            "repeat_interval": 0, "starting_date": "2014-05-16T14:10:21", 
-            "default_priority": 100 
-    }},
     {"pk": 4,  "model": "ingestion.scenario",
      "fields": {
             "ncn_id": "TC-T5-04",
@@ -383,69 +79,61 @@
             "repeat_interval": 0, "starting_date": "2014-01-25T12:45:50",
             "default_priority": 100
     }},
-    { "pk": 5,  "model": "ingestion.scenario",  "fields": {
-            "ncn_id": "cc_and_incidence",
-            "scenario_name": "Cloud cover and incidence Angle from spot4 take5",
-            "scenario_description": "For testing.",
-            "dsrc_type": "EO",
-            "aoi_type": "BB",
-            "bb_lc_long": 1.55, "bb_lc_lat": 48.8504,
-            "bb_uc_long": 1.6,  "bb_uc_lat": 48.95,
-            "from_date": "2013-01-25T12:45:50",
-            "to_date": "2014-01-25T12:45:50",
-            "sensor_type": "",
-            "cloud_cover": 5.0, "view_angle": 8.0,
-            "dsrc": "http://data.eox.at/instance00/ows",
-            "download_subset": 0, "dsrc_login": "", "dsrc_password": "",
-            "oda_server_ingest": 1,
-            "tar_result": 1, "cat_registration": 0,
-            "coastline_check": 0,
-            "s2_preprocess": "NO",
-            "repeat_interval": 0, "starting_date": "2014-01-25T12:45:50",
-            "default_priority": 100, "user": 3 
-    }},
-    {   "pk": 6, "model": "ingestion.scenario", "fields": {
-            "ncn_id": "miscTest", 
-            "scenario_name": "misc test", 
-            "scenario_description": "Ad Hoc testing.", 
-            "dsrc_type": "EO", 
-            "s2_preprocess": "NO", 
-            "download_subset": 1, 
-            "aoi_type": "BB", 
-            "sensor_type": "", 
-            "bb_lc_long": 12.44,   "bb_lc_lat": 49.1225, 
-            "bb_uc_long": 12.528,  "bb_uc_lat": 49.2258, 
-            "from_date": "2000-04-08T01:00:00", 
-            "to_date":   "2000-10-14T21:00:00",
-            "cloud_cover": 22.0, "view_angle": 50.0, 
-            "dsrc": "http://data.eox.at/instance00/ows", 
-            "dsrc_password": "", "dsrc_login": "", 
-            "cat_registration": false, "coastline_check": false, 
-            "oda_server_ingest": true, "tar_result": false, 
-            "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
-            "default_priority": 100, "user": 3 
-    }}, 
-    {   "pk": 7,   "model": "ingestion.scenario",  "fields": {
-            "ncn_id": "tc05_sc_B_no1", 
-            "scenario_name": "Test-Case TC-T5-05: 1st Scenario B", 
+    {   "pk": 5, "model": "ingestion.scenario", "fields": {
+            "ncn_id": "TC-T5-05a", 
+            "scenario_name": "Test-Case TC-T5-05: 1st Scenario C", 
             "scenario_description": "TC-T5-05: 1/7 run multiple scenarios simultaneously", 
             "aoi_type": "BB", 
-            "bb_lc_long": 11.6,  "bb_lc_lat": 47.0, 
-            "bb_uc_long": 13.0,  "bb_uc_lat": 51.994, 
-            "from_date": "2000-07-26T01:00:00", 
-            "to_date":   "2000-08-14T21:00:00",
+            "bb_lc_long": -4.9,   "bb_lc_lat":  42.3,
+            "bb_uc_long":  0.0,   "bb_uc_lat":  50.53,
+            "from_date": "2013-02-09T01:00:00", 
+            "to_date":   "2013-06-09T21:00:00",
             "dsrc_type": "EO",  "dsrc": "http://data.eox.at/instance00/ows",  
             "dsrc_password": "", "dsrc_login": "",
-            "cloud_cover": 22.0, "view_angle": 50.0, "sensor_type": "", 
+            "cloud_cover": 3.0, "view_angle": 10.0, "sensor_type": "", 
+            "download_subset": false,   "coastline_check": false,   "s2_preprocess": "NO", 
+            "oda_server_ingest": true,  "tar_result": false,        "cat_registration": false,
+            "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
+            "user": 3, "default_priority": 100
+    }}, 
+    {   "pk": 6, "model": "ingestion.scenario", "fields": {
+            "ncn_id": "TC-T5-05b", 
+            "scenario_name": "Test-Case TC-T5-05: 2nd Scenario C", 
+            "scenario_description": "TC-T5-05: 2/7 run multiple scenarios simultaneously", 
+            "aoi_type": "BB", 
+            "bb_lc_long": 0.5,   "bb_lc_lat":  43.97,
+            "bb_uc_long": 2.9,   "bb_uc_lat":  50.53,
+            "from_date": "2013-02-09T01:00:00", 
+            "to_date":   "2013-06-09T21:00:00",
+            "dsrc_type": "EO",  "dsrc": "http://data.eox.at/instance00/ows",  
+            "dsrc_password": "", "dsrc_login": "",
+            "cloud_cover": 3.0, "view_angle": 20.0, "sensor_type": "", 
+            "download_subset": false,   "coastline_check": false,   "s2_preprocess": "NO", 
+            "oda_server_ingest": true,  "tar_result": false,        "cat_registration": false,
+            "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
+            "user": 3, "default_priority": 100
+    }}, 
+    {   "pk": 7, "model": "ingestion.scenario", "fields": {
+            "ncn_id": "TC-T5-05c", 
+            "scenario_name": "Test-Case TC-T5-05: 3rd Scenario C", 
+            "scenario_description": "TC-T5-05: 3/7 run multiple scenarios simultaneously", 
+            "aoi_type": "BB", 
+            "bb_lc_long": 3.5,   "bb_lc_lat":  42.3,
+            "bb_uc_long": 6.2,   "bb_uc_lat":  49.25,
+            "from_date": "2013-02-09T01:00:00", 
+            "to_date":   "2013-06-09T21:00:00",
+            "dsrc_type": "EO",  "dsrc": "http://data.eox.at/instance00/ows",  
+            "dsrc_password": "", "dsrc_login": "",
+            "cloud_cover": 3.0, "view_angle": 10.0, "sensor_type": "", 
             "download_subset": false,   "coastline_check": false,   "s2_preprocess": "NO", 
             "oda_server_ingest": true,  "tar_result": false,        "cat_registration": false,
             "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
             "user": 3, "default_priority": 100
     }}, 
     {   "pk": 8, "model": "ingestion.scenario",  "fields": {
-            "ncn_id": "tc05_sc_B_no2", 
-            "scenario_name": "Test-Case TC-T5-05: 2nd Scenario B", 
-            "scenario_description": "TC-T5-05: 2/7 run multiple scenarios simultaneously", 
+            "ncn_id": "TC-T5-05d", 
+            "scenario_name": "Test-Case TC-T5-05: 1st Scenario B", 
+            "scenario_description": "TC-T5-05: 4/7 run multiple scenarios simultaneously", 
             "aoi_type": "BB", 
             "bb_lc_long": 13.1,  "bb_lc_lat": 47.0, 
             "bb_uc_long": 14.8,  "bb_uc_lat": 51.994, 
@@ -460,9 +148,9 @@
             "user": 3, "default_priority": 100
     }}, 
     {   "pk": 9, "model": "ingestion.scenario", "fields": {
-            "ncn_id": "tc05_sc_B_no3", 
-            "scenario_name": "Test-Case TC-T5-05: 3rd Scenario B", 
-            "scenario_description": "TC-T5-05: 3/7 run multiple scenarios simultaneously", 
+            "ncn_id": "TC-T5-05e", 
+            "scenario_name": "Test-Case TC-T5-05: 2nd Scenario B", 
+            "scenario_description": "TC-T5-05: 5/7 run multiple scenarios simultaneously", 
             "aoi_type": "BB", 
             "bb_lc_long": 14.9,  "bb_lc_lat": 47.0, 
             "bb_uc_long": 16.2,  "bb_uc_lat": 51.994, 
@@ -477,9 +165,9 @@
             "user": 3, "default_priority": 100
     }}, 
     {   "pk": 10,  "model": "ingestion.scenario", "fields": {
-            "ncn_id": "tc05_sc_B_no4", 
-            "scenario_name": "Test-Case TC-T5-05: 4th Scenario B", 
-            "scenario_description": "TC-T5-05: 4/7 run multiple scenarios simultaneously", 
+            "ncn_id": "TC-T5-05f", 
+            "scenario_name": "Test-Case TC-T5-05: 3rd Scenario B", 
+            "scenario_description": "TC-T5-05: 6/7 run multiple scenarios simultaneously", 
             "aoi_type": "BB", 
             "bb_lc_long": 16.3,  "bb_lc_lat": 47.0, 
             "bb_uc_long": 18.2,  "bb_uc_lat": 51.994, 
@@ -493,76 +181,94 @@
             "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
             "user": 3, "default_priority": 100
     }}, 
-    {   "pk": 11, "model": "ingestion.scenario", "fields": {
-            "ncn_id": "tc05_sc_C_no1", 
-            "scenario_name": "Test-Case TC-T5-05: 1st Scenario C", 
-            "scenario_description": "TC-T5-05: 5/7 run multiple scenarios simultaneously", 
-            "aoi_type": "BB", 
-            "bb_lc_long": -4.9,   "bb_lc_lat":  42.3,
-            "bb_uc_long":  0.0,   "bb_uc_lat":  50.53,
-            "from_date": "2013-02-09T01:00:00", 
-            "to_date":   "2013-06-09T21:00:00",
-            "dsrc_type": "EO",  "dsrc": "http://data.eox.at/instance00/ows",  
-            "dsrc_password": "", "dsrc_login": "",
-            "cloud_cover": 20.0, "view_angle": 50.0, "sensor_type": "", 
-            "download_subset": false,   "coastline_check": false,   "s2_preprocess": "NO", 
-            "oda_server_ingest": true,  "tar_result": false,        "cat_registration": false,
-            "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
-            "user": 3, "default_priority": 100
-    }}, 
-    {   "pk": 12, "model": "ingestion.scenario", "fields": {
-            "ncn_id": "tc05_sc_C_no2", 
-            "scenario_name": "Test-Case TC-T5-05: 2nd Scenario C", 
-            "scenario_description": "TC-T5-05: 6/7 run multiple scenarios simultaneously", 
-            "aoi_type": "BB", 
-            "bb_lc_long": 0.5,   "bb_lc_lat":  43.97,
-            "bb_uc_long": 2.9,   "bb_uc_lat":  50.53,
-            "from_date": "2013-02-09T01:00:00", 
-            "to_date":   "2013-06-09T21:00:00",
-            "dsrc_type": "EO",  "dsrc": "http://data.eox.at/instance00/ows",  
-            "dsrc_password": "", "dsrc_login": "",
-            "cloud_cover": 20.0, "view_angle": 50.0, "sensor_type": "", 
-            "download_subset": false,   "coastline_check": false,   "s2_preprocess": "NO", 
-            "oda_server_ingest": true,  "tar_result": false,        "cat_registration": false,
-            "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
-            "user": 3, "default_priority": 100
-    }}, 
-    {   "pk": 13, "model": "ingestion.scenario", "fields": {
-            "ncn_id": "tc05_sc_C_no3", 
-            "scenario_name": "Test-Case TC-T5-05: 3rd Scenario C", 
+    {   "pk":11,   "model": "ingestion.scenario",  "fields": {
+            "ncn_id": "TC-T5-05g", 
+            "scenario_name": "Test-Case TC-T5-05: 4th Scenario B", 
             "scenario_description": "TC-T5-05: 7/7 run multiple scenarios simultaneously", 
             "aoi_type": "BB", 
-            "bb_lc_long": 3.5,   "bb_lc_lat":  42.3,
-            "bb_uc_long": 8.2,   "bb_uc_lat":  51.25,
-            "from_date": "2013-02-09T01:00:00", 
-            "to_date":   "2013-06-09T21:00:00",
+            "bb_lc_long": 10.6,  "bb_lc_lat": 46.0, 
+            "bb_uc_long": 14.0,  "bb_uc_lat": 52.994, 
+            "from_date": "2000-07-26T01:00:00", 
+            "to_date":   "2000-08-14T21:00:00",
             "dsrc_type": "EO",  "dsrc": "http://data.eox.at/instance00/ows",  
             "dsrc_password": "", "dsrc_login": "",
-            "cloud_cover": 20.0, "view_angle": 50.0, "sensor_type": "", 
+            "cloud_cover": 45.0, "view_angle": 50.0, "sensor_type": "", 
             "download_subset": false,   "coastline_check": false,   "s2_preprocess": "NO", 
             "oda_server_ingest": true,  "tar_result": false,        "cat_registration": false,
             "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
             "user": 3, "default_priority": 100
     }}, 
+    {   "pk": 12,   "model": "ingestion.scenario", "fields": {
+            "ncn_id": "TC-T5-07.1", 
+            "scenario_name": "TC-T5-07: General Ingestion Reqs.", 
+            "scenario_description": "Addresses requirements relating to the Ingestion Engine, and to the Ingestion Admin Client.", 
+            "aoi_type": "BB", 
+            "bb_lc_long": -5.0,    "bb_lc_lat": 39.5655,
+            "bb_uc_long": -2.528,  "bb_uc_lat": 42.5989, 
+            "from_date": "2009-02-15T01:10:21", 
+            "to_date":   "2009-03-16T23:10:21",
+            "cloud_cover": 22.0,  "view_angle": 50.0, "sensor_type": "", 
+            "tar_result": false,   "s2_preprocess": "NO",   "download_subset": true, 
+            "dsrc": "http://data.eox.at/instance01/ows", "dsrc_type": "EO", 
+            "cat_registration": false,   "coastline_check": false, "oda_server_ingest": false, 
+            "dsrc_password": "",   "dsrc_login": "", 
+            "repeat_interval": 0, "starting_date": "2014-05-16T14:10:21", 
+            "default_priority": 100, "user": 3 
+    }},
+    {   "pk": 13,   "model": "ingestion.scenario", "fields": {
+            "ncn_id": "TC-T5-07.2", 
+            "scenario_name": "TC-T5-07: Coastline reject test.", 
+            "scenario_description": "Use this to test the coastline check. The AOI is over the ocean with a valid dataset; turning on the coastline check should reject the data. Turning off the coastline check should accept it.", 
+            "aoi_type": "BB", 
+            "bb_lc_long": -2.008,  "bb_lc_lat": 44.5655, 
+            "bb_uc_long": -1.9755, "bb_uc_lat": 44.5989, 
+            "from_date": "2009-04-01T14:10:21", 
+            "to_date": "2009-05-16T14:10:21",
+            "sensor_type": "", 
+            "cloud_cover": 2.0, "view_angle": 50.0, 
+            "tar_result": false,  "s2_preprocess": "NO", 
+            "dsrc": "http://data.eox.at/instance00/ows", "dsrc_type": "EO", 
+            "cat_registration": false,  "coastline_check": true, 
+            "download_subset": true, "dsrc_password": "",   "dsrc_login": "", "user": 3, 
+            "oda_server_ingest": false, 
+            "repeat_interval": 0, "starting_date": "2014-05-16T14:10:21", 
+            "default_priority": 100 
+    }},
+    { "pk": 14,  "model": "ingestion.scenario",  "fields": {
+            "ncn_id": "cc_and_incidence",
+            "scenario_name": "Cloud cover and incidence Angle from spot4 take5",
+            "scenario_description": "For testing.",
+            "aoi_type": "BB",
+            "bb_lc_long": 1.55, "bb_lc_lat": 48.8504,
+            "bb_uc_long": 1.6,  "bb_uc_lat": 48.95,
+            "from_date": "2013-01-25T12:45:50",
+            "to_date": "2014-01-25T12:45:50",
+            "sensor_type": "",
+            "cloud_cover": 5.0, "view_angle": 8.0,
+            "dsrc_type": "EO", "dsrc": "http://data.eox.at/instance00/ows",
+            "download_subset": 0, "dsrc_login": "", "dsrc_password": "",
+            "oda_server_ingest": 1, "tar_result": 1, "cat_registration": 0,
+            "coastline_check": 0, "s2_preprocess": "NO",
+            "repeat_interval": 0, "starting_date": "2014-01-25T12:45:50",
+            "default_priority": 100, "user": 3 
+    }},
     {"pk": 1, "model": "ingestion.eoid", "fields":  {
-       "scenario": 1,   "eoid_val": "GISAT_SimS2", "selected": true
+       "scenario": 2,   "eoid_val": "GISAT_SimS2", "selected": true
     }}, 
     {"pk": 2, "model": "ingestion.eoid", "fields":  {
-       "scenario": 2,  "eoid_val": "Spot4Take5_N1C", "selected": true
+       "scenario": 3,  "eoid_val": "Spot4Take5_N1C", "selected": true
     }}, 
     {"pk": 3, "model": "ingestion.eoid", "fields":  {
-       "scenario": 3, "eoid_val": "Spot4Take5_N2A_PENTE", "selected": true
+       "scenario": 13, "eoid_val": "Landsat5_RGB_view", "selected": true
     }},
     {"pk": 4, "model": "ingestion.eoid", "fields": {
-            "selected": true, 
-            "scenario": 4,   "eoid_val": "MERIS_FRS_L1"
+        "scenario": 4,   "eoid_val": "MERIS_FRS_L1", "selected": true
     }}, 
     {"pk": 5, "model": "ingestion.eoid", "fields": {
-            "selected": true, 
-            "scenario": 4,   "eoid_val": "ASAR_IMM_L1"
+        "scenario": 4,   "eoid_val": "ASAR_IMM_L1", "selected": true
     }},
     {"pk": 6, "model": "ingestion.eoid", "fields":  {
-       "scenario": 7,  "eoid_val": "GISAT_SimS2",  "selected": true
+       "scenario": 11,  "eoid_val": "GISAT_SimS2",  "selected": true
     }}, 
     {"pk": 7, "model": "ingestion.eoid", "fields":  {
        "scenario": 8, "eoid_val": "GISAT_SimS2",   "selected": true
@@ -574,17 +280,184 @@
        "scenario": 10,  "eoid_val": "GISAT_SimS2", "selected": true
     }},
     {"pk": 10, "model": "ingestion.eoid", "fields":  {
-       "scenario": 11,  "eoid_val": "Spot4Take5_N1C", "selected": true
+       "scenario": 5,  "eoid_val": "Spot4Take5_N1C", "selected": true
     }}, 
     {"pk": 11, "model": "ingestion.eoid", "fields":  {
-       "scenario": 12,  "eoid_val": "Spot4Take5_N1C", "selected": true
+       "scenario": 6,  "eoid_val": "Spot4Take5_N1C", "selected": true
     }}, 
     {"pk": 12, "model": "ingestion.eoid", "fields":  {
-       "scenario": 13,  "eoid_val": "Spot4Take5_N1C", "selected": true
+       "scenario": 7,  "eoid_val": "Spot4Take5_N1C", "selected": true
     }},
     {"pk": 13, "model": "ingestion.eoid", "fields":  {
-       "scenario": 6,  "eoid_val": "GISAT_SimS2_RGB_view", "selected": true
-    }}
+       "scenario": 1,  "eoid_val": "GISAT_SimS2_RGB_view", "selected": true
+    }},
+    {"pk": 14, "model": "ingestion.eoid", "fields":  {
+       "scenario": 12,  "eoid_val": "MERIS_FR__L1_EUSC_view", "selected": true
+    }}, 
 
+    { "pk": 1, "model": "ingestion.scenariostatus",  "fields": {
+            "status": "IDLE",   "is_available": 1,   "done": 0.0, "active_dar": "", "ingestion_pid": 0,
+            "scenario": 1
+    }}, 
+    { "pk": 2, "model": "ingestion.scenariostatus",  "fields": {
+            "status": "IDLE",   "is_available": 1,   "done": 0.0, "active_dar": "", "ingestion_pid": 0,
+            "scenario": 2
+    }}, 
+    {"pk": 3, "model": "ingestion.scenariostatus",  "fields":  {
+            "status": "IDLE",   "is_available": 1,   "done": 0.0, "active_dar": "", "ingestion_pid": 0,
+            "scenario": 3
+    }},
+
+
+    { "pk": 19, "model": "auth.permission",  "fields": {
+            "codename": "add_logentry", "name": "Can add log entry",  "content_type": 7
+        }
+    }, 
+    { "pk": 20, "model": "auth.permission",  "fields": {
+            "codename": "change_logentry", "name": "Can change log entry",  "content_type": 7
+        }
+    }, 
+    { "pk": 21, "model": "auth.permission",   "fields": {
+            "codename": "delete_logentry", "name": "Can delete log entry",  "content_type": 7
+        }
+    }, 
+    { "pk": 4, "model": "auth.permission",   "fields": {
+            "codename": "add_group", "name": "Can add group",    "content_type": 2 }
+    }, 
+    { "pk": 5, "model": "auth.permission",   "fields": {
+            "codename": "change_group", "name": "Can change group",  "content_type": 2 }
+    }, 
+    { "pk": 6, "model": "auth.permission",  "fields": {
+            "codename": "delete_group", "name": "Can delete group", "content_type": 2 }
+    }, 
+    { "pk": 1, "model": "auth.permission",  "fields": {
+            "codename": "add_permission", "name": "Can add permission",  "content_type": 1
+        }
+    }, 
+    { "pk": 2, "model": "auth.permission",  "fields": {
+            "codename": "change_permission", "name": "Can change permission", "content_type": 1
+        }
+    }, 
+    { "pk": 3, "model": "auth.permission",  "fields": {
+            "codename": "delete_permission", "name": "Can delete permission",  "content_type": 1
+        }
+    }, 
+    { "pk": 7, "model": "auth.permission",  "fields": {
+            "codename": "add_user", "name": "Can add user",  "content_type": 3 }
+    }, 
+    { "pk": 8, "model": "auth.permission",  "fields": {
+            "codename": "change_user", "name": "Can change user",  "content_type": 3  }
+    }, 
+    { "pk": 9, "model": "auth.permission",   "fields": {
+            "codename": "delete_user", "name": "Can delete user",   "content_type": 3  }
+    }, 
+    { "pk": 10, "model": "auth.permission",   "fields": {
+            "codename": "add_contenttype", "name": "Can add content type",   "content_type": 4  }
+    }, 
+    { "pk": 11, "model": "auth.permission",   "fields": {
+            "codename": "change_contenttype", "name": "Can change content type",  "content_type": 4
+        }
+    }, 
+    { "pk": 12, "model": "auth.permission",  "fields": {
+            "codename": "delete_contenttype", "name": "Can delete content type",   "content_type": 4
+        }
+    }, 
+    { "pk": 28, "model": "auth.permission",  "fields": {
+            "codename": "add_productinfo", "name": "Can add product info",   "content_type": 10 }
+    }, 
+    { "pk": 29, "model": "auth.permission",  "fields": {
+            "codename": "change_productinfo", "name": "Can change product info",   "content_type": 10
+        }
+    }, 
+    { "pk": 30, "model": "auth.permission",  "fields": {
+         "codename": "delete_productinfo", "name": "Can delete product info", "content_type": 10 }
+    }, 
+    { "pk": 22, "model": "auth.permission",   "fields": {
+            "codename": "add_scenario", "name": "Can add scenario",   "content_type": 8  }
+    }, 
+    { "pk": 23, "model": "auth.permission",   "fields": {
+            "codename": "change_scenario", "name": "Can change scenario",  "content_type": 8  }
+    }, 
+    { "pk": 24, "model": "auth.permission",  "fields": {
+            "codename": "delete_scenario", "name": "Can delete scenario",   "content_type": 8 }
+    }, 
+    { "pk": 34, "model": "auth.permission",   "fields": {
+            "codename": "add_scenariostatus", "name": "Can add scenario status",  "content_type": 12
+        }
+    }, 
+    { "pk": 35, "model": "auth.permission",  "fields": {
+            "codename": "change_scenariostatus", "name": "Can change scenario status", 
+            "content_type": 12  }
+    }, 
+    { "pk": 36, "model": "auth.permission",  "fields": {
+            "codename": "delete_scenariostatus", "name": "Can delete scenario status", 
+            "content_type": 12  }
+    }, 
+    { "pk": 25, "model": "auth.permission", "fields": {
+            "codename": "add_script", "name": "Can add script",  "content_type": 9 }
+    }, 
+    { "pk": 26, "model": "auth.permission",   "fields": {
+            "codename": "change_script", "name": "Can change script",   "content_type": 9  }
+    }, 
+    { "pk": 27, "model": "auth.permission",  "fields": {
+            "codename": "delete_script", "name": "Can delete script",   "content_type": 9 }
+    }, 
+    { "pk": 31, "model": "auth.permission",  "fields": {
+            "codename": "add_userscript", "name": "Can add user script",  "content_type": 11 }
+    }, 
+    { "pk": 32, "model": "auth.permission",  "fields": {
+         "codename": "change_userscript", "name": "Can change user script", "content_type": 11 }
+    }, 
+    { "pk": 33, "model": "auth.permission",  "fields": {
+            "codename": "delete_userscript", "name": "Can delete user script", "content_type": 11
+        }
+    }, 
+    { "pk": 13, "model": "auth.permission",  "fields": {
+            "codename": "add_session", "name": "Can add session",  "content_type": 5 }
+    }, 
+    { "pk": 14, "model": "auth.permission",   "fields": {
+            "codename": "change_session", "name": "Can change session",  "content_type": 5  }
+    }, 
+    { "pk": 15, "model": "auth.permission",   "fields": {
+            "codename": "delete_session", "name": "Can delete session",   "content_type": 5  }
+    }, 
+    { "pk": 16, "model": "auth.permission",   "fields": {
+            "codename": "add_site", "name": "Can add site",    "content_type": 6  }
+    }, 
+    { "pk": 17, "model": "auth.permission",   "fields": {
+            "codename": "change_site", "name": "Can change site",   "content_type": 6  }
+    }, 
+    { "pk": 18, "model": "auth.permission", "fields": {
+            "codename": "delete_site", "name": "Can delete site", "content_type": 6  }
+    }, 
+    { "pk": 1, "model": "auth.user",   "fields": {
+            "username": "dreamer", 
+            "first_name": "",    "last_name": "", 
+            "is_active": true,   "is_superuser": false,   "is_staff": false, 
+            "last_login": "2013-11-25T11:33:54.393", 
+            "groups": [],   "user_permissions": [], 
+            "password": "pbkdf2_sha256$10000$UW7dUlE4PicQ$j+xbswOKoeCvyOHPoFAO8JL/xTKmYY6QKQrVYH7fSOs=", 
+            "email": "",   "date_joined": "2013-08-23T09:30:02"
+    }}, 
+    { "pk": 2, "model": "auth.user",   "fields": {
+            "username": "dr.adm", 
+            "first_name": "Dream",  "last_name": "Admin", 
+            "is_active": true,  "is_superuser": true,   "is_staff": true, 
+            "last_login": "2013-10-31T11:12:23", 
+            "groups": [],   "user_permissions": [], 
+            "password": "pbkdf2_sha256$10000$EJzGr9aee1Av$HmrT2jmvL9ztdqFKt0fkShvCRwnb5Wcpsgre5M/2XJw=", 
+            "email": "",   "date_joined": "2013-10-31T11:12:23"
+    }}, 
+    { "pk": 3, "model": "auth.user", 
+        "fields": {
+            "username": "drtest", 
+            "first_name": "Dream",   "last_name": "TestAccount", 
+            "is_active": true,  "is_superuser": false,   "is_staff": false, 
+            "last_login": "2013-11-01T14:46:09.723", 
+            "groups": [],   "user_permissions": [], 
+            "password": "pbkdf2_sha256$10000$7oNoMf9cVInI$i6CQRa2imJd35+2PGL9Cnxiy3q5x3j+g0AX4B6tF4tc=", 
+            "email": "",   "date_joined": "2013-10-31T11:13:59"
+        }
+    }
  
 ]
