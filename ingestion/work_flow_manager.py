@@ -146,6 +146,7 @@ class Worker(threading.Thread):
             metalist = get_glob_list(targetdir, IE_DIMAPMETA_SUFFIX)
 
         retlist = []
+        
         s2atm_script = os.path.join(IE_SCRIPTS_DIR, IE_S2ATM_PREPROCESS_SCRIPT)
         targetdir_str = '-targetdir=' + targetdir
         beam_home_str = '-beam_home=' + IE_BEAM_HOME
@@ -216,11 +217,11 @@ class Worker(threading.Thread):
             percent  = 100 * (float(i) / float(n_dirs))
             # keep percent > 0 to ensure webpage updates
             if percent < 1.0: percent = 1
-            self._wfm.set_scenario_status(self._id, scid, 0, "RUNNING SCRIPS", percent)
+            self._wfm.set_scenario_status(self._id, scid, 0, "RUNNING SCRIPTS", percent)
 
             try:
                 mf_name, metafiles = split_and_create_mf(
-                    os.path.join(dl_dir, d), ncn_id, self._logger)
+                    dl_dir, d, ncn_id, self._logger)
             except Exception as e:
                 self._logger.info("Exception" + `e`)
                 mf_name = None

@@ -345,6 +345,7 @@ def check_text_condition(cd, req, key, xpath):
 
 def check_float_max(cd, req, key, xpath, use_abs=False):
     if not key in req:
+        logger.warning("Check of " + `key` + ": not found in request")
         return True
     req_item = req[key]
     try:
@@ -354,6 +355,7 @@ def check_float_max(cd, req, key, xpath, use_abs=False):
                                  ', exception: ' + `e`)
     md_item  = extract_path_text(cd, xpath)
     if not md_item:
+        logger.warning("Check of " + `key` + ": not found in metadata.")
         return True
 
     try:

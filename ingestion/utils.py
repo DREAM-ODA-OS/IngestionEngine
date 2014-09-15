@@ -420,13 +420,15 @@ def split_wcs_raw(path, f, logger):
         follwed by a blank line,
         follwed by a line starting with '<?xml'.
     """
+    base_fn = f
     manif_str = None
-    fn = os.path.join(path,f)
-    fp = open(fn, "r")
+    base_full_path = os.path.join(path, base_fn)
+    fp = open(base_full_path, "r")
     meta_fp = None
     data_fp = None
-    meta_fname = None
+    meta_fname = base_fn + META_SUFFIX
     data_fname = None
+    data_full_path = None
     delete_orig = True
 
     # These headers from the data part will be put in the manifest file
@@ -443,9 +445,9 @@ def split_wcs_raw(path, f, logger):
         top_hdrs = read_headers(fp)
         
         if len(top_hdrs) < 1:
-            raise IngestionError("No HTTP/mime headers found - Unexpected file contents in: "+fn)
+            raise IngestionError("No HTTP/mime headers found - Unexpected file contents in: "+base_full_path)
         if not "Content-Type" in top_hdrs:
-            raise IngestionError("No Content-Type header found in "+fn)
+            raise IngestionError("No Content-Type header found in "+base_full_path)
 
         boundary = None
         m = re.match('--wcs\r?\n', l1)
@@ -455,20 +457,20 @@ def split_wcs_raw(path, f, logger):
             m = re.match('\S\r?\n', l1)
             if None != m: boundary = m.group()
         if None == boundary:
-            raise IngestionError("Initial boundary not found, f=: "+fn)
+            raise IngestionError("Initial boundary not found, f=: "+base_full_path)
 
         # create meta-data file
         meta_type = top_hdrs['Content-Type'].strip()
-        meta_fname = fn + META_SUFFIX
-        if os.path.exists(meta_fname):
+        meta_full_path = base_full_path + META_SUFFIX
+        if os.path.exists(meta_full_path):
             # something is wrong if this name already exists,
             # just bail rather than try to create a unique one.
-            raise IngestionError("File exists: "+meta_fname)
+            raise IngestionError("File exists: "+meta_full_path)
 
-        meta_fp = open(meta_fname,"w")
+        meta_fp = open(meta_full_path,"w")
         l = fp.readline()
         if not l.startswith('<?xml'):
-            logger.warning("No xml start tag found in "+fn)
+            logger.warning("No xml start tag found in "+base_full_path)
         while l != boundary:
             meta_fp.write(l)
             l = fp.readline()
@@ -481,39 +483,39 @@ def split_wcs_raw(path, f, logger):
 
         # create data file
         hdrs = read_headers(fp)
-        data_fname = None
         if len(hdrs) < 1:
             logger.warning("No HTTP/mime headers found after boundary ('"+
-                           boundary.rstrip()+"') in file " + f)
+                           boundary.rstrip()+"') in file " + base_fn)
             delete_orig = False
         elif "Content-Disposition" in hdrs \
                 and "filename=" in hdrs["Content-Disposition"]:
             cd = hdrs["Content-Disposition"].split(";")
-            data_fname = None
-            fnstring = None
+            data_fnstring = None
             for s in cd:
                 if "filename=" in s:
-                    fnstring = s.split("filename=")[1].strip()
+                    data_fnstring = s.split("filename=")[1].strip()
                     break
-            if not fnstring:
+            if not data_fnstring:
                 raise IngestionError(
                     "'filename=' not found in 'Content-Disposition' header"+ \
                         "headers: "+`hdrs`)
-            if fnstring.startswith('/') or '../' in fnstring:
-                raise IngestionError("Bad filename='"+fnstring+"'")
+            if data_fnstring.startswith('/') or '../' in data_fnstring:
+                raise IngestionError("Bad filename='"+data_fnstring+"'")
             if len(cd) == 2:
-                data_fname = os.path.join(path, fnstring)
+                data_full_path = os.path.join(path, data_fnstring)
+                data_fname = data_fnstring
 
-        if None == data_fname:
-            data_fname = fn+DATA_SUFFIX
+        if None == data_full_path:
+            data_full_path = base_full_path + DATA_SUFFIX
+            data_fname = base_fn + DATA_SUFFIX
             delete_orig = False
 
-        if os.path.exists(data_fname):
+        if os.path.exists(data_full_path):
             # something is wrong if this name already exists,
             # just bail rather than try to create a unique one.
-            raise IngestionError("File exists: "+data_fname)
+            raise IngestionError("File exists: "+data_full_path)
 
-        data_fp = open(data_fname, "w")
+        data_fp = open(data_full_path, "w")
         buff = None
         while True:
             buff = fp.read(BLK_SZ)
@@ -523,15 +525,15 @@ def split_wcs_raw(path, f, logger):
                 break
             data_fp.write(buff)
         if not buff:
-            logger.warning("Unexpected EOF while splitting "+fn)
+            logger.warning("Unexpected EOF while splitting "+base_full_path)
             delete_orig = False
         else:
             rests = buff.split(raw_bound)
             if len(rests) < 2:
-                logger.warning("Failed to separate colosing boundary, f=" + fn)
+                logger.warning("Failed to separate colosing boundary, f=" + base_full_path)
                 delete_orig = False
             elif len(rests[1]) > 4:
-                logger.warning("unexpected trailing chars after boundary, f="+fn)
+                logger.warning("unexpected trailing chars after boundary, f="+base_full_path)
                 delete_orig = False
             data_fp.write(rests[0])
 
@@ -540,9 +542,9 @@ def split_wcs_raw(path, f, logger):
 
         if delete_orig:
             try:
-                os.unlink(fn)
+                os.unlink(base_full_path)
             except Exception as e:
-                logger.warning("Exception unlinking file '"+f+"': "+`e`)
+                logger.warning("Exception unlinking file '"+base_fn+"': "+`e`)
 
         extra_manifest = ''
         for h in disclose_headers:
@@ -555,7 +557,7 @@ def split_wcs_raw(path, f, logger):
             'DATA="'+data_fname     + '"\n' + \
             extra_manifest
         
-        return manif_str, meta_fname, data_fname
+        return manif_str, meta_full_path, data_full_path
 
     except Exception as e:
         fp.close()
@@ -593,22 +595,22 @@ def create_manifest(logger,
     # the manifest should contain lines according to the following example:
     #    SCENARIO_NCN_ID="ncn_id"
     #    DOWNLOAD_DIR="/path/p_scid0_001"
-    #    METADATA="/path/p_scid0_001/ows.meta"
-    #    DATA="/path/p_scid0_001/p1.tif"
-    #
+    #    METADATA="ows.meta"
+    #    DATA="p1.tif"
+    # Note that filenames in the manifest are relative to the DOWNLOAD_DIR.
 
     manif_str = \
         'SCENARIO_NCN_ID="'+ ncn_id        + '"\n' + \
         'DOWNLOAD_DIR="'   + dir_path      + '"\n'
     if metadata:
-        full_metadata = os.path.join(dir_path, metadata)
-        manif_str += 'METADATA="'       + full_metadata + '"\n'
+        # full_metadata = os.path.join(dir_path, metadata)
+        manif_str += 'METADATA="'       + metadata + '"\n'
     if data:
-        full_data = os.path.join(dir_path, data)
-        manif_str += 'DATA="'           + full_data     + '"\n'
+        # full_data = os.path.join(dir_path, data)
+        manif_str += 'DATA="'           + data     + '"\n'
     if orig_data:
-        full_orig = os.path.join(dir_path, orig_data)
-        manif_str += 'ORIG_DATA="'      + full_orig     + '"\n'
+        # full_orig = os.path.join(dir_path, orig_data)
+        manif_str += 'ORIG_DATA="'      + orig_data + '"\n'
 
     mf_name = write_manifest_file(dir_path, manif_str)
     return mf_name
@@ -619,8 +621,9 @@ def create_manifest(logger,
 # TODO: the splitting should be done by the EO-WCS DM plugin
 #       instead of doing it here
 #
-def split_and_create_mf(dir_path, ncn_id, logger):
+def split_and_create_mf(dl_dir, d, ncn_id, logger):
 
+    dir_path  = os.path.join(dl_dir, d)
     manif_str = ''
     metafiles = []
     files = os.listdir(dir_path)
