@@ -29,6 +29,7 @@ from ingestion_logic import create_dl_dir
 import os
 import logging
 import json
+import re
 
 import models
 import forms
@@ -62,6 +63,8 @@ from add_product import add_product_submit
 
 IE_DEFAULT_USER = r'drtest'
 IE_DEFAULT_PASS = r'1234'
+
+IE_RE_NCN_FORBIDDEN = re.compile(r"[/:|%@]")
 
 dmcontroller = DownloadManagerController.Instance()
 logger = logging.getLogger('dream.file_logger')
@@ -423,21 +426,31 @@ def handle_uploaded_scripts(request,scenario):
         i = i + 1
 
 def ncn_is_valid(form, scid):
-    # make sure the ncn_id is unique
+    # make sure the ncn_id is unique and does not contain bad chars
     form_ncn_id = form.data['ncn_id']
     is_ncn_ok = True
+    errs = []
+
+    if None != IE_RE_NCN_FORBIDDEN.search(form_ncn_id):
+        is_ncn_ok = False
+        errs.append("Forbiden characters found in scenario Id.")
+
     try:
         ex_sc = models.Scenario.objects.get(ncn_id=form_ncn_id)
         if (scid and ex_sc.id != int(scid)) or not scid:
             is_ncn_ok = False
+            errs.append("scenario Id is not unique, please choose a different one.")
+    except models.Scenario.DoesNotExist:
+        # all is well
+        pass
+    
+    if not is_ncn_ok:
             if None == form._errors:
                 form._errors = {}
             form._errors['ncn_id'] = ErrorList()
-            form._errors['ncn_id'].append(
-                "Unique Id is not unique, please choose a different one.")
-    except models.Scenario.DoesNotExist:
-        # all is well
-        return True
+            for e in errs:
+                form._errors['ncn_id'].append(e)
+        
     return is_ncn_ok
 
 def init_status(scenario):
