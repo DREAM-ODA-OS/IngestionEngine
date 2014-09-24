@@ -199,7 +199,7 @@
             "user": 3, "default_priority": 100
     }}, 
     {   "pk": 12,   "model": "ingestion.scenario", "fields": {
-            "ncn_id": "TC-T5-07.1", 
+            "ncn_id": "TC-T5-07_1", 
             "scenario_name": "TC-T5-07: General Ingestion Reqs.", 
             "scenario_description": "Addresses requirements relating to the Ingestion Engine, and to the Ingestion Admin Client.", 
             "aoi_type": "BB", 
@@ -216,7 +216,7 @@
             "default_priority": 100, "user": 3 
     }},
     {   "pk": 13,   "model": "ingestion.scenario", "fields": {
-            "ncn_id": "TC-T5-07.2", 
+            "ncn_id": "TC-T5-07_2", 
             "scenario_name": "TC-T5-07: Coastline reject test.", 
             "scenario_description": "Use this to test the coastline check. The AOI is over the ocean with a valid dataset; turning on the coastline check should reject the data. Turning off the coastline check should accept it.", 
             "aoi_type": "BB", 
