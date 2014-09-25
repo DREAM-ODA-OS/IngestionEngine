@@ -64,6 +64,8 @@ from utils import \
     split_and_create_mf, \
     ie_unpack_maybe, \
     get_glob_list, \
+    mkFname, \
+    get_base_fname, \
     extract_outfile
 
 worker_id = 0
@@ -408,10 +410,22 @@ class Worker(threading.Thread):
             self._wfm.set_scenario_status(
                 self._id, sc_id, 0, "RUNNING SCRIPTS", percent)
 
-            scripts_args = self.mk_scripts_args(
-                parameters["scripts"],
-                mf_name,
-                parameters["cat_registration"])
+            scripts_args = []
+            
+            scripts = parameters["scripts"]
+            if len(scripts) > 0:
+                resp_fname = mkFname("addProdResp_")
+                dl_dir = parameters["dir_path"]
+                resp_full_fname = os.path.join(dl_dir,resp_fname)
+                ap_script = [scripts[0]]
+                ap_script.append("-add")
+                ap_script.append("-dldir="+dl_dir)
+                ap_script.append("-response="+resp_fname)
+                metadata=parameters["metadata"]
+                if metadata is not None:
+                    ap_script.append("-meta="+get_base_fname(metadata))
+                ap_script.append("-data="+get_base_fname(data))
+                scripts_args.append(ap_script)
 
             n_errors += self.run_scripts(sc_id, ncn_id, scripts_args)
 

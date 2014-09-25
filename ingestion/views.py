@@ -43,6 +43,7 @@ from settings import \
     MEDIA_ROOT, \
     IE_SCRIPTS_DIR, \
     IE_DEFAULT_INGEST_SCRIPT, \
+    IE_DEFAULT_ADDPROD_SCRIPT, \
     IE_DEFAULT_DEL_SCRIPT, \
     JQUERYUI_OFFLINEURL, \
     SC_NCN_ID_BASE, \
@@ -433,7 +434,7 @@ def ncn_is_valid(form, scid):
 
     if None != IE_RE_NCN_FORBIDDEN.search(form_ncn_id):
         is_ncn_ok = False
-        errs.append("Forbiden characters found in scenario Id.")
+        errs.append("Forbidden characters found in scenario Id.")
 
     try:
         ex_sc = models.Scenario.objects.get(ncn_id=form_ncn_id)
@@ -671,7 +672,9 @@ def add_local_product_core(request, ncn_id, template, aftersave=None):
                   saveFile(request.FILES['rasterFile'], full_directory_name)
                   data = request.FILES['rasterFile']._get_name().encode('ascii','ignore')
 
-                  scripts = get_scenario_script_paths(scenario)
+                  scripts = []
+                  if scenario.oda_server_ingest != 0:
+                      scripts.append(os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_ADDPROD_SCRIPT))
                   if len(scripts) == 0:
                       logger.warning("Scenario '%s' name='%s' does not have scripts to ingest, proceeding regardless." \
                           % (ncn_id,scenario.scenario_name))
