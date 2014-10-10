@@ -956,21 +956,29 @@ def set_sc_bbox(scenario, bb):
     scenario.bb_uc_long = bb["uc"][0]
     scenario.bb_uc_lat  = bb["uc"][1]
 
+def un_unistr(s):
+    if isinstance(s, basestring):
+        return s.encode('ascii','ignore')
+    else:
+        return s
+
 def set_sc_dates(scenario, data):
     for d in ("from_date", "to_date", "starting_date"):
         if d in data:
-            exec "scenario."+d+"=models.date_from_iso8601(data['"+d+"'])"
+            val = un_unistr(data[d])
+            exec "scenario."+d+"=models.date_from_iso8601('"+val+"')"
     
 def set_sc_other(scenario, data):
     eval_str = ""
-    for a in models.EXT_PUT_SCENARIO_KEYS:
+    all_keys = models.EXT_PUT_SCENARIO_KEYS + models.EXT_GET_SCENARIO_STRINGS
+    for a in all_keys:
         if a in data:
-            val = data[a]
-            if isinstance(val, basestring):
-                val = val.encode('ascii','ignore')
+            val = un_unistr(data[a])
             eval_str += "scenario."+a+"="+`val`+"\n"
     exec eval_str
+        
     scenario.save()
+
     if 'extraconditions' in data:
         for e in data['extraconditions']:
             extra = models.ExtraConditions()
@@ -979,6 +987,15 @@ def set_sc_other(scenario, data):
             extra.scenario = scenario
             extra.save()
 
+    if "dssids" in data:
+        for e in data['dssids']:
+            dssid = models.Eoid()
+            dssid.selected = True
+            dssid.eoid_val = un_unistr(e)
+            dssid.scenario = scenario
+            dssid.save()
+            
+ 
 def update_core(data):
     # expected to be called from within a try block
     ncn_id = data['ncn_id']
