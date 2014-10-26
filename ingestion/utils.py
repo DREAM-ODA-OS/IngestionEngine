@@ -493,7 +493,7 @@ def split_wcs_raw(path, f, logger):
             data_fnstring = None
             for s in cd:
                 if "filename=" in s:
-                    data_fnstring = s.split("filename=")[1].strip()
+                    data_fnstring = s.split("filename=")[1].strip(' "')
                     break
             if not data_fnstring:
                 raise IngestionError(
