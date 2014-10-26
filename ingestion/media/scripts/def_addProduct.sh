@@ -36,7 +36,7 @@
 echo "Add Product script started on" $(date)
 echo args: $*
 
-if [[ $# < 5 ]]
+if [[ $# < 4 ]]
 then
     echo "Not enough args, exiting with status 5."
     exit 5
