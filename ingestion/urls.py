@@ -124,11 +124,15 @@ urlpatterns = patterns('',
     # ManageScenario: Delete 
     url(r'^ingest/ManageScenario/delete/(?P<ncn_id>.*)', views.odaDeleteScenario),
 
+    # ManageScenario: Delete 
+    url(r'^ingest/ManageScenario/odareset/(?P<ncn_id>.*)', views.odaResetScenario),
+
     # ManageScenario: Start Ingestion 
     url(r'^ingest/ManageScenario/ingest/(?P<ncn_id>.*)', views.odaIngest),
 
     # ManageScenario: Stop Ingestion
     url(r'^ingest/ManageScenario/stop/(?P<ncn_id>.*)', views.mngStopIngestion),
+
     # dar response
     url(r'^'+DM_DAM_RESP_URL+'/(?P<seq_id>.*)$',views.darResponse),
     

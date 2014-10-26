@@ -104,6 +104,7 @@ class Worker(threading.Thread):
         self._logger = logging.getLogger('dream.file_logger')
         self.task_functions = {
             "DELETE_SCENARIO"  : self.delete_func,
+            "RESET_SCENARIO"   : self.reset_func,
             "INGEST_SCENARIO"  : self.ingest_func,
             "INGEST_LOCAL_PROD": self.local_product_func,
             "ADD_PRODUCT"      : add_product_wfunc       # from add_product
@@ -137,7 +138,7 @@ class Worker(threading.Thread):
 
     def mk_s2atm_scriptandargs(self, targetdir, s2meta):
         metalist = []
-        print "s2meta: " + `s2meta`
+        #print "s2meta: " + `s2meta`
         if s2meta:
             if not s2meta.endswith(IE_DIMAPMETA_SUFFIX):
                 self._logger.warning(
@@ -204,7 +205,8 @@ class Worker(threading.Thread):
                               scripts,
                               cat_reg,
                               s2pre,
-                              tar_result):
+                              tar_result,
+                              failed_dirs):
         # For each product that was downloaded into its seperate
         # directory, generate a product manifest for the ODA server,
         # and also split each downloaded product into its parts.
@@ -216,6 +218,18 @@ class Worker(threading.Thread):
         n_errors = 0
         i = 1
         for d in dir_list:
+            process = True
+            for f in failed_dirs:
+                if d in f:
+                    self._logger.info("Not proceesing dir (download had failed): " + f)
+                    process = False
+                    n_errors += 1
+                    break
+
+            if not process:
+                continue
+            self._logger.info("Processing dir " + d)
+            
             percent  = 100 * (float(i) / float(n_dirs))
             # keep percent > 0 to ensure webpage updates
             if percent < 1.0: percent = 1
@@ -228,7 +242,7 @@ class Worker(threading.Thread):
                 self._logger.info("Exception" + `e`)
                 mf_name = None
             if not mf_name:
-                self._logger.info("Error processing download directry " + `d`)
+                self._logger.info("Error processing download directory " + `d`)
                 n_errors += 1
                 continue
 
@@ -282,13 +296,19 @@ class Worker(threading.Thread):
                 "Worker do_task caught exception " + `e` +
                 "- Recovering from Internal Error")
 
+    def reset_func(self, parameters):
+        self.delete_or_reset(parameters, False)
+
     def delete_func(self, parameters):
+        self.delete_or_reset(parameters, True)
+
+    def delete_or_reset(self, parameters, delete_all=True):
         scid = parameters["scenario_id"]
         self._wfm._lock_db.acquire()
         
         try:
             scenario = models.Scenario.objects.get(id=int(scid))
-            ncn_id = scenario.ncn_id
+            ncn_id = scenario.ncn_id.encode('ascii','ignore')
             
             scenario_status = models.ScenarioStatus.objects.get(scenario_id=int(scid))
             status = scenario_status.status
@@ -344,12 +364,20 @@ class Worker(threading.Thread):
             scenario_status.status = "DELETING"
             scenario_status.save()
 
-            # delete scenario and all associated data from the db 
-            scripts = scenario.script_set.all()
-            delete_scripts(scripts)
+            if delete_all:
+                # delete scenario and all associated data from the db 
+                scripts = scenario.script_set.all()
+                delete_scripts(scripts)
 
-            scenario.delete()
-            scenario_status.delete()
+                scenario.delete()
+                scenario_status.delete()
+            else:
+                models.Archive.objects.filter(scenario=scenario).delete()
+                scenario_status.status = "RESET, IDLE"
+                scenario_status.is_available = 1
+                scenario_status.done = 0
+                scenario_status.save()
+                self._logger.info(`ncn_id`+": Reset completed.")
 
         except Exception as e:
             self._logger.error(`e`)
@@ -469,7 +497,7 @@ class Worker(threading.Thread):
 
             # ingestion_logic blocks until DM is finished downloading
             self._wfm.set_ingestion_pid(sc_id, os.getpid())
-            dl_errors, dl_dir, dar_url, dar_id, status = \
+            dl_errors, dl_dir, dar_url, dar_id, status, failed_dirs = \
                 ingestion_logic(sc_id, models.scenario_dict(scenario))
 
             if check_status_stopping(sc_id):
@@ -497,7 +525,8 @@ class Worker(threading.Thread):
                     parameters["scripts"],
                     cat_reg,
                     s2pre,
-                    scenario.tar_result)
+                    scenario.tar_result,
+                    failed_dirs)
 
             n_errors += dl_errors
             if n_errors>0:

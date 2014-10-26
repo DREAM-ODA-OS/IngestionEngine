@@ -137,7 +137,7 @@ MANAGERS = ADMINS
 # or as DOWNLOAD_MANAGER_DIR  here.
 
 # How often to query the DM for the status of a running DAR, seconds
-DAR_STATUS_INTERVAL = 1.250
+DAR_STATUS_INTERVAL = 1.650
 
 if "DownloadManagerDir" in config:
     DOWNLOAD_MANAGER_DIR = config["DownloadManagerDir"]

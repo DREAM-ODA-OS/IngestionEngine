@@ -19,6 +19,7 @@ import urllib2
 import json
 import time
 import traceback
+import simplejson
 
 import dar_builder
 import work_flow_manager
@@ -106,6 +107,11 @@ logger = logging.getLogger('dream.file_logger')
 
 
 # ------------ utilities --------------------------
+
+def stop_downloads():
+    logger = logging.getLogger('dream.file_logger')
+    logger.info("stop_downloads")
+    
 
 def get_dssids_from_pf(product_facility, aoi_toi):
     # gets dssids from the pf
@@ -793,7 +799,7 @@ def get_dar_status(dar_url):
             break
     return request
 
-def wait_for_download(scid, dar_url, dar_id, max_wait=None):
+def wait_for_download(scid, dar_url, dar_id, ncn_id, max_wait=None):
     """
     scid may be None
 
@@ -801,9 +807,16 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
     has completed all constituent individual product downloads
     """
 
+    if None == ncn_id: ncn_id = "(None)"
+
     set_status(scid, "Downloading", 1)
 
     request = get_dar_status(dar_url)
+
+    if check_status_stopping(scid):
+        stop_download(scid, request)
+        raise StopRequest("Stop Request")
+
     if None == request:
         # wait and try again
         time.sleep(DAR_STATUS_INTERVAL)
@@ -811,6 +824,9 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
         if None == request:
             time.sleep(1)
             request = get_dar_status(dar_url)
+            if check_status_stopping(scid):
+                stop_download(scid, request)
+                raise StopRequest("Stop Request")
         if None == request:
             time.sleep(1)
             request = get_dar_status(dar_url)
@@ -819,10 +835,6 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
             raise DMError(
                 "Bad DAR status from DM; no 'dataAccessRequests' found.")
 
-    if check_status_stopping(scid):
-        stop_download(scid, request)
-        raise StopRequest("Stop Request")
-
     product_list = request["productList"]
     n_products = len(product_list)
     total_percent = n_products * 100
@@ -830,10 +842,13 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
     n_done = 0
     total_size = 0
     n_errors = 0
+    failed_urls = []
+    failed_dirs  = []
     try:
         ts = time.time()
         tdiff = 0
         last_status = {}
+        last_st_message = ""
         while not all_done:
             tdiff = time.time() - ts
             all_done = True
@@ -847,22 +862,35 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
             for product in product_list:
                 if "productProgress" not in product:
                     continue
+
+                dl_dir   = product["downloadDirectory"]
                 progress = product["productProgress"]
                 dl_status = progress["status"]
+
                 if dl_status == "IN_ERROR":
-                    n_errors += 1
-                    n_done += 1
                     if "message" in progress: msg = progress["message"]
                     else: msg = "(none)"
                     if "uuid" in product: uuid = product["uuid"]
                     else: uuid = "(unknown)"
-                    if "productAccessUrl" in product: url = product["productAccessUrl"]
-                    else: url = "(unknown"
-                    logger.info("Dl Manager reports 'IN_ERROR' for uuid "+uuid+
-                                ", message: " + msg +
-                                "\n url: " + url)
+                    if "productAccessUrl" in product:
+                        url = product["productAccessUrl"]
+                    else:
+                        url = "(unknown)"
+                    
+                    if url not in failed_urls:
+                        n_errors += 1
+                        n_done   += 1
+                        failed_urls.append(url)
+                        failed_dirs.append( dl_dir )
+                        logger.info("Dl Manager reports 'IN_ERROR' for uuid "+uuid+
+                                    ", message: " + msg +
+                                    "\n url: " + url)
+                        dl_report = simplejson.dumps(product, indent=2)
+                        logger.info("Dl Manager status: \n"+dl_report)
+
                 elif dl_status == "COMPLETED":
                     n_done += 1
+
                 else:
                     all_done = False
 
@@ -904,9 +932,25 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
                 stop_download(scid, request)
                 raise StopRequest("Stop Request")
             else:
-                set_status(scid, "Downloading ("+`n_done`+'/'+`n_products`+")", percent_done)
-            time.sleep(DAR_STATUS_INTERVAL)
+                status_message = "Downloading ("+`n_done`+'/'+`n_products`+")"
+                set_status(scid, status_message, percent_done)
+                new_st_message = ncn_id+" Status: "+status_message+" done: "+`percent_done`+"%"
+                if new_st_message != last_st_message:
+                    last_st_message = new_st_message
+                    logger.info(new_st_message)
+
+            if check_status_stopping(scid):
+                stop_download(scid, request)
+                raise StopRequest("Stop Request")
+
+            sleep_time = DAR_STATUS_INTERVAL
+            if tdiff > (32 * DAR_STATUS_INTERVAL):
+                sleep_time = 5 * DAR_STATUS_INTERVAL
+            elif tdiff > (6 * DAR_STATUS_INTERVAL):
+                sleep_time = 2 * DAR_STATUS_INTERVAL
+            time.sleep(sleep_time)
             request = get_dar_status(dar_url)
+
             if check_status_stopping(scid):
                 stop_download(scid, request)
                 raise StopRequest("Stop Request")
@@ -929,11 +973,12 @@ def wait_for_download(scid, dar_url, dar_id, max_wait=None):
         logger.warning("Unexpected exception in wait_for_download: "+`e`)
         if IE_DEBUG > 0:
             traceback.print_exc(12,sys.stdout)
+            raise e
 
     finally:
         if None != scid: wfm_clear_dar(scid)
 
-    return n_errors
+    return n_errors, failed_dirs, failed_urls
 
 # ----- the main entrypoint  --------------------------
 def ingestion_logic(scid, scenario_data):
@@ -955,14 +1000,14 @@ def ingestion_logic(scid, scenario_data):
         logger.info(" DEBUG_MAX_GETCOV_URLS = "+`DEBUG_MAX_GETCOV_URLS`)
 
     nreqs = 0
-    retval = (0, None, None, None, "")
+    retval = (0, None, None, None, "", None)
     scenario_data["sc_id"]  = scid
     scenario_data["custom"] = custom
     ncn_id = scenario_data["ncn_id"]
     dl_requests = get_download_URLs(scenario_data, eoids)
     if not dl_requests or 0 == len(dl_requests):
         logger.warning(`ncn_id`+": no GetCoverage requests generated")
-        retval = (0, None, None, None, "NO_ACTION")
+        retval = (0, None, None, None, "NO_ACTION", None)
     else:
         if check_status_stopping(scid):
             raise StopRequest("Stop Request")
@@ -971,9 +1016,13 @@ def ingestion_logic(scid, scenario_data):
         logger.info(`ncn_id`+": Submitting "+`nreqs`+" URLs to the Download Manager")
         dl_dir, dar_url, dar_id = \
             request_download(scenario_data["ncn_id"], scid, dl_requests)
-        dl_errors = wait_for_download(scid, dar_url, dar_id)
+        dl_errors, failed_dirs, failed_urls = wait_for_download(scid, dar_url, dar_id, ncn_id)
+        if len(failed_urls) > 0:
+            logger.warning("Failed downloads for "+`ncn_id`+":\n" +\
+                                 '\n'.join(failed_urls))
+                
         logger.info("Products for scenario " + ncn_id +
                     " downloaded to " + dl_dir)
-        retval = (dl_errors, dl_dir, dar_url, dar_id, "OK")
+        retval = (dl_errors, dl_dir, dar_url, dar_id, "OK", failed_dirs)
 
     return retval

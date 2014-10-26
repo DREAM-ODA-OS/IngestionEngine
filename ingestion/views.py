@@ -127,6 +127,35 @@ def stop_ingestion_core(scenario_id):
     wfm = work_flow_manager.WorkFlowManager.Instance()
     wfm.set_stop_request(scenario_id)
 
+def reset_scenario_core(ncn_id):
+    ret = {}
+
+    scenario = models.Scenario.objects.get(ncn_id=ncn_id)
+    scenario_id = scenario.id
+
+    wfm = work_flow_manager.WorkFlowManager.Instance()
+
+    if not wfm.lock_scenario(scenario_id):
+        msg = "Scenario '%s' name=%s is busy." % (ncn_id, scenario.scenario_name)
+        logger.warning("Delete Scenario refused: " + msg)
+        ret = {'status':1, 'message':"Error: "+msg}
+    else:
+        default_delete_script = os.path.join(IE_SCRIPTS_DIR, IE_DEFAULT_DEL_SCRIPT)
+        del_scripts = [default_delete_script]
+        scripts = scenario.script_set.all()
+        for s in scripts:
+            del_scripts.append("%s/%s" % (MEDIA_ROOT,s.script_file))
+
+        current_task = work_flow_manager.WorkerTask(
+            {"scenario_id":scenario_id,
+             "task_type":"RESET_SCENARIO",
+             "scripts":del_scripts})
+        wfm.put_task_to_queue(current_task)
+        
+        ret = {'status':0,}
+
+    return ret
+
 def delete_scenario_core(scenario_id=None, ncn_id=None):
     ret = {}
 
@@ -166,7 +195,6 @@ def delete_scenario_core(scenario_id=None, ncn_id=None):
              "scripts":del_scripts})
         wfm.put_task_to_queue(current_task)
         
-        
         ret = {'status':0,}
 
     return ret
@@ -185,8 +213,8 @@ def ingest_scenario_core(scenario_id=None, ncn_id=None):
         ncn_id   = scenario.ncn_id
 
     if scenario.repeat_interval > 0:
+        msg = "Cannot manually run an auto-ingest scenario (repeat interval >0)."
         logger.warning("Attempt to manually run Auto-Scenario: " + msg)
-        msg = "Cannot manually run an auto-ingest scneario (repeat interval >0)."
         ret = {'status':1, 'message':"Error: "+msg}
         return ret
         
@@ -982,8 +1010,8 @@ def set_sc_other(scenario, data):
     if 'extraconditions' in data:
         for e in data['extraconditions']:
             extra = models.ExtraConditions()
-            extra.xpath    = e[0]
-            extra.text     = e[1]
+            extra.xpath    = un_unistr(e[0].encode)
+            extra.text     = un_unistr(e[1].encode)
             extra.scenario = scenario
             extra.save()
 
@@ -1018,7 +1046,7 @@ def new_sc_core(data):
     
     ncn_id = None
     if 'ncn_id' in data and data['ncn_id']:
-        ncn_id = data['ncn_id']
+        ncn_id = data['ncn_id'].encode('ascii','ignore')
         try:
             scenario = models.Scenario.objects.get(ncn_id=ncn_id)
         except  models.Scenario.DoesNotExist:
@@ -1125,6 +1153,12 @@ def getAddStatus(request,args):
         response_data["errorString"] = "Id not found."
 
     return response_data
+
+@csrf_exempt
+def odaReset_core(request, args):
+    oda_init(request)
+    ncn_id = args[0].encode('ascii','ignore')
+    return reset_scenario_core(ncn_id=ncn_id)
 
 @csrf_exempt
 def odaDel_core( request, args ):
@@ -1294,6 +1328,10 @@ def updateMD_operation(request):
 @csrf_exempt
 def odaDeleteScenario(request, ncn_id):
     return get_request_json(odaDel_core, request, (ncn_id,), wrapper=False)
+
+@csrf_exempt
+def odaResetScenario(request, ncn_id):
+    return get_request_json(odaReset_core, request, (ncn_id,), wrapper=False)
 
 @csrf_exempt
 def odaStopIngestion(request, ncn_id):
