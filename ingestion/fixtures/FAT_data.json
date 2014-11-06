@@ -34,7 +34,7 @@
             "to_date":   "2000-10-14T21:00:00",
             "dsrc_type": "EO",  "dsrc": "http://data.eox.at/instance00/ows",  
             "dsrc_password": "", "dsrc_login": "",
-            "cloud_cover": 0.0, "view_angle": 50.0, "sensor_type": "", 
+            "cloud_cover": 0.0, "view_angle": 30.0, "sensor_type": "", 
             "download_subset": false,   "coastline_check": false,   "s2_preprocess": "NO", 
             "oda_server_ingest": true,  "tar_result": false,        "cat_registration": false,
             "repeat_interval": 0, "starting_date": "2013-11-11T11:22:33", 
