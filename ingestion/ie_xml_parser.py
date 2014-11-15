@@ -35,6 +35,13 @@ from utils import \
     NoEPSGCodeError, \
     IngestionError
 
+# WCS types
+CRS_URI_DRAFT201  = 'http://www.opengis.net/wcs/service-extension/crs/1.0'
+CRS_URI_FINAL201  = 'http://www.opengis.net/wcs/crs/1.0'
+WCS_TYPE_UNKNOWN  = 0
+WCS_TYPE_DRAFT201 = 199
+WCS_TYPE_FINAL201 = 201
+
 # namespaces
 wcs_vers = '2.0'
 WCS_NS   = '{http://www.opengis.net/wcs/' + wcs_vers + '}'
@@ -235,6 +242,28 @@ EO_POLYPOSLIST_XPATH = \
     
 
 # ------------ XML metadata parsing --------------------------
+
+def determine_wcs_type(caps):
+    wcs_type = WCS_TYPE_UNKNOWN
+
+    try:
+        if hasattr(caps, 'ns_map'):
+            for ns in caps.ns_map:
+                uri = caps.ns_map[ns]
+                if uri == CRS_URI_FINAL201:
+                    wcs_type = WCS_TYPE_FINAL201
+                    break
+                elif uri == CRS_URI_DRAFT201:
+                    wcs_type = WCS_TYPE_DRAFT201
+                    break
+
+    except Exception:
+        caps_str = "<None>"
+        if None != caps:
+            caps_str = ET.tostring(caps)
+        logger.error("determine_wcs_type() failed for: \n"+caps_str)
+    
+    return wcs_type
 
 def get_coverageDescriptions(cd_tree):
     return cd_tree.findall("./" + \
@@ -464,14 +493,32 @@ def extract_CoverageId(cd):
             pass
     return covId
 
-def base_xml_parse(src_data):
-    xml_root = ET.parse(src_data)
-    return xml_root.getroot()
+def parse_with_ns(src_data):
+    root = None
+    events = "start", "start-ns"
+    ns_map = []
 
-def parse_file(src_data, expected_root, src_name):
+    for event, elem in ET.iterparse(src_data, events):
+        if event == "start-ns":
+            ns_map.append(elem)
+        elif event == "start":
+            if root is None:
+                root = elem
+    root.ns_map = dict(ns_map)
+    return root
+
+def base_xml_parse(src_data, save_ns):
+    root = None
+    if save_ns:
+        root = parse_with_ns(src_data)
+    else:
+        root = ET.parse(src_data).getroot()
+    return root
+
+def parse_file(src_data, expected_root, src_name, save_ns=False):
     result = None
     try:
-        result = base_xml_parse(src_data)
+        result = base_xml_parse(src_data, save_ns)
         if None == result:
             raise IngestionError("No data")
         if tree_is_exception(result):
@@ -505,12 +552,41 @@ def set_logger(l):
 
 if __name__ == '__main__':
     print "ie_xmlparser test"
-    caps = parse_file("/mnt/shared/Archive-2014-03-12/eox-caps-with-links.xml",
-                      "CoverageDescriptions",
-                      "test_data: eox-caps-with-links.xml")
+
+    ex0_file = "/mnt/shared/WCS-change/wcsCapabilities.old.xml"
+    ex1_file = "/mnt/shared/WCS-change/wcsCapabilities.new.xml"
+
+    caps = parse_file(ex1_file,
+                      "Capabilities",
+                      "test_data: wcsCapabilities.new.xml",
+                      True)
+
     if not caps:
         print "ERROR - no caps!"
     else:
-        p,m = extract_prods_and_masks(caps)
+        wcs_type = determine_wcs_type(caps)
+        print "NEW wcs_type: " + `wcs_type`
+
+    caps = None
+    caps = parse_file(ex0_file,
+                      "Capabilities",
+                      "test_data: wcsCapabilities.old.xml",
+                      True)
+    if not caps:
+        print "ERROR - no caps!"
+    else:
+        wcs_type = determine_wcs_type(caps)
+        print "OLD wcs_type: " + `wcs_type`
+
+    caps = None
+
+    ex2_file = "/mnt/shared/Archive-2014-03-12/eox-caps-with-links.xml"
+    cds = parse_file(ex2_file,
+                     "CoverageDescriptions",
+                     "test_data: eox-caps-with-links.xml")
+    if not cds:
+        print "ERROR - no cds!"
+    else:
+        p,m = extract_prods_and_masks(cds)
         print " prods: " + `p`
         print " masks: " + `m`

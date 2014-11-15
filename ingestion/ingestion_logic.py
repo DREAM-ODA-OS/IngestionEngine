@@ -78,9 +78,14 @@ from ie_xml_parser import \
     extract_CoverageId, \
     extract_prods_and_masks, \
     get_coverageDescriptions, \
+    determine_wcs_type, \
     SENSOR_XPATH, \
     INCIDENCEANGLE_XPATH, \
-    CLOUDCOVER_XPATH
+    CLOUDCOVER_XPATH, \
+    WCS_TYPE_UNKNOWN, \
+    WCS_TYPE_DRAFT201, \
+    WCS_TYPE_FINAL201
+
 
 # misc. constants
 SERVICE_WCS        = "service=wcs"
@@ -101,6 +106,7 @@ EPSG_4326 = 'http://www.opengis.net/def/crs/EPSG/0/4326'
 # 0 means unlimited
 DEBUG_MAX_DEOCS_URLS  = 0
 DEBUG_MAX_GETCOV_URLS = 0
+
 
 
 logger = logging.getLogger('dream.file_logger')
@@ -209,7 +215,7 @@ def set_status(sc_id, st_text, percentage):
 
 
 # ------------ processing --------------------------
-def getXmlTree(url, expected_tag):
+def getXmlTree(url, expected_tag, save_ns=False):
     err  = None
     resp = None
     try:
@@ -233,7 +239,11 @@ def getXmlTree(url, expected_tag):
         if None!=resp: resp.close()
         return (None, None)
     else:
-        return ( resp, parse_file(resp, expected_tag, resp.geturl()) )
+        return ( resp, parse_file(resp,
+                                  expected_tag,
+                                  resp.geturl(),
+                                  save_ns)
+                 )
 
 def getDssList(scid, eo_dss_list, aoi_toi):
     # get list of datasets that overlap bbox and timeperiod
@@ -266,10 +276,10 @@ def should_check_coastline(params):
         return True
     return False
 
-def get_caps_from_pf(product_facility_url):
+def get_caps_from_pf(product_facility_url, save_ns=False):
     base_url = product_facility_url + "?" + SERVICE_WCS
     url_GetCapabilities = base_url + "&" + WCS_GET_CAPS
-    (fp, caps) = getXmlTree(url_GetCapabilities, CAPABILITIES_TAG)
+    (fp, caps) = getXmlTree(url_GetCapabilities, CAPABILITIES_TAG, save_ns)
     ret = None
     if None == caps:
         logger.error("Cannot parse getCap file. Url="+url_GetCapabilities)
@@ -277,6 +287,7 @@ def get_caps_from_pf(product_facility_url):
         ret = caps
 
     if None != fp: fp.close()
+    
     return ret
 
 def check_bbox(coverageDescription, req_bbox):
@@ -509,7 +520,7 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
     return ret
     
 
-def process_csDescriptions(params, aoi_toi, service_version, md_urls):
+def process_csDescriptions(params, aoi_toi, service_version, wcs_type, md_urls):
     """ Input: md_urls is a tuple, where each element is a pair containg
                    the MetaData URL and its EOID :  (MetaData_URL, EOID)
                aoi_toi is a tuple containing Area-of-interest
@@ -527,10 +538,17 @@ def process_csDescriptions(params, aoi_toi, service_version, md_urls):
         '&version=' + service_version + \
         "&" + WCS_GET_COVERAGE +\
         "&" + WCS_IMAGE_FORMAT
+
     if params['download_subset']:
-        base_url += \
-            "&subset=Lat," +EPSG_4326+"("+`aoi_toi[0].ll[1]`+","+`aoi_toi[0].ur[1]`+")"+\
-            "&subset=Long,"+EPSG_4326+"("+`aoi_toi[0].ll[0]`+","+`aoi_toi[0].ur[0]`+")"
+        if WCS_TYPE_DRAFT201 == wcs_type:
+            base_url += \
+                "&subset=Lat," +EPSG_4326+"("+`aoi_toi[0].ll[1]`+","+`aoi_toi[0].ur[1]`+")"+\
+                "&subset=Long,"+EPSG_4326+"("+`aoi_toi[0].ll[0]`+","+`aoi_toi[0].ur[0]`+")"
+        else:
+            base_url += \
+                "&subset=lat("+`aoi_toi[0].ll[1]`+","+`aoi_toi[0].ur[1]`+")"+\
+                "&subset=lon("+`aoi_toi[0].ll[0]`+","+`aoi_toi[0].ur[0]`+")"+\
+                "&subsettingcrs="+EPSG_4326
 
     dl_reqests = []
     ndeocs = 0    # number of DescribeEOCoverageSet urls processed
@@ -592,22 +610,26 @@ def generate_MD_urls(params, service_version, id_list):
         '&containment=overlaps' + \
         '&subset=Lat(' + `ll[1]`+','+`ur[1]`+')'\
         '&subset=Long('+ `ll[0]`+','+`ur[0]`+')'
+
     md_urls = []
     for dss_id in id_list:
         md_urls.append( (base_url + "&EOId=" + dss_id, dss_id) )
     return md_urls
     
+
 def urls_from_OSCAT(params, eoids):
     raise IngestionError("Catalogues are not yet implemented")
 
+
 def urls_from_EOWCS(params, eoids):
 
-    caps = get_caps_from_pf(params['dsrc'])
-    if None == caps:
-        raise IngestionError("cannot get Capabilities from '"+params['dsrc']+"'")
+    caps = get_caps_from_pf(params['dsrc'], True)
 
     if check_status_stopping(params["sc_id"]):
         raise StopRequest("Stop Request")
+
+    if None == caps:
+        raise IngestionError("cannot get Capabilities from '"+params['dsrc']+"'")
 
     service_version = extract_ServiceTypeVersion(caps).strip()
 
@@ -617,18 +639,23 @@ def urls_from_EOWCS(params, eoids):
     if len(eoids) > 0:
         # use only the dssids specified, don't look for more.
         id_list = eoids
-        caps = None  # no longer needed
     else:
         # find all datasets that match the bbox and Toi
         wcseo_dss = extract_DatasetSeriesSummaries(caps)
-        caps = None  # no longer needed
         id_list = getDssList(params["sc_id"], wcseo_dss, aoi_toi)
+
+    wcs_type = determine_wcs_type(caps)
+
+    if IE_DEBUG>0:
+        logger.debug("wcs_type = "+`wcs_type`)
+
+    caps = None  # no longer needed
 
     md_urls = generate_MD_urls(params, service_version, id_list)
     if IE_DEBUG>1:
         logger.debug("Qualified "+`len(md_urls)`+" md_urls")
     dl_requests = process_csDescriptions(
-        params, aoi_toi, service_version, md_urls)
+        params, aoi_toi, service_version, wcs_type, md_urls)
     return dl_requests
 
 
