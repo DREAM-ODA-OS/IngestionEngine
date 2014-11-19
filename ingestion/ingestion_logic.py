@@ -67,7 +67,7 @@ from coastline_ck import \
 # XML metadata parsing
 from ie_xml_parser import \
     parse_file, \
-    extract_path_text, \
+    extract_paths_text, \
     extract_Id, \
     extract_gml_bbox, \
     extract_WGS84bbox, \
@@ -79,9 +79,9 @@ from ie_xml_parser import \
     extract_prods_and_masks, \
     get_coverageDescriptions, \
     determine_wcs_type, \
-    SENSOR_XPATH, \
-    INCIDENCEANGLE_XPATH, \
-    CLOUDCOVER_XPATH, \
+    xpaths_cloudcover, \
+    xpaths_sensor, \
+    xpaths_incidenceangle, \
     WCS_TYPE_UNKNOWN, \
     WCS_TYPE_DRAFT201, \
     WCS_TYPE_FINAL201
@@ -92,7 +92,8 @@ SERVICE_WCS        = "service=wcs"
 WCS_GET_CAPS       = "request=GetCapabilities"
 EOWCS_DESCRIBE_CS  = "request=DescribeEOCoverageSet"
 WCS_GET_COVERAGE   = "request=GetCoverage"
-WCS_IMAGE_FORMAT   = "format=image/tiff&mediatype=multipart/mixed"
+#WCS_IMAGE_FORMAT   = "format=image/tiff&mediatype=multipart/mixed"
+WCS_IMAGE_FORMAT   = "tiff&mediatype=multipart/mixed"
 
 CAPABILITIES_TAG   = "Capabilities"
 EOCS_DESCRIPTION_TAG = "EOCoverageSetDescription"
@@ -126,15 +127,17 @@ def get_dssids_from_pf(product_facility, aoi_toi):
 
     ids_from_pf = []
 
-    caps = get_caps_from_pf(product_facility)
+    caps = get_caps_from_pf(product_facility, True)
 
     if None == caps:
         logger.warning("No capabilities were obtained from: "+`product_facility`)
         return ids_from_pf
 
+    wcs_type = determine_wcs_type(caps)
+
     try:
         service_version = extract_ServiceTypeVersion(caps).strip()
-        wcseo_dss_list  = extract_DatasetSeriesSummaries(caps)
+        wcseo_dss_list  = extract_DatasetSeriesSummaries(caps, wcs_type)
     except Exception as e:
         logger.error("Exception in get_dssids_from_pf: " + `e`)
 
@@ -143,7 +146,7 @@ def get_dssids_from_pf(product_facility, aoi_toi):
 
     caps = None  # no longer needed
 
-    ids_from_pf = getDssList(None, wcseo_dss_list, aoi_toi)
+    ids_from_pf = getDssList(None, wcseo_dss_list, aoi_toi, wcs_type)
 
     if IE_DEBUG > 0:
         logger.debug("get_dssids_from_pf: num ids="+`len(ids_from_pf)`)
@@ -245,7 +248,7 @@ def getXmlTree(url, expected_tag, save_ns=False):
                                   save_ns)
                  )
 
-def getDssList(scid, eo_dss_list, aoi_toi):
+def getDssList(scid, eo_dss_list, aoi_toi, wcs_type):
     # get list of datasets that overlap bbox and timeperiod
     id_list = []
     req_bb, req_time = aoi_toi
@@ -265,7 +268,7 @@ def getDssList(scid, eo_dss_list, aoi_toi):
             logger.warning("Failed to extract bb from " + `dss`)
             continue
         if bb1.overlaps( req_bb ):
-            id_list.append( extract_Id(dss) )
+            id_list.append( extract_Id(dss, wcs_type) )
 
     return id_list
 
@@ -296,14 +299,14 @@ def check_bbox(coverageDescription, req_bbox):
         return False
     return bb.overlaps(req_bbox)
 
-def check_coastline(coverageDescription, cid, params, ccache):
+def check_coastline(coverageDescription, cid, params, ccache, wcs_type):
     if not should_check_coastline(params):
         return True
-    return coastline_ck(coverageDescription, cid, ccache)
+    return coastline_ck(coverageDescription, cid, ccache, wcs_type)
 
-def check_timePeriod(coverageDescription, req_tp, md_src):
+def check_timePeriod(coverageDescription, req_tp, md_src, wcs_type):
     if req_tp == None:     return True
-    timePeriod = extract_om_time(coverageDescription)
+    timePeriod = extract_om_time(coverageDescription, wcs_type)
     if None==timePeriod:
         logger.warning("timePeriod not found in EO metatada, src='"+\
                 md_src+"'")
@@ -348,19 +351,23 @@ def check_custom_conditions(cd, req):
     return True
 
 
-def check_text_condition(cd, req, key, xpath):
+def check_text_condition(cd, req, key, xpaths):
     if not key in req:
         return True
     req_item = req[key]
     if req_item == '':
         return True
-    md_item  = extract_path_text(cd, xpath)
+    if IE_DEBUG > 0:
+        logger.debug("Checking "+key+"=="+`req_item`)
+    md_item  = extract_paths_text(cd, xpaths)
     if not md_item:
+        if IE_DEBUG > 0:
+            logger.debug("No value in MD for  "+key+".")
         return True
     return req_item == md_item
 
 
-def check_float_max(cd, req, key, xpath, use_abs=False):
+def check_float_max(cd, req, key, xpaths, use_abs=False):
     if not key in req:
         logger.warning("Check of " + `key` + ": not found in request")
         return True
@@ -370,7 +377,7 @@ def check_float_max(cd, req, key, xpath, use_abs=False):
     except Exception as e:
         raise IngestionError("Bad value specified for " + `key` + \
                                  ', exception: ' + `e`)
-    md_item  = extract_path_text(cd, xpath)
+    md_item  = extract_paths_text(cd, xpaths)
     if not md_item:
         logger.warning("Check of " + `key` + ": not found in metadata.")
         return True
@@ -390,7 +397,7 @@ def check_float_max(cd, req, key, xpath, use_abs=False):
         return True
 
 
-def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
+def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache, wcs_type):
     """ params is the dictionary of input parameters
         aoi_toi is a tuple containing Area-of-interest Bounding-Box and
                 the Time of Interest time range
@@ -467,27 +474,27 @@ def gen_dl_urls(params, aoi_toi, base_url, md_url, eoid, ccache):
             if IE_DEBUG > 0: failed.add('bbox')
             continue
         
-        if not check_timePeriod(cd, aoi_toi[1], md_url):
+        if not check_timePeriod(cd, aoi_toi[1], md_url, wcs_type):
             if IE_DEBUG > 2: logger.debug("  TimePeriod check failed.")
             failed.add('TimePeriod')
             continue
 
-        if not check_text_condition(cd, params, 'sensor_type', SENSOR_XPATH):
+        if not check_text_condition(cd, params, 'sensor_type', xpaths_sensor(wcs_type)):
             if IE_DEBUG > 2: logger.debug("  sensor type check failed.")
             if IE_DEBUG > 0: failed.add('sensor_type')
             continue
 
-        if not check_float_max(cd, params, 'view_angle', INCIDENCEANGLE_XPATH, True):
+        if not check_float_max(cd, params, 'view_angle', xpaths_incidenceangle(wcs_type), True):
             if IE_DEBUG > 2: logger.debug("  incidence angle check failed.")
             if IE_DEBUG > 0: failed.add('view_angle')
             continue
 
-        if not check_float_max(cd, params, 'cloud_cover', CLOUDCOVER_XPATH):
+        if not check_float_max(cd, params, 'cloud_cover', xpaths_cloudcover(wcs_type)):
             if IE_DEBUG > 2: logger.debug("  cloud cover check failed.")
             if IE_DEBUG > 0: failed.add('cloud_cover')
             continue
 
-        if not check_coastline(cd, coverage_id, params, ccache):
+        if not check_coastline(cd, coverage_id, params, ccache, wcs_type):
             if IE_DEBUG > 2: logger.debug("  coastline check failed.")
             if IE_DEBUG > 0: failed.add('coastline check')
             continue
@@ -587,7 +594,8 @@ def process_csDescriptions(params, aoi_toi, service_version, wcs_type, md_urls):
             base_url,
             md_url,
             eoid,
-            coastcache)
+            coastcache,
+            wcs_type)
 
         if 0 != DEBUG_MAX_GETCOV_URLS and dl_reqests:
             dl_reqests = dl_reqests[:DEBUG_MAX_GETCOV_URLS]
@@ -632,6 +640,7 @@ def urls_from_EOWCS(params, eoids):
         raise IngestionError("cannot get Capabilities from '"+params['dsrc']+"'")
 
     service_version = extract_ServiceTypeVersion(caps).strip()
+    wcs_type = determine_wcs_type(caps)
 
     aoi_toi = build_aoi_toi(
         params["aoi_bbox"], params['from_date'], params['to_date'])
@@ -641,10 +650,8 @@ def urls_from_EOWCS(params, eoids):
         id_list = eoids
     else:
         # find all datasets that match the bbox and Toi
-        wcseo_dss = extract_DatasetSeriesSummaries(caps)
-        id_list = getDssList(params["sc_id"], wcseo_dss, aoi_toi)
-
-    wcs_type = determine_wcs_type(caps)
+        wcseo_dss = extract_DatasetSeriesSummaries(caps, wcs_type)
+        id_list = getDssList(params["sc_id"], wcseo_dss, aoi_toi, wcs_type)
 
     if IE_DEBUG>0:
         logger.debug("wcs_type = "+`wcs_type`)

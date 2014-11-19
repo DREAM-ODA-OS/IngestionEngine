@@ -441,6 +441,9 @@ def split_wcs_raw(path, f, logger):
 
     try:
         l1 = fp.readline()
+        if l1 == '\n' or l1 == '\r\n':
+            #empty first line
+            l1 = fp.readline()
 
         top_hdrs = read_headers(fp)
         
@@ -454,7 +457,7 @@ def split_wcs_raw(path, f, logger):
         if None != m:
             boundary = m.group()
         else:
-            m = re.match('\S\r?\n', l1)
+            m = re.match('--\S*\r?\n', l1)
             if None != m: boundary = m.group()
         if None == boundary:
             raise IngestionError("Initial boundary not found, f=: "+base_full_path)
@@ -869,3 +872,15 @@ if __name__ == '__main__':
     tp = TimePeriod(ts)
     print ts
     print "   " + `tp` + ",   " + `time.ctime(tp.begin_time)`
+
+    print
+    print " --- Splitting test. --- "
+    path = "/home/novacek/dream/tst_tmp/test_split/"
+    f = "ows1"
+
+    ret_str, metafile, df = split_wcs_raw(path, f, DummyLogger())
+    if not ret_str:
+        print "Splitting failed"
+    else:
+        print "split OK -  metafile:" + metafile
+        print "            ret_str:\n" + ret_str

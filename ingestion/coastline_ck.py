@@ -188,9 +188,9 @@ except Exception as e:
 # In the cov. descr, the order of coordinate points is N, E
 # The returned OGR geometry points have the order x,y (E,N).
 #
-def extract_geom(coverageDescription, cid):
+def extract_geom(coverageDescription, cid, wcs_type):
    
-    coords = extract_footprintpolys(coverageDescription)
+    coords = extract_footprintpolys(coverageDescription, wcs_type)
     if not coords or len(coords) == 0:
         logger.warning("No polygon in coverageDescription for "+`cid`+
                        ' - not checking coastline.')
@@ -210,7 +210,7 @@ def extract_geom(coverageDescription, cid):
 # Check if the polygon contained in the coverageDescription
 # intesects with or is within the ccache polygon.
 #
-def coastline_ck(coverageDescription, cid, ccache):
+def coastline_ck(coverageDescription, cid, ccache, wcs_type):
     if not ccache:
         logger.warning('No coastline cache - not checking.')
         return True
@@ -219,7 +219,7 @@ def coastline_ck(coverageDescription, cid, ccache):
         logger.info('  performing coastline_check')
 
     # create an ogr polygon from the data in the Coverage Description
-    coverage_ftprint = extract_geom(coverageDescription, cid)
+    coverage_ftprint = extract_geom(coverageDescription, cid, wcs_type)
 
     if IE_DEBUG > 2:
         logger.debug("    coastline_ck(): coverage_ftprint.env: " + `coverage_ftprint.GetEnvelope()`)
@@ -1030,7 +1030,9 @@ def mem_test(shpfile, aoi_bb):
 if __name__ == '__main__':
 
     import xml.etree.ElementTree as ET
-    from ie_xml_parser import set_logger
+    from ie_xml_parser import \
+        set_logger, \
+        WCS_TYPE_DRAFT201
     set_logger(logger)
 
     test_cd_xml_template = """<?xml version="1.0" encoding="ISO-8859-1"?>
@@ -1070,7 +1072,7 @@ if __name__ == '__main__':
     </eop:multiExtentOf>
     """
 
-
+    wcs_type = WCS_TYPE_DRAFT201
     data_dir = os.path.join( os.getcwd(), 'media', 'etc', 'coastline_data' )
     shpfile  = os.path.join( data_dir, 'ne_10m_land.shp' )
 
@@ -1135,12 +1137,12 @@ if __name__ == '__main__':
         out_poly_xml = test_cd_xml_template % out_poly_coords
         cd = ET.fromstring(out_poly_xml)
         if have_tk:
-            out_geom = extract_geom(cd, 'outside')
+            out_geom = extract_geom(cd, 'outside', wcs_type)
             print "out_geom:  " + `out_geom.GetEnvelope()`
             out_env = out_geom.GetEnvelope()
             plot_poly(grdbg.add_line, out_geom, "red")
 
-        if not coastline_ck(cd, 'outside', ccoastline):
+        if not coastline_ck(cd, 'outside', ccoastline, wcs_type):
             print "outside chck OK"
         else:
             print "outside chck FAILED"
@@ -1158,10 +1160,10 @@ if __name__ == '__main__':
         in_poly_xml = test_cd_xml_template % in_poly_coords
         cd = ET.fromstring(in_poly_xml)
         if have_tk:
-            in_geom = extract_geom(cd, 'inside')
+            in_geom = extract_geom(cd, 'inside', wcs_type)
             plot_poly(grdbg.add_line, in_geom, "blue")
 
-        if coastline_ck(cd, 'inside', ccoastline):
+        if coastline_ck(cd, 'inside', ccoastline, wcs_type):
             print "inside chck OK"
         else:
             print "inside chck FAILED"
@@ -1248,10 +1250,10 @@ if __name__ == '__main__':
         in_poly_xml = test_cd_xml_template % in_poly_coords
         cd = ET.fromstring(in_poly_xml)
         if have_tk:
-            in_geom = extract_geom(cd, 'inside')
+            in_geom = extract_geom(cd, 'inside', wcs_type)
             plot_poly(grdbg.add_line, in_geom, "blue")
 
-        if coastline_ck(cd, 'inside', ccoastline):
+        if coastline_ck(cd, 'inside', ccoastline, wcs_type):
             print " Special Test: FAILED - expected coastline_ck to return false."
         else:
             print " Special Test: OK"

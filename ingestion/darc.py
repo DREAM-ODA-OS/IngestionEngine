@@ -31,16 +31,18 @@ from models import \
 
 from ie_xml_parser import \
     base_xml_parse, \
-    extract_eoid
+    extract_eoid, \
+    determine_wcseo_type
 
 logger = logging.getLogger('dream.file_logger')
 
 def archive_metadata(sc_id, metafile):
     # cd_tree: coverage description tree extracted from the
     #          metadata XML file
-    cd_tree = base_xml_parse(metafile)
+    cd_tree = base_xml_parse(metafile, True)
+    wcseo_type = determine_wcseo_type(cd_tree)
 
-    coverage_id = extract_eoid(cd_tree)
+    coverage_id = extract_eoid(cd_tree, wcseo_type)
 
     if IE_DEBUG > 1:
         logger.info("Sc_id " + `sc_id` + ": Archiving meta for " + `cd_tree.tag`+

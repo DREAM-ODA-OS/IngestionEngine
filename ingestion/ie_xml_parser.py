@@ -43,20 +43,31 @@ WCS_TYPE_DRAFT201 = 199
 WCS_TYPE_FINAL201 = 201
 
 # namespaces
-wcs_vers = '2.0'
-WCS_NS   = '{http://www.opengis.net/wcs/' + wcs_vers + '}'
-WCSEO_NS = '{http://www.opengis.net/wcseo/1.0}'
-OWS_NS   = '{http://www.opengis.net/ows/2.0}'
-GML_NS   = '{http://www.opengis.net/gml/3.2}'
-GMLCOV_NS= '{http://www.opengis.net/gmlcov/1.0}'
-EOP_NS   = '{http://www.opengis.net/eop/2.0}'
-OM_NS    = '{http://www.opengis.net/om/2.0}'
-OPT_NS   = '{http://www.opengis.net/opt/2.0}' 
+wcs_vers   = '2.0'
+WCS_NS     = '{http://www.opengis.net/wcs/' + wcs_vers + '}'
+WCSEO_NS_D = '{http://www.opengis.net/wcseo/1.0}'
+WCSEO_NS_F = '{http://www.opengis.net/wcs/wcseo/1.0}'
+OWS_NS     = '{http://www.opengis.net/ows/2.0}'
+GML_NS     = '{http://www.opengis.net/gml/3.2}'
+GMLCOV_NS  = '{http://www.opengis.net/gmlcov/1.0}'
+OM_NS      = '{http://www.opengis.net/om/2.0}'
+EOP_NS     = '{http://www.opengis.net/eop/2.0}'
+OPT_NS     = '{http://www.opengis.net/opt/2.0}' 
+SAR_NS     = '{http://www.opengis.net/sar/2.0}' 
 
 XLINK_NS = '{http://www.w3.org/1999/xlink}'
 
 EXCEPTION_TAG      = "ExceptionReport"
 DEFAULT_SERVICE_VERSION = "2.0.1"
+
+# The following examples are from the DRAFT spec, pre-2014.
+# In the final adopted spec there have been some changes to namespaces:
+#  wcseo namspace is different,
+#  The namespace for EarthObservation is variable:
+#  it may be one of:
+#      eop http://www.opengis.net/eop/2.0
+#      opt http://www.opengis.net/opt/2.0
+#      sar http://www.opengis.net/sar/2.0
 
 #<gml:boundedBy>
 #<gml:Envelope axisLabels="lat long" 
@@ -92,28 +103,6 @@ DEFAULT_SERVICE_VERSION = "2.0.1"
 #     </eop:metaDataProperty>
 #   </eop:EarthObservation>
 
-EO_METADATA_XPATH = \
-    GMLCOV_NS + "metadata/" + \
-    GMLCOV_NS + "Extension/" + \
-    WCSEO_NS  + "EOMetadata/"
-
-EO_EARTHOBSERVATION_XPATH = EO_METADATA_XPATH + EOP_NS+"EarthObservation/"
-
-EO_PHENOMENONTIME = \
-    EO_EARTHOBSERVATION_XPATH + \
-    OM_NS+"phenomenonTime"
-
-EO_IDENTIFIER_XPATH = \
-    EO_EARTHOBSERVATION_XPATH + \
-    EOP_NS+"metaDataProperty/" + \
-    EOP_NS+"EarthObservationMetaData/" + \
-    EOP_NS+"identifier/"
-
-EO_EQUIPMENT_XPATH = \
-    EO_EARTHOBSERVATION_XPATH + \
-    OM_NS    + "procedure/"        + \
-    EOP_NS   + "EarthObservationEquipment/"
-
 # cloud cover XML example
 # <!-- cloud cover -->
 # <gmlcov:metadata>
@@ -129,17 +118,6 @@ EO_EQUIPMENT_XPATH = \
 #     </wcseo:EOMetadata>
 #   </gmlcov:Extension>
 # </gmlcov:metadata>
-
-EORESULT_XPATH = \
-    EO_METADATA_XPATH + \
-    EOP_NS   + "EarthObservation/" + \
-    OM_NS    + "result/"           + \
-    OPT_NS   + "EarthObservationResult"
-
-CLOUDCOVER_XPATH = \
-    EORESULT_XPATH + '/' + \
-    OPT_NS   + "cloudCoverPercentage"
-   
 
 # sensor type XML example:
 # <gmlcov:metadata>
@@ -157,12 +135,7 @@ CLOUDCOVER_XPATH = \
 #           </eop:EarthObservationEquipment>
 #         </om:procedure>
 #
-SENSOR_XPATH = \
-    EO_EQUIPMENT_XPATH +\
-    EOP_NS   + "sensor/" + \
-    EOP_NS   + "Sensor/" + \
-    EOP_NS   + "sensorType"
-    
+
 # acquisition angle XML example
 # <!-- acquisition angle -->
 # <gmlcov:metadata>
@@ -181,11 +154,6 @@ SENSOR_XPATH = \
 #         </om:procedure>
 #       </eop:EarthObservation>
 
-INCIDENCEANGLE_XPATH = \
-    EO_EQUIPMENT_XPATH  + \
-    EOP_NS   + "acquisitionParameters/" + \
-    EOP_NS   + "Acquisition/" + \
-    EOP_NS   + "incidenceAngle"
 
 # <eop:product>
 #   <eop:ProductInformation>
@@ -226,12 +194,6 @@ EO_SERVICEREF_XPATH = EOP_NS + "fileName/" + OWS_NS + "ServiceReference"
 #                   42.835816 -1.005626
 #                 </gml:posList>
 #
-EO_MULTISURFACE_XPATH = \
-    EO_EARTHOBSERVATION_XPATH + \
-    OM_NS   + "featureOfInterest/" + \
-    EOP_NS  + "Footprint/"    + \
-    EOP_NS + "multiExtentOf/" + \
-    GML_NS + "MultiSurface"
 
 EO_POLYPOSLIST_XPATH = \
     GML_NS + "surfaceMember/" + \
@@ -241,7 +203,117 @@ EO_POLYPOSLIST_XPATH = \
     GML_NS + "posList/"
     
 
+# ------------ xpath functions --------------------------
+
+def xpaths_eo_earthobservation(wcs_type):
+    wcseo_ns   = WCSEO_NS_D if WCS_TYPE_DRAFT201 == wcs_type else WCSEO_NS_F
+    earthob_ns = EOP_NS     if WCS_TYPE_DRAFT201 == wcs_type else SAR_NS
+    xpaths = []
+    for var_ns in (EOP_NS, OPT_NS, SAR_NS):
+        xpaths.append(
+            GMLCOV_NS + "metadata/" + \
+            GMLCOV_NS + "Extension/" + \
+            wcseo_ns  + "EOMetadata/" + \
+            var_ns    + "EarthObservation/")
+    return xpaths
+
+def xpaths_eo_phenomenontime(wcs_type):
+    xpaths = xpaths_eo_earthobservation(wcs_type)
+    for i in range(len(xpaths)):
+        xpaths[i] = xpaths[i] + OM_NS+"phenomenonTime"
+    return xpaths
+
+def xpaths_eo_identifier(wcs_type):
+    xpaths = xpaths_eo_earthobservation(wcs_type)
+    for i in range(len(xpaths)):
+        xpaths[i] = xpaths[i] + \
+            EOP_NS+"metaDataProperty/" + \
+            EOP_NS+"EarthObservationMetaData/" + \
+            EOP_NS+"identifier"
+    return xpaths
+
+def xpaths_eo_equipment(wcs_type):
+    xpaths = xpaths_eo_earthobservation(wcs_type)
+    for i in range(len(xpaths)):
+        xpaths[i] = xpaths[i] + \
+            OM_NS    + "procedure/" + \
+            EOP_NS   + "EarthObservationEquipment/"
+    return xpaths
+
+def xpaths_eo_multisurface(wcs_type):
+    xpaths = xpaths_eo_earthobservation(wcs_type)
+    for i in range(len(xpaths)):
+        xpaths[i] = xpaths[i] + \
+            OM_NS   + "featureOfInterest/" + \
+            EOP_NS  + "Footprint/"    + \
+            EOP_NS + "multiExtentOf/" + \
+            GML_NS + "MultiSurface"
+    return xpaths
+
+def xpaths_sensor(wcs_type):
+    xpaths = xpaths_eo_equipment(wcs_type)
+    for i in range(len(xpaths)):
+        xpaths[i] = xpaths[i] + \
+            EOP_NS   + "sensor/" + \
+            EOP_NS   + "Sensor/" + \
+            EOP_NS   + "sensorType"
+    return xpaths
+    
+def xpaths_incidenceangle(wcs_type):
+    xpaths = xpaths_eo_equipment(wcs_type)
+    for i in range(len(xpaths)):
+        xpaths[i] = xpaths[i] + \
+            EOP_NS   + "acquisitionParameters/" + \
+            EOP_NS   + "Acquisition/" + \
+            EOP_NS   + "incidenceAngle"
+    return xpaths
+
+def xpaths_cloudcover(wcs_type):
+    xpaths = xpaths_eo_earthobservation(wcs_type)
+    for i in range(len(xpaths)):
+        xpaths[i] = xpaths[i] + \
+            OM_NS     + "result/" + \
+            OPT_NS    + "EarthObservationResult/" +\
+            OPT_NS    + "cloudCoverPercentage"
+    return xpaths
+
+
 # ------------ XML metadata parsing --------------------------
+
+def multifind(cd, paths):
+    found = None
+    for p in paths:
+        found = cd.find("./"+p)
+        if None != found:
+            break
+    return found
+
+def determine_wcseo_type(root):
+    # returns one of the WCS_TYPEs:
+    #     WCS_TYPE_FINAL201 or
+    #     WCS_TYPE_DRAFT201
+    wcseo_type = WCS_TYPE_UNKNOWN
+
+    try:
+        if hasattr(root, 'ns_map'):
+            wcseo_ns_final = WCSEO_NS_F[1:][:-1]
+            wcseo_ns_draft = WCSEO_NS_D[1:][:-1]
+            for ns in root.ns_map:
+                uri = root.ns_map[ns]
+                if uri == wcseo_ns_final:
+                    wcseo_type = WCS_TYPE_FINAL201
+                    break
+                elif uri == wcseo_ns_draft:
+                    wcseo_type = WCS_TYPE_DRAFT201
+                    break
+
+    except Exception:
+        root_str = "<None>"
+        if None != root:
+            root_str = ET.tostring(root)
+        logger.error("determine_wcseo_type() failed for: \n"+root_str)
+    
+    return wcseo_type
 
 def determine_wcs_type(caps):
     wcs_type = WCS_TYPE_UNKNOWN
@@ -283,8 +355,8 @@ def tree_is_exception(tree):
     return is_nc_tag(tree.tag, EXCEPTION_TAG)
 
 
-def extract_footprintpolys(cd):
-    ms = cd.find("./" + EO_MULTISURFACE_XPATH)
+def extract_footprintpolys(cd, wcs_type):
+    ms = multifind(cd, xpath_eo_multisurface(wcs_type))
     if not ms:
         logger.error("extract_footprintpoly: MultiSurface not found")
         return None
@@ -365,22 +437,30 @@ def extract_prods_and_masks(cd, fix_missing_mtype=False):
     return prods_and_masks
 
 def extract_path_text(cd, path):
-    ret = None
     leaf_node = cd.find("./"+path)
     if None == leaf_node:
         return None
     return leaf_node.text
 
+def extract_paths_text(cd, paths):
+    leaf_node = multifind(cd, paths)
+    if None == leaf_node:
+        return None
+    return leaf_node.text
 
-def extract_eoid(cd):
-    return extract_path_text(cd, EO_IDENTIFIER_XPATH)
+
+def extract_eoid(cd, wcs_type):
+    return extract_paths_text(cd, xpaths_eo_identifier(wcs_type))
 
 
-def extract_Id(dss):
-    dsid = dss.find("./"+ WCSEO_NS + "DatasetSeriesId")
+def extract_Id(dss, wcs_type):
+    wcseo_ns = WCSEO_NS_D if WCS_TYPE_DRAFT201 == wcs_type else WCSEO_NS_F
+
+    dsid = dss.find("./"+ wcseo_ns + "DatasetSeriesId")
     if None == dsid:
         logger.error("'DatasetSeriesId' not found in DatasetSeriesSummary")
         return None
+
     return dsid.text
 
 
@@ -452,10 +532,13 @@ def extract_TimePeriod(dss):
     if None == begin_pos or None == end_pos: return None
     return TimePeriod(begin_pos.text, end_pos.text)
 
-def extract_om_time(cd):
-    phenomenonTime = cd.find("./" + EO_PHENOMENONTIME)
+
+def extract_om_time(cd, wcs_type):
+    xpaths = xpaths_eo_phenomenontime(wcs_type)
+    phenomenonTime = multifind(cd, xpaths)
     if None==phenomenonTime:
-        logger.error("Error: failed to find 'phenomenonTime'")
+        logger.error(
+            "Error: failed to find 'phenomenonTime', wcs_type="+`wcs_type`)
         return None
     return extract_TimePeriod(phenomenonTime)
     
@@ -468,8 +551,11 @@ def extract_ServiceTypeVersion(caps):
         return DEFAULT_SERVICE_VERSION
     return stv[0].text
 
-def extract_DatasetSeriesSummaries(caps):
+
+def extract_DatasetSeriesSummaries(caps, wcs_type):
     result = []
+    wcseo_ns = WCSEO_NS_D if WCS_TYPE_DRAFT201 == wcs_type else WCSEO_NS_F
+
     wcs_extension = caps.findall(
         "." +
         "/" + WCS_NS +"Contents" +
@@ -478,8 +564,10 @@ def extract_DatasetSeriesSummaries(caps):
         logger.error("Contents/Extension not found")
     else:
         result = wcs_extension[0].findall(
-        "./" + WCSEO_NS +"DatasetSeriesSummary")
+        "./" + wcseo_ns +"DatasetSeriesSummary")
+
     return result
+
 
 def extract_CoverageId(cd):
     covId = None
@@ -491,7 +579,9 @@ def extract_CoverageId(cd):
             covId = cd.attrib[GML_NS+'id']
         except KeyError:
             pass
+
     return covId
+
 
 def parse_with_ns(src_data):
     root = None
@@ -507,13 +597,15 @@ def parse_with_ns(src_data):
     root.ns_map = dict(ns_map)
     return root
 
-def base_xml_parse(src_data, save_ns):
+
+def base_xml_parse(src_data, save_ns=False):
     root = None
     if save_ns:
         root = parse_with_ns(src_data)
     else:
         root = ET.parse(src_data).getroot()
     return root
+
 
 def parse_file(src_data, expected_root, src_name, save_ns=False):
     result = None
@@ -553,19 +645,32 @@ def set_logger(l):
 if __name__ == '__main__':
     print "ie_xmlparser test"
 
-    ex0_file = "/mnt/shared/WCS-change/wcsCapabilities.old.xml"
-    ex1_file = "/mnt/shared/WCS-change/wcsCapabilities.new.xml"
+    TEST_DATA_HOME = "../test/test_data/"
+
+    conf1_meta = TEST_DATA_HOME + "p_confidenceTest_001/ows.meta"
+
+    ex0_file = TEST_DATA_HOME + "wcs_draft/wcsCapabilities.old.xml"
+    ex1_file = TEST_DATA_HOME + "wcs_draft/wcsCapabilities.new.xml"
+
+    print "base_xml_parse for archiving:"
+    cd_tree = base_xml_parse(conf1_meta, True)
+    wcseo_type = determine_wcseo_type(cd_tree)
+    coverage_id = extract_eoid(cd_tree, wcseo_type)
+    print "    wcseo_type = "+`wcseo_type` + "    " + \
+        "    coverage_id = "+ coverage_id
+    print
 
     caps = parse_file(ex1_file,
                       "Capabilities",
                       "test_data: wcsCapabilities.new.xml",
                       True)
 
+    print "Final / Draft WCS GepCapabilities determination:"
     if not caps:
-        print "ERROR - no caps!"
+        print "    ERROR - no caps!"
     else:
         wcs_type = determine_wcs_type(caps)
-        print "NEW wcs_type: " + `wcs_type`
+        print "    NEW wcs_type: " + `wcs_type`
 
     caps = None
     caps = parse_file(ex0_file,
@@ -573,20 +678,21 @@ if __name__ == '__main__':
                       "test_data: wcsCapabilities.old.xml",
                       True)
     if not caps:
-        print "ERROR - no caps!"
+        print "    ERROR - no caps!"
     else:
         wcs_type = determine_wcs_type(caps)
-        print "OLD wcs_type: " + `wcs_type`
+        print "    OLD wcs_type: " + `wcs_type`
 
     caps = None
 
+    print "\nExtract Products and Masks"
     ex2_file = "/mnt/shared/Archive-2014-03-12/eox-caps-with-links.xml"
     cds = parse_file(ex2_file,
                      "CoverageDescriptions",
                      "test_data: eox-caps-with-links.xml")
     if not cds:
-        print "ERROR - no cds!"
+        print "    ERROR - no cds!"
     else:
         p,m = extract_prods_and_masks(cds)
-        print " prods: " + `p`
-        print " masks: " + `m`
+        print "    prods: " + `p`
+        print "    masks: " + `m`
