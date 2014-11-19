@@ -257,10 +257,10 @@
             "ncn_id": "NLR-01-MERIS",
             "scenario_name": "Simple test for MERIS ingestion.",
             "scenario_description": "Example ingestion of Envisat/MERIS FRS product(s) over the Caspian Sea, as might be used by NLR.",
-            "bb_lc_long": 51.94,  "bb_lc_lat":  36.8,
-            "bb_uc_long": 52.1,   "bb_uc_lat":  37.1,
-            "from_date": "2009-02-03T01:00:00",
-            "to_date":   "2009-02-07T23:55:19",
+            "bb_lc_long": 49.39,   "bb_lc_lat":  46.09,
+            "bb_uc_long": 50.02,   "bb_uc_lat":  46.79,
+            "from_date": "2008-12-22T01:00:00",
+            "to_date":   "2008-12-31T23:55:19",
             "aoi_type": "BB",
             "dsrc": "http://data.eox.at/eoxs/ows", "dsrc_type": "EO",
             "dsrc_login": "", "dsrc_password": "",
@@ -337,10 +337,10 @@
        "scenario": 12,  "eoid_val": "MERIS_FR__L1_EUSC_view", "selected": true
     }}, 
     {"pk": 15, "model": "ingestion.eoid", "fields": {
-        "scenario": 15,   "eoid_val": "MERIS_FRS_L1", "selected": true
+        "scenario": 15,   "eoid_val": "ENVISAT_MER_FRS_1", "selected": true
     }}, 
     {"pk":16, "model": "ingestion.eoid", "fields": {
-        "scenario": 16,   "eoid_val": "ASAR_IMM_L1", "selected": true
+        "scenario": 16,   "eoid_val": "ENVISAT_ASA_IMM_1", "selected": true
     }},
 
     { "pk": 1, "model": "ingestion.scenariostatus",  "fields": {

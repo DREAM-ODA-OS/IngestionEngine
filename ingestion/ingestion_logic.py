@@ -93,7 +93,7 @@ WCS_GET_CAPS       = "request=GetCapabilities"
 EOWCS_DESCRIBE_CS  = "request=DescribeEOCoverageSet"
 WCS_GET_COVERAGE   = "request=GetCoverage"
 #WCS_IMAGE_FORMAT   = "format=image/tiff&mediatype=multipart/mixed"
-WCS_IMAGE_FORMAT   = "tiff&mediatype=multipart/mixed"
+WCS_IMAGE_FORMAT   = "mediatype=multipart/mixed"
 
 CAPABILITIES_TAG   = "Capabilities"
 EOCS_DESCRIPTION_TAG = "EOCoverageSetDescription"
