@@ -73,9 +73,9 @@ def download_rem_product(dl_dir, rel_path, url):
     dar_url, dar_id = download_urls(urls_with_dirs)
     if None == dar_id:
         raise AddProductError("No DAR generated")
-    dl_errors = wait_for_download(None, dar_url, dar_id, None, IE_AP_MAX_DL_WAIT)
+    dl_errors = wait_for_download(None, dar_url, dar_id, None, None)[0]
     if 0 != dl_errors:
-        raise AddProductError("Download via DM failed.")
+        raise AddProductError("Download via DM failed, dl_errors="+`dl_errors`)
 
     files = os.listdir(dl_dir)
     len_files = len(files)
