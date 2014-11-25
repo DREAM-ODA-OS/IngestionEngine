@@ -94,9 +94,18 @@ def download_rem_product(dl_dir, rel_path, url):
     return metadata, product
 
 
-def prepare_local_product(dl_dir, metadata, product):
+def prepare_local_product(dl_dir, metadata, product, replace=False):
     # move data and metadata to a permanent directory
-
+    
+    # in case we have a product file, arrange to mv/copy the whole dir.
+    extra_move = False
+    if os.path.isfile(product):
+        tmp_prod = os.path.dirname(product)
+        if tmp_prod and '' != tmp_prod:
+            product = tmp_prod
+            extra_move = True
+            metadata = None
+        
     # MP: Allow data as unpacked directories.
     if os.path.isfile(product) or os.path.isdir(product):
         try:
@@ -114,7 +123,7 @@ def prepare_local_product(dl_dir, metadata, product):
         raise AddProductError("Product not found or is not a file.")
 
     # MP: Metadata are required to be a file.
-    if metadata and os.path.isfile(metadata):
+    if (not extra_move) and metadata and os.path.isfile(metadata):
         try:
             logger.info("moving: %s --> %s"%(metadata, dl_dir))
             shutil.move(metadata, dl_dir)
@@ -204,8 +213,12 @@ def add_product_wfunc(parameters):
             metadata, product = download_rem_product(
                 dl_dir, rel_path, parameters["url"])
         elif 'product' in parameters:
+            replace = True if "covId" in parameters else False
             metadata, product = prepare_local_product(
-                dl_dir, parameters.get("metadata"), parameters["product"])
+                dl_dir,
+                parameters.get("metadata"),
+                parameters["product"],
+                replace)
         else:
             raise AddProductError("Neither product nor url in input.")
 
@@ -285,6 +298,7 @@ def add_product_submit(postData):
     resp      = {}
     error_str = None
     status    = 0
+    ap        = None
 
     from settings import IE_DEBUG
     if IE_DEBUG > 1:
@@ -384,8 +398,15 @@ def add_product_submit(postData):
         if IE_DEBUG>0:
             traceback.print_exc(4,sys.stdout)
 
+    apID = ap.id
+    ap   = None
+    ap   = models.ProductInfo.objects.filter(id=apID)[0]
     resp["status"] = status
+    if 0 != status:
+        if None != ap: ap.info_status = "failed"
+
     if error_str:
+        if None != ap: info_error = error_str
         resp["errorString"] = error_str
         logger.warning("addProduct request error. Status: " +`status`+\
                     ", error: " + error_str)
