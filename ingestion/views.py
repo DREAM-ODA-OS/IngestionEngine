@@ -239,7 +239,7 @@ def do_post_operation(op, request):
     response_data = {}
 
     if request.method == 'POST':
-        response_data = op(request.body)
+        response_data = op(request.body, request.META)
         return HttpResponse(
             json.dumps(response_data),
             content_type="application/json")
@@ -1116,10 +1116,10 @@ def updateOrNew(str_data, op):
     return response_data
 
     
-def updateScenario(data):
+def updateScenario(data, request_meta):
     return updateOrNew(data, update_core)
 
-def newScenario(data):
+def newScenario(data, request_meta):
     return updateOrNew(data, new_sc_core)
 
 

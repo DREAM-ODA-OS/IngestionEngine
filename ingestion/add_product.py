@@ -291,7 +291,7 @@ def add_product_wfunc(parameters):
     finally:
             addProduct.save()
 
-def add_product_submit(postData):
+def add_product_submit(postData, request_meta):
     logger.info("processing addProduct request")
 
     args = json.loads(postData)

@@ -68,8 +68,20 @@ def run_qmd_update(command, md_filename):
     
     return status, error_str
 
-def updateMetaData(postData):
+def updateMetaData(postData, request_meta):
     logger.info("processing updateMD request")
+
+    # Handle the case where the boundary header is part of the HTTP headers
+    #  rather than separeated in the POST data
+    if 'CONTENT_TYPE' in request_meta:
+        content_type_header = request_meta['CONTENT_TYPE']
+        print 'Http CONTENT_TYPE: '+`content_type_header`
+        if 'multipart/mixed' in content_type_header.lower() and \
+                'boundary=' in content_type_header.lower():
+            postData = \
+                "Content-Type: "+ content_type_header + "\n" + \
+                "MIME-Version: 1.0\n\n"  + \
+                postData
 
     resp = {}
     error_str = None
@@ -80,6 +92,9 @@ def updateMetaData(postData):
     action = None
     try:
         msg = message_from_string(postData)
+        if not msg.is_multipart():
+            logger.error("msg is not multipart.")
+        
         for part in msg.walk():
             # multipart/* are just containers
             if part.get_content_maintype() == 'multipart':
