@@ -356,7 +356,7 @@ def tree_is_exception(tree):
 
 
 def extract_footprintpolys(cd, wcs_type):
-    ms = multifind(cd, xpath_eo_multisurface(wcs_type))
+    ms = multifind(cd, xpaths_eo_multisurface(wcs_type))
     if not ms:
         logger.error("extract_footprintpoly: MultiSurface not found")
         return None
